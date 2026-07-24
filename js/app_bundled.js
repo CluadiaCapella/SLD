@@ -4135,18 +4135,18 @@
     const maxSilver = currentMedalSettings.maxSilver ?? 2;
     const maxBronze = currentMedalSettings.maxBronze ?? 5;
 
-    const getCellHighlightStyle = (count, maxLimit, baseColor = '#eab308') => {
+    const getCellHighlightStyle = (count, maxLimit) => {
       if (count > 0 && count === maxLimit) {
-        return `background: ${baseColor}33; border: 2px solid ${baseColor}; box-shadow: 0 0 8px ${baseColor}44; border-radius: 6px; padding: 6px;`;
+        return `background: rgba(16, 185, 129, 0.22); border: 2px solid #10b981; box-shadow: 0 0 10px rgba(16, 185, 129, 0.4); border-radius: 6px; padding: 6px;`;
       }
       return `border: 1px solid var(--border-color); padding: 6px; border-radius: 4px;`;
     };
 
     cardsContainer.innerHTML = sldList.map(item => `
-      <div class="sld-entry-card" data-tag="${item.dateTag}" style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-lg); padding:18px; box-shadow:var(--shadow-sm); width:100%;">
+      <div class="sld-entry-card" data-tag="${item.dateTag}" style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-lg); padding:18px; box-shadow:var(--shadow-sm); width:fit-content; min-width:260px; max-width:100%; flex:0 1 auto;">
         
         <!-- Header Row: Date (Left), File Count (Middle), 3-Dot Menu (Right) -->
-        <div style="display:flex; align-items:center; justify-space-between; margin-bottom:16px; flex-wrap:wrap; gap:12px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:12px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">
           <div style="display:flex; align-items:center; gap:16px;">
             <h3 class="sld-date-link" data-tag="${item.dateTag}" style="margin:0; font-size:1.3rem; font-weight:800; color:var(--accent-blue); cursor:pointer;">
               📘 ${item.dateTag}
@@ -4178,21 +4178,21 @@
             <tbody>
               <tr>
                 <th style="padding:6px; font-size:1.1rem; font-weight:800;">🩷</th>
-                <td style="${getCellHighlightStyle(item.p3.length, maxGold, '#ff69b4')}">${renderCellThumbs(item.p3)}</td>
-                <td style="${getCellHighlightStyle(item.p2.length, maxSilver, '#ff69b4')}">${renderCellThumbs(item.p2)}</td>
-                <td style="${getCellHighlightStyle(item.p1.length, maxBronze, '#ff69b4')}">${renderCellThumbs(item.p1)}</td>
+                <td style="${getCellHighlightStyle(item.p3.length, maxGold)}">${renderCellThumbs(item.p3)}</td>
+                <td style="${getCellHighlightStyle(item.p2.length, maxSilver)}">${renderCellThumbs(item.p2)}</td>
+                <td style="${getCellHighlightStyle(item.p1.length, maxBronze)}">${renderCellThumbs(item.p1)}</td>
               </tr>
               <tr>
                 <th style="padding:6px; font-size:1.1rem; font-weight:800;">🩵</th>
-                <td style="${getCellHighlightStyle(item.b3.length, maxGold, '#38bdf8')}">${renderCellThumbs(item.b3)}</td>
-                <td style="${getCellHighlightStyle(item.b2.length, maxSilver, '#38bdf8')}">${renderCellThumbs(item.b2)}</td>
-                <td style="${getCellHighlightStyle(item.b1.length, maxBronze, '#38bdf8')}">${renderCellThumbs(item.b1)}</td>
+                <td style="${getCellHighlightStyle(item.b3.length, maxGold)}">${renderCellThumbs(item.b3)}</td>
+                <td style="${getCellHighlightStyle(item.b2.length, maxSilver)}">${renderCellThumbs(item.b2)}</td>
+                <td style="${getCellHighlightStyle(item.b1.length, maxBronze)}">${renderCellThumbs(item.b1)}</td>
               </tr>
               <tr>
                 <th style="padding:6px; font-size:1.1rem; font-weight:800;">🩶</th>
-                <td style="${getCellHighlightStyle(item.g3.length, maxGold, '#94a3b8')}">${renderCellThumbs(item.g3)}</td>
-                <td style="${getCellHighlightStyle(item.g2.length, maxSilver, '#94a3b8')}">${renderCellThumbs(item.g2)}</td>
-                <td style="${getCellHighlightStyle(item.g1.length, maxBronze, '#94a3b8')}">${renderCellThumbs(item.g1)}</td>
+                <td style="${getCellHighlightStyle(item.g3.length, maxGold)}">${renderCellThumbs(item.g3)}</td>
+                <td style="${getCellHighlightStyle(item.g2.length, maxSilver)}">${renderCellThumbs(item.g2)}</td>
+                <td style="${getCellHighlightStyle(item.g1.length, maxBronze)}">${renderCellThumbs(item.g1)}</td>
               </tr>
             </tbody>
           </table>
