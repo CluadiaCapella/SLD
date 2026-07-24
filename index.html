@@ -420,7 +420,7 @@
         <div class="chart-card">
           <h3>🖼️ Collections Manager</h3>
           <p class="text-muted" style="font-size:0.85rem; margin-top:4px;">Manage, export, import, duplicate, or drag-and-merge media collections.</p>
-          <div style="display:flex; gap:10px; margin-top:12px; margin-bottom:12px; flex-wrap:wrap;">
+          <div style="display:flex; gap:10px; margin-top:12px; margin-bottom:8px; flex-wrap:wrap;">
             <button class="btn btn-primary btn-sm" id="createNewCollectionBtn">+ New Collection</button>
             <button class="btn btn-secondary btn-sm" id="exportCollectionZipBtn">💾 Save Collection Archive (.zip)</button>
             <label class="btn btn-secondary btn-sm" style="cursor:pointer;">
@@ -428,13 +428,14 @@
               <input type="file" id="importCollectionFileInput" accept=".zip,.7z" style="display:none;">
             </label>
           </div>
+          <p class="text-muted" style="font-size:0.75rem; color:var(--text-muted); margin-bottom:12px;">⚠️ <em>Packaging takes time for large datasets. The download window may take minutes to appear.</em></p>
           <div id="collectionsListContainer" style="margin-top:12px;"></div>
         </div>
 
         <div class="chart-card">
           <h3>📁 Profile Manager</h3>
           <p class="text-muted" style="font-size:0.85rem; margin-top:4px;">Backup & import full workspace settings, duplicate, or drag-to-merge profiles.</p>
-          <div style="display:flex; gap:10px; margin-top:12px; margin-bottom:12px; flex-wrap:wrap;">
+          <div style="display:flex; gap:10px; margin-top:12px; margin-bottom:8px; flex-wrap:wrap;">
             <button class="btn btn-primary btn-sm" id="createNewProfileBtn">+ New Profile</button>
             <button class="btn btn-secondary btn-sm" id="exportDataSettingsBtn">💾 Backup Profile (.zip)</button>
             <label class="btn btn-accent-blue btn-sm" style="cursor:pointer;">
@@ -442,10 +443,25 @@
               <input type="file" id="importDataSettingsFileInput" accept=".zip,.7z,.json" style="display:none;">
             </label>
           </div>
+          <p class="text-muted" style="font-size:0.75rem; color:var(--text-muted); margin-bottom:12px;">⚠️ <em>Packaging takes time for large datasets. The download window may take minutes to appear.</em></p>
           <div id="profilesListContainer" style="margin-top:12px;"></div>
         </div>
       </div>
     </section>
+
+    <!-- Archive Packaging Progress Modal -->
+    <div id="archiveProgressModal" class="modal-backdrop" style="display:none;">
+      <div class="modal-card" style="max-width:450px; width:90%; text-align:center; padding:24px;">
+        <div style="font-size:2.5rem; margin-bottom:12px;" id="archiveProgressSpinner">📦</div>
+        <h3 id="archiveProgressTitle" style="font-weight:800; margin-bottom:8px;">Packaging Archive...</h3>
+        <p class="text-muted" id="archiveProgressMessage" style="font-size:0.85rem; margin-bottom:16px;">Preparing files for packaging. Please wait...</p>
+        <div style="background:var(--bg-secondary); border-radius:var(--radius-md); height:12px; overflow:hidden; border:1px solid var(--border-color); margin-bottom:12px;">
+          <div id="archiveProgressBar" style="width:0%; height:100%; background:linear-gradient(90deg, var(--accent-pink), var(--accent-blue)); transition:width 0.2s ease;"></div>
+        </div>
+        <div id="archiveProgressPercent" style="font-weight:800; font-size:1rem; color:var(--accent-blue);">0%</div>
+        <p class="text-muted" style="font-size:0.75rem; margin-top:12px; margin-bottom:0;">⚠️ Packaging takes time for large datasets. The download prompt will appear once completed.</p>
+      </div>
+    </div>
 
     <!-- 11. TAGS LIST VIEW (🏷️ Tags) -->
     <section id="tagsView" class="view-page">

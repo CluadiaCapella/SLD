@@ -4393,9 +4393,45 @@
     setTimeout(() => URL.revokeObjectURL(url), 2000);
   }
 
+  function showArchiveProgressModal(title = 'Packaging Archive...') {
+    const modal = document.getElementById('archiveProgressModal');
+    const titleEl = document.getElementById('archiveProgressTitle');
+    const msgEl = document.getElementById('archiveProgressMessage');
+    const barEl = document.getElementById('archiveProgressBar');
+    const pctEl = document.getElementById('archiveProgressPercent');
+
+    if (titleEl) titleEl.textContent = title;
+    if (msgEl) msgEl.textContent = 'Preparing files for packaging. Please wait...';
+    if (barEl) barEl.style.width = '0%';
+    if (pctEl) pctEl.textContent = '0%';
+
+    if (modal) {
+      modal.classList.add('active');
+      modal.style.display = 'flex';
+    }
+  }
+
+  function updateArchiveProgress(percent, currentFile = '') {
+    const barEl = document.getElementById('archiveProgressBar');
+    const pctEl = document.getElementById('archiveProgressPercent');
+    const msgEl = document.getElementById('archiveProgressMessage');
+
+    const rounded = Math.min(100, Math.max(0, Math.floor(percent)));
+    if (barEl) barEl.style.width = `${rounded}%`;
+    if (pctEl) pctEl.textContent = `${rounded}%`;
+    if (msgEl && currentFile) msgEl.textContent = `Packaging: ${currentFile}`;
+  }
+
+  function hideArchiveProgressModal() {
+    const modal = document.getElementById('archiveProgressModal');
+    if (modal) {
+      modal.classList.remove('active');
+      modal.style.display = 'none';
+    }
+  }
+
   async function exportMediaCollectionZip() {
     if (!window.JSZip) { alert('JSZip library loading failed.'); return; }
-    const zip = new window.JSZip();
     const mediaFiles = await db.getActiveMedia();
 
     if (mediaFiles.length === 0) {
@@ -4403,36 +4439,53 @@
       return;
     }
 
+    showArchiveProgressModal('💾 Packaging Collection Archive...');
+    const zip = new window.JSZip();
     const manifestMedia = [];
 
-    for (const m of mediaFiles) {
-      if (m.dataUrl) {
-        const parts = m.dataUrl.split(',');
-        if (parts.length > 1) {
-          const safeFilename = m.filename.replace(/[/\\?%*:|"<>]/g, '_');
-          zip.file(safeFilename, parts[1], { base64: true });
+    try {
+      for (let i = 0; i < mediaFiles.length; i++) {
+        const m = mediaFiles[i];
+        updateArchiveProgress((i / mediaFiles.length) * 50, m.filename);
+        if (m.dataUrl) {
+          const parts = m.dataUrl.split(',');
+          if (parts.length > 1) {
+            const safeFilename = m.filename.replace(/[/\\?%*:|"<>]/g, '_');
+            zip.file(safeFilename, parts[1], { base64: true });
 
-          manifestMedia.push({
-            id: m.id,
-            filename: safeFilename,
-            originalFilename: m.filename,
-            type: m.type,
-            hash: m.hash,
-            blueBookEvents: m.blueBookEvents || [],
-            subjectTags: m.subjectTags || [],
-            normalTags: m.normalTags || [],
-            viewTransform: m.viewTransform || {},
-            customThumbnail: m.customThumbnail || null
-          });
+            manifestMedia.push({
+              id: m.id,
+              filename: safeFilename,
+              originalFilename: m.filename,
+              type: m.type,
+              hash: m.hash,
+              blueBookEvents: m.blueBookEvents || [],
+              subjectTags: m.subjectTags || [],
+              normalTags: m.normalTags || [],
+              viewTransform: m.viewTransform || {},
+              customThumbnail: m.customThumbnail || null
+            });
+          }
         }
       }
+
+      zip.file('collection_manifest.json', JSON.stringify({ version: DB_VERSION, exportDate: new Date().toISOString(), media: manifestMedia }, null, 2));
+
+      const todayStr = new Date().toISOString().split('T')[0];
+      const blob = await zip.generateAsync({ type: 'blob', compression: 'STORE' }, (metadata) => {
+        updateArchiveProgress(50 + (metadata.percent / 2), metadata.currentFile || 'Generating ZIP archive...');
+      });
+
+      updateArchiveProgress(100, 'Complete! Opening download window...');
+      setTimeout(() => {
+        downloadBlob(blob, `SLD Collection ${todayStr}.zip`);
+        hideArchiveProgressModal();
+      }, 400);
+    } catch (err) {
+      hideArchiveProgressModal();
+      console.error('Export collection archive error:', err);
+      alert(`Error packaging collection archive: ${err.message || err}`);
     }
-
-    zip.file('collection_manifest.json', JSON.stringify({ version: DB_VERSION, exportDate: new Date().toISOString(), media: manifestMedia }, null, 2));
-
-    const todayStr = new Date().toISOString().split('T')[0];
-    const blob = await zip.generateAsync({ type: 'blob', compression: 'STORE' });
-    downloadBlob(blob, `SLD Collection ${todayStr}.zip`);
   }
 
   async function importMediaCollectionZip(file) {
@@ -4537,40 +4590,57 @@
 
   async function exportDataAndSettingsZip() {
     if (!window.JSZip) return;
-    const zip = new window.JSZip();
+    showArchiveProgressModal('💾 Packaging Profile Archive...');
 
-    const activeMedia = await db.getActiveMedia();
-    const mediaMetadata = activeMedia.map(m => ({
-      id: m.id,
-      filename: m.filename,
-      hash: m.hash,
-      blueBookEvents: m.blueBookEvents || [],
-      subjectTags: m.subjectTags || [],
-      normalTags: m.normalTags || [],
-      viewTransform: m.viewTransform || {},
-      customThumbnail: m.customThumbnail || null
-    }));
+    try {
+      const zip = new window.JSZip();
+      const activeMedia = await db.getActiveMedia();
+      updateArchiveProgress(20, 'Gathering metadata & settings...');
 
-    const backupData = {
-      version: DB_VERSION,
-      exportDate: new Date().toISOString(),
-      activeProfileId: await db.getActiveProfileId(),
-      profiles: await db.getAll('profiles'),
-      subjects: await db.getActiveSubjects(),
-      events: await db.getActiveEvents(),
-      mediaMetadata: mediaMetadata,
-      settings: {
-        actionPointsMap: await db.getSetting('actionPointsMap'),
-        medalSettings: await db.getSetting('medalSettings'),
-        scoringWeights: await db.getSetting('scoringWeights'),
-        subjectGroups: await db.getSetting('subjectGroups')
-      }
-    };
+      const mediaMetadata = activeMedia.map(m => ({
+        id: m.id,
+        filename: m.filename,
+        hash: m.hash,
+        blueBookEvents: m.blueBookEvents || [],
+        subjectTags: m.subjectTags || [],
+        normalTags: m.normalTags || [],
+        viewTransform: m.viewTransform || {},
+        customThumbnail: m.customThumbnail || null
+      }));
 
-    zip.file('backup_data.json', JSON.stringify(backupData, null, 2));
-    const todayStr = new Date().toISOString().split('T')[0];
-    const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
-    downloadBlob(blob, `SLD Profile ${todayStr}.zip`);
+      const backupData = {
+        version: DB_VERSION,
+        exportDate: new Date().toISOString(),
+        activeProfileId: await db.getActiveProfileId(),
+        profiles: await db.getAll('profiles'),
+        subjects: await db.getActiveSubjects(),
+        events: await db.getActiveEvents(),
+        mediaMetadata: mediaMetadata,
+        settings: {
+          actionPointsMap: await db.getSetting('actionPointsMap'),
+          medalSettings: await db.getSetting('medalSettings'),
+          scoringWeights: await db.getSetting('scoringWeights'),
+          subjectGroups: await db.getSetting('subjectGroups')
+        }
+      };
+
+      zip.file('backup_data.json', JSON.stringify(backupData, null, 2));
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' }, (metadata) => {
+        updateArchiveProgress(40 + (metadata.percent * 0.6), 'Compressing profile backup...');
+      });
+
+      updateArchiveProgress(100, 'Complete! Opening download window...');
+      setTimeout(() => {
+        downloadBlob(blob, `SLD Profile ${todayStr}.zip`);
+        hideArchiveProgressModal();
+      }, 400);
+    } catch (err) {
+      hideArchiveProgressModal();
+      console.error('Export profile error:', err);
+      alert(`Error packaging profile backup: ${err.message || err}`);
+    }
   }
 
   async function importDataAndSettingsZip(file) {
