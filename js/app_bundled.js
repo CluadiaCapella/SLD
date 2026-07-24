@@ -1582,6 +1582,7 @@
 
   function setupNavbarAutoHide() {
     let lastScrollY = window.scrollY;
+
     window.addEventListener('scroll', () => {
       const nav = document.getElementById('bottomNavBar');
       if (!nav) return;
@@ -1592,6 +1593,14 @@
         nav.classList.add('nav-hidden');
       }
       lastScrollY = currentScrollY;
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      const nav = document.getElementById('bottomNavBar');
+      if (!nav) return;
+      if (window.innerHeight - e.clientY <= 60) {
+        nav.classList.remove('nav-hidden');
+      }
     });
   }
 
@@ -4076,8 +4085,8 @@
      12. SLD LIST PAGE & REORGANIZED TIERED SLD DETAILS PAGE
      ========================================================================== */
   function renderSldListPage() {
-    const tableBody = document.getElementById('sldTableBody');
-    if (!tableBody) return;
+    const cardsContainer = document.getElementById('sldCardsContainer');
+    if (!cardsContainer) return;
 
     const sldTagMap = new Map();
 
@@ -4111,58 +4120,108 @@
     });
 
     if (sldList.length === 0) {
-      tableBody.innerHTML = `<tr><td colspan="4" class="empty-state">No SLD events recorded yet. Upload media or batch add SLD dates.</td></tr>`;
+      cardsContainer.innerHTML = `<div class="empty-state">No SLD events recorded yet. Upload media or batch add SLD dates.</div>`;
       return;
     }
 
     const renderCellThumbs = (mediaArray) => {
       if (!mediaArray || mediaArray.length === 0) return '';
-      const slice = mediaArray.slice(0, 5);
-      return `<div class="sld-table-thumb-group">
-        ${slice.map(m => `<div class="sld-mini-thumb-wrap" data-mid="${m.id}">${renderMediaThumbnailHTML(m, 'sld-mini-thumb')}</div>`).join('')}
+      return `<div class="sld-table-thumb-group" style="display:flex; flex-wrap:wrap; gap:4px; justify-content:center;">
+        ${mediaArray.map(m => `<div class="sld-mini-thumb-wrap" data-mid="${m.id}">${renderMediaThumbnailHTML(m, 'sld-mini-thumb')}</div>`).join('')}
       </div>`;
     };
 
-    tableBody.innerHTML = sldList.map(item => `
-      <tr class="sld-table-row" data-tag="${item.dateTag}">
-        <td><strong style="color:var(--accent-blue); cursor:pointer;">${item.dateTag}</strong></td>
-        <td>
-          <table class="sld-matrix-table" style="border-collapse:collapse; width:100%; text-align:center; font-size:0.85rem;">
+    const maxGold = currentMedalSettings.maxGold ?? 1;
+    const maxSilver = currentMedalSettings.maxSilver ?? 2;
+    const maxBronze = currentMedalSettings.maxBronze ?? 5;
+
+    const getCellHighlightStyle = (count, maxLimit, baseColor = '#eab308') => {
+      if (count > 0 && count === maxLimit) {
+        return `background: ${baseColor}33; border: 2px solid ${baseColor}; box-shadow: 0 0 8px ${baseColor}44; border-radius: 6px; padding: 6px;`;
+      }
+      return `border: 1px solid var(--border-color); padding: 6px; border-radius: 4px;`;
+    };
+
+    cardsContainer.innerHTML = sldList.map(item => `
+      <div class="sld-entry-card" data-tag="${item.dateTag}" style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-lg); padding:18px; box-shadow:var(--shadow-sm); width:100%;">
+        
+        <!-- Header Row: Date (Left), File Count (Middle), 3-Dot Menu (Right) -->
+        <div style="display:flex; align-items:center; justify-space-between; margin-bottom:16px; flex-wrap:wrap; gap:12px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">
+          <div style="display:flex; align-items:center; gap:16px;">
+            <h3 class="sld-date-link" data-tag="${item.dateTag}" style="margin:0; font-size:1.3rem; font-weight:800; color:var(--accent-blue); cursor:pointer;">
+              📘 ${item.dateTag}
+            </h3>
+            <span style="font-weight:700; font-size:0.95rem; background:rgba(56,189,248,0.15); color:var(--accent-blue); padding:4px 10px; border-radius:12px; border:1px solid rgba(56,189,248,0.3);">
+              📘 ${item.mediaSet.size}
+            </span>
+          </div>
+
+          <div class="dropdown-container" style="position:relative; display:inline-block; margin-left:auto;">
+            <button class="btn btn-secondary btn-sm sld-card-menu-btn">•••</button>
+            <div class="dropdown-menu sld-card-dropdown" style="display:none; position:absolute; right:0; top:100%; z-index:10; background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:6px; min-width:170px; box-shadow:var(--shadow-md);">
+              <button class="btn btn-danger btn-sm delete-sld-btn" data-tag="${item.dateTag}" style="width:100%; text-align:left;">🗑️ Delete SLD Entry</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Trophy Matrix (4x4 Table - Starts compact and grows with content) -->
+        <div style="overflow-x:auto; width:fit-content; max-width:100%;">
+          <table class="sld-matrix-table" style="border-collapse:separate; border-spacing:6px; text-align:center; font-size:0.85rem; width:auto; min-width:200px;">
             <thead>
-              <tr style="border-bottom:1px solid var(--border-color);">
-                <th style="padding:4px; width:28px;"></th>
-                <th style="padding:4px;">🥇</th>
-                <th style="padding:4px;">🥈</th>
-                <th style="padding:4px;">🥉</th>
+              <tr>
+                <th style="padding:4px; min-width:32px;"></th>
+                <th style="padding:6px; font-size:1.1rem; font-weight:800;">🥇</th>
+                <th style="padding:6px; font-size:1.1rem; font-weight:800;">🥈</th>
+                <th style="padding:6px; font-size:1.1rem; font-weight:800;">🥉</th>
               </tr>
             </thead>
             <tbody>
-              <tr style="border-bottom:1px solid var(--border-color);">
-                <th style="padding:4px; font-weight:800;">🩷</th>
-                <td style="padding:4px;">${renderCellThumbs(item.p3)}</td>
-                <td style="padding:4px;">${renderCellThumbs(item.p2)}</td>
-                <td style="padding:4px;">${renderCellThumbs(item.p1)}</td>
-              </tr>
-              <tr style="border-bottom:1px solid var(--border-color);">
-                <th style="padding:4px; font-weight:800;">🩵</th>
-                <td style="padding:4px;">${renderCellThumbs(item.b3)}</td>
-                <td style="padding:4px;">${renderCellThumbs(item.b2)}</td>
-                <td style="padding:4px;">${renderCellThumbs(item.b1)}</td>
+              <tr>
+                <th style="padding:6px; font-size:1.1rem; font-weight:800;">🩷</th>
+                <td style="${getCellHighlightStyle(item.p3.length, maxGold, '#ff69b4')}">${renderCellThumbs(item.p3)}</td>
+                <td style="${getCellHighlightStyle(item.p2.length, maxSilver, '#ff69b4')}">${renderCellThumbs(item.p2)}</td>
+                <td style="${getCellHighlightStyle(item.p1.length, maxBronze, '#ff69b4')}">${renderCellThumbs(item.p1)}</td>
               </tr>
               <tr>
-                <th style="padding:4px; font-weight:800;">🩶</th>
-                <td style="padding:4px;">${renderCellThumbs(item.g3)}</td>
-                <td style="padding:4px;">${renderCellThumbs(item.g2)}</td>
-                <td style="padding:4px;">${renderCellThumbs(item.g1)}</td>
+                <th style="padding:6px; font-size:1.1rem; font-weight:800;">🩵</th>
+                <td style="${getCellHighlightStyle(item.b3.length, maxGold, '#38bdf8')}">${renderCellThumbs(item.b3)}</td>
+                <td style="${getCellHighlightStyle(item.b2.length, maxSilver, '#38bdf8')}">${renderCellThumbs(item.b2)}</td>
+                <td style="${getCellHighlightStyle(item.b1.length, maxBronze, '#38bdf8')}">${renderCellThumbs(item.b1)}</td>
+              </tr>
+              <tr>
+                <th style="padding:6px; font-size:1.1rem; font-weight:800;">🩶</th>
+                <td style="${getCellHighlightStyle(item.g3.length, maxGold, '#94a3b8')}">${renderCellThumbs(item.g3)}</td>
+                <td style="${getCellHighlightStyle(item.g2.length, maxSilver, '#94a3b8')}">${renderCellThumbs(item.g2)}</td>
+                <td style="${getCellHighlightStyle(item.g1.length, maxBronze, '#94a3b8')}">${renderCellThumbs(item.g1)}</td>
               </tr>
             </tbody>
           </table>
-        </td>
-        <td><strong style="font-size:1.1rem; color:var(--text-primary);">${item.mediaSet.size}</strong></td>
-        <td><button class="btn btn-danger btn-sm delete-sld-btn" data-tag="${item.dateTag}">🗑️ Delete</button></td>
-      </tr>`).join('');
+        </div>
+      </div>`).join('');
 
-    tableBody.querySelectorAll('.sld-mini-thumb-wrap').forEach(wrap => {
+    cardsContainer.querySelectorAll('.sld-card-menu-btn').forEach(btn => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        const dropdown = btn.nextElementSibling;
+        const isShown = dropdown.style.display === 'block';
+        document.querySelectorAll('.sld-card-dropdown').forEach(d => d.style.display = 'none');
+        if (!isShown) dropdown.style.display = 'block';
+      };
+    });
+
+    document.addEventListener('click', () => {
+      document.querySelectorAll('.sld-card-dropdown').forEach(d => d.style.display = 'none');
+    });
+
+    cardsContainer.querySelectorAll('.sld-date-link').forEach(link => {
+      link.onclick = (e) => {
+        e.stopPropagation();
+        activeDetailSldTag = link.getAttribute('data-tag');
+        switchView('sldDetailsView');
+      };
+    });
+
+    cardsContainer.querySelectorAll('.sld-mini-thumb-wrap').forEach(wrap => {
       wrap.onclick = (e) => {
         e.stopPropagation();
         const mId = wrap.getAttribute('data-mid');
@@ -4171,15 +4230,7 @@
       };
     });
 
-    tableBody.querySelectorAll('.sld-table-row').forEach(row => {
-      row.onclick = (e) => {
-        if (e.target.closest('.sld-mini-thumb-wrap') || e.target.closest('.delete-sld-btn')) return;
-        activeDetailSldTag = row.getAttribute('data-tag');
-        switchView('sldDetailsView');
-      };
-    });
-
-    tableBody.querySelectorAll('.delete-sld-btn').forEach(btn => {
+    cardsContainer.querySelectorAll('.delete-sld-btn').forEach(btn => {
       btn.onclick = async (e) => {
         e.stopPropagation();
         const delTag = btn.getAttribute('data-tag');
@@ -4200,7 +4251,7 @@
           });
 
           await loadAppState();
-          renderCurrentView();
+          renderSldListPage();
         }
       };
     });
