@@ -655,13 +655,14 @@ body {
 .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
 
-/* Selection Floating Banner */
+/* Selection Floating Banner Overlay */
 .selection-banner-sticky {
-  position: sticky; top: 68px; z-index: 90;
-  background: linear-gradient(135deg, rgba(255, 105, 180, 0.95), rgba(168, 85, 247, 0.95));
-  color: #fff; padding: 10px 20px; border-radius: var(--radius-md);
-  display: flex; justify-content: space-between; align-items: center;
-  margin-bottom: 16px; box-shadow: var(--shadow-md);
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 2500;
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.95));
+  backdrop-filter: blur(12px); border: 1px solid var(--accent-pink); color: #fff;
+  padding: 12px 20px; border-radius: var(--radius-lg); display: flex;
+  justify-space-between; align-items: center; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+  margin-bottom: 0;
 }
 
 /* Tags & Bubbles */
@@ -718,19 +719,42 @@ body {
 .heart-toggle-btn.active-2 { background: rgba(192, 192, 192, 0.4); border-color: #c0c0c0; }
 .heart-toggle-btn.active-3 { background: rgba(255, 215, 0, 0.4); border-color: #ffd700; color: #fff; font-weight: 800; box-shadow: 0 0 10px rgba(255,215,0,0.5); }
 
-/* Autocomplete Dropdowns */
+/* Autocomplete Dropdowns & Button Grid */
 .date-autocomplete-container, .subject-autocomplete-container, .tag-autocomplete-container { position: relative; }
 .date-autocomplete-dropdown, .subject-autocomplete-dropdown, .tag-autocomplete-dropdown {
-  position: absolute; top: 100%; left: 0; right: 0; background: var(--bg-secondary);
-  border: 1px solid var(--border-color); border-radius: var(--radius-md);
-  max-height: 200px; overflow-y: auto; z-index: 500; display: none; margin-top: 4px; box-shadow: var(--shadow-md);
+  position: absolute; bottom: 105%; left: 0; min-width: 280px; max-width: 480px; width: max-content;
+  background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md);
+  max-height: 185px; overflow-y: auto; z-index: 5000; display: none; margin-top: 4px; box-shadow: var(--shadow-lg);
+  padding: 8px; flex-wrap: wrap; gap: 6px; align-content: flex-start;
 }
-.date-autocomplete-dropdown.active, .subject-autocomplete-dropdown.active, .tag-autocomplete-dropdown.active { display: block; }
+.date-autocomplete-dropdown.active, .subject-autocomplete-dropdown.active, .tag-autocomplete-dropdown.active { display: flex; }
 
-.date-autocomplete-item, .subject-autocomplete-item, .tag-autocomplete-item {
-  padding: 8px 12px; cursor: pointer; font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center;
+.autocomplete-btn-chip {
+  display: inline-flex; align-items: center; justify-content: space-between; gap: 6px;
+  padding: 6px 12px; border-radius: 16px; font-size: 0.8rem; font-weight: 700; cursor: pointer;
+  background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-primary);
+  max-width: 170px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  transition: all 0.15s ease; user-select: none;
 }
-.date-autocomplete-item:hover, .subject-autocomplete-item:hover, .tag-autocomplete-item:hover { background: rgba(255,255,255,0.1); }
+
+.autocomplete-btn-chip .btn-text-label {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 130px;
+}
+
+.autocomplete-btn-chip.create-new-btn {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.35), rgba(236, 72, 153, 0.35));
+  border: 1px solid var(--accent-pink); color: #fff;
+}
+
+.autocomplete-btn-chip.popular-first-btn {
+  border: 1px solid var(--accent-blue); background: rgba(56, 189, 248, 0.15); color: #7dd3fc;
+}
+
+.autocomplete-btn-chip:hover,
+.autocomplete-btn-chip.keyboard-focus {
+  outline: 2px solid var(--accent-pink); background: var(--accent-pink); color: #fff !important;
+  border-color: var(--accent-pink) !important; box-shadow: 0 0 10px rgba(236, 72, 153, 0.6);
+}
 
 /* Action Tag Colors (1-12 Spectrum) */
 .action-tag-1 { background: rgba(168, 85, 247, 0.2); color: #c084fc; border-color: #a855f7; }

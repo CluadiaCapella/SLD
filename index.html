@@ -116,10 +116,25 @@
 
         <!-- Inline Tagging Fields directly inside Selection Banner -->
         <div style="display:flex; flex-wrap:wrap; gap:8px; width:100%; align-items:center; background:rgba(0,0,0,0.25); padding:8px; border-radius:var(--radius-md);">
-          <input type="text" id="inlineSubjectInput" class="input-text btn-sm" placeholder="+ Subject..." style="flex:1; min-width:120px;">
-          <input type="text" id="inlineNormalTagInput" class="input-text btn-sm" placeholder="+ Normal Tag..." style="flex:1; min-width:120px;">
-          <input type="text" id="inlineSldInput" class="input-text btn-sm" placeholder="+ SLD Date..." style="flex:1; min-width:110px;">
-          <input type="text" id="inlineAlikeInput" class="input-text btn-sm" placeholder="+ 🪞 Alike (Sub::faint)..." style="flex:1; min-width:150px;">
+          <div class="subject-autocomplete-container" style="flex:1; min-width:120px; position:relative;">
+            <input type="text" id="inlineSubjectInput" class="input-text btn-sm" placeholder="+ Subject..." style="width:100%;">
+            <div id="inlineSubjectAutocomplete" class="subject-autocomplete-dropdown"></div>
+          </div>
+
+          <div class="tag-autocomplete-container" style="flex:1; min-width:120px; position:relative;">
+            <input type="text" id="inlineNormalTagInput" class="input-text btn-sm" placeholder="+ Normal Tag..." style="width:100%;">
+            <div id="inlineNormalTagAutocomplete" class="tag-autocomplete-dropdown"></div>
+          </div>
+
+          <div class="date-autocomplete-container" style="flex:1; min-width:110px; position:relative;">
+            <input type="text" id="inlineSldInput" class="input-text btn-sm" placeholder="+ SLD Date..." style="width:100%;">
+            <div id="inlineSldAutocomplete" class="date-autocomplete-dropdown"></div>
+          </div>
+
+          <div class="subject-autocomplete-container" style="flex:1; min-width:150px; position:relative;">
+            <input type="text" id="inlineAlikeInput" class="input-text btn-sm" placeholder="+ 🪞 Alike (Sub::faint)..." style="width:100%;">
+            <div id="inlineAlikeAutocomplete" class="subject-autocomplete-dropdown"></div>
+          </div>
         </div>
 
         <div id="selectionInlineTagsChips" style="display:flex; flex-wrap:wrap; gap:6px; width:100%;"></div>

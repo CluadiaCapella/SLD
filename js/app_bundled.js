@@ -493,6 +493,64 @@
     return `${year}-${mm}-${dd}T${hh}:${min}:${ss}`;
   }
 
+  /* Grid Keyboard Navigation Helper for Chip Buttons */
+  function bindAutocompleteGridKeyboard(input, dropdown) {
+    if (!input || !dropdown) return;
+    dropdown.dataset.focusedIndex = "-1";
+
+    input.addEventListener('keydown', (e) => {
+      const isActive = dropdown.classList.contains('active');
+      const items = Array.from(dropdown.querySelectorAll('.autocomplete-btn-chip'));
+
+      if (!isActive || items.length === 0) return;
+
+      let focusedIndex = parseInt(dropdown.dataset.focusedIndex || "-1", 10);
+
+      if (['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp'].includes(e.key)) {
+        e.preventDefault();
+
+        let cols = 3;
+        if (items.length > 0) {
+          const firstTop = items[0].offsetTop;
+          const secondRowIdx = items.findIndex((el, idx) => idx > 0 && el.offsetTop > firstTop);
+          if (secondRowIdx > 0) cols = secondRowIdx;
+          else cols = items.length;
+        }
+
+        if (e.key === 'ArrowRight') {
+          focusedIndex = focusedIndex < 0 ? 0 : Math.min(items.length - 1, focusedIndex + 1);
+        } else if (e.key === 'ArrowLeft') {
+          focusedIndex = focusedIndex <= 0 ? 0 : focusedIndex - 1;
+        } else if (e.key === 'ArrowDown') {
+          focusedIndex = focusedIndex < 0 ? 0 : Math.min(items.length - 1, focusedIndex + cols);
+        } else if (e.key === 'ArrowUp') {
+          focusedIndex = focusedIndex < 0 ? 0 : Math.max(0, focusedIndex - cols);
+        }
+
+        dropdown.dataset.focusedIndex = String(focusedIndex);
+
+        items.forEach((item, idx) => {
+          if (idx === focusedIndex) {
+            item.classList.add('keyboard-focus');
+            item.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+          } else {
+            item.classList.remove('keyboard-focus');
+          }
+        });
+      } else if (e.key === 'Enter') {
+        if (focusedIndex >= 0 && items[focusedIndex]) {
+          e.preventDefault();
+          e.stopPropagation();
+          items[focusedIndex].click();
+          dropdown.dataset.focusedIndex = "-1";
+        }
+      } else if (e.key === 'Escape') {
+        dropdown.classList.remove('active');
+        dropdown.dataset.focusedIndex = "-1";
+      }
+    });
+  }
+
   function setupSmartDateAutocomplete(inputId, dropdownId) {
     const input = document.getElementById(inputId);
     const dropdown = document.getElementById(dropdownId);
@@ -501,7 +559,7 @@
     let isDefaultVal = true;
 
     input.addEventListener('focus', () => {
-      if (isDefaultVal) input.value = getTodaySmartDateTag();
+      if (isDefaultVal && !input.value) input.value = getTodaySmartDateTag();
       showAutocomplete();
     });
 
@@ -510,28 +568,51 @@
       showAutocomplete();
     });
 
-    function showAutocomplete() {
-      const val = input.value.trim().toLowerCase();
-      const allTags = new Set();
-      currentMediaList.forEach(m => {
-        (m.blueBookEvents || []).forEach(be => { if (be.dateTag) allTags.add(be.dateTag); });
-      });
-      currentEventsList.forEach(e => { if (e.dateTag) allTags.add(e.dateTag); });
+    bindAutocompleteGridKeyboard(input, dropdown);
 
-      const matches = Array.from(allTags).filter(t => t.toLowerCase().includes(val)).slice(0, 8);
-      if (matches.length === 0) {
-        dropdown.classList.remove('active');
-        return;
+    function showAutocomplete() {
+      dropdown.dataset.focusedIndex = "-1";
+      const val = input.value.trim().toLowerCase();
+      const tagCounts = new Map();
+      currentMediaList.forEach(m => {
+        (m.blueBookEvents || []).forEach(be => {
+          if (be.dateTag) tagCounts.set(be.dateTag, (tagCounts.get(be.dateTag) || 0) + 1);
+        });
+      });
+      currentEventsList.forEach(e => {
+        if (e.dateTag) tagCounts.set(e.dateTag, (tagCounts.get(e.dateTag) || 0) + 1);
+      });
+
+      const sorted = Array.from(tagCounts.keys()).sort((a, b) => tagCounts.get(b) - tagCounts.get(a));
+      const matches = sorted.filter(t => t.toLowerCase().includes(val));
+
+      let chips = [];
+      if (val && !tagCounts.has(input.value.trim())) {
+        const raw = input.value.trim();
+        chips.push(`<button type="button" class="autocomplete-btn-chip create-new-btn" data-val="${raw}">
+          <span class="btn-text-label">➕ Date "${raw}"</span>
+        </button>`);
       }
 
-      dropdown.innerHTML = matches.map(m => `<div class="date-autocomplete-item" data-val="${m}">💦 ${m}</div>`).join('');
+      matches.forEach((m, idx) => {
+        const isMostPopular = idx === 0 && !chips.some(c => c.includes('create-new-btn'));
+        chips.push(`<button type="button" class="autocomplete-btn-chip ${isMostPopular ? 'popular-first-btn' : ''}" data-val="${m}">
+          <span class="btn-text-label">💦 ${m}</span>
+          <span style="font-size:0.7rem; opacity:0.75;">(${tagCounts.get(m)})</span>
+        </button>`);
+      });
+
+      if (chips.length === 0) { dropdown.classList.remove('active'); return; }
+
+      dropdown.innerHTML = chips.join('');
       dropdown.classList.add('active');
 
-      dropdown.querySelectorAll('.date-autocomplete-item').forEach(item => {
+      dropdown.querySelectorAll('.autocomplete-btn-chip').forEach(item => {
         item.onclick = (e) => {
           e.stopPropagation();
           input.value = item.getAttribute('data-val');
           dropdown.classList.remove('active');
+          dropdown.dataset.focusedIndex = "-1";
         };
       });
     }
@@ -549,8 +630,11 @@
     input.addEventListener('focus', showAutocomplete);
     input.addEventListener('input', showAutocomplete);
 
+    bindAutocompleteGridKeyboard(input, dropdown);
+
     input.addEventListener('keydown', async (e) => {
-      if (e.key === 'Enter') {
+      const focusedIdx = parseInt(dropdown.dataset.focusedIndex || "-1", 10);
+      if (e.key === 'Enter' && focusedIdx === -1) {
         e.preventDefault();
         const val = input.value.trim();
         if (!val) return;
@@ -573,12 +657,14 @@
 
         input.value = '';
         dropdown.classList.remove('active');
+        dropdown.dataset.focusedIndex = "-1";
         if (onSelectSubject) onSelectSubject(targetSub.id);
         setTimeout(() => input.focus(), 50);
       }
     });
 
     function showAutocomplete() {
+      dropdown.dataset.focusedIndex = "-1";
       const val = input.value.trim().toLowerCase();
       const tagCounts = new Map();
       for (const m of currentMediaList) {
@@ -589,31 +675,34 @@
       const matches = sortedSubs.filter(s => getSubjectDisplayName(s).toLowerCase().includes(val) || s.name.toLowerCase().includes(val));
       const exactMatch = currentSubjectsList.some(s => s.name.toLowerCase() === val);
 
-      let html = '';
+      let chips = [];
       if (val && !exactMatch) {
         const rawVal = input.value.trim();
-        html += `<div class="subject-autocomplete-item" data-action="create" data-val="${rawVal}">
-          <strong>➕ Create "${rawVal}"</strong>
-          <span style="font-size:0.75rem; color:var(--accent-pink);">New Subject</span>
-        </div>`;
+        chips.push(`<button type="button" class="autocomplete-btn-chip create-new-btn" data-action="create" data-val="${rawVal}">
+          <span class="btn-text-label">➕ "${rawVal}"</span>
+        </button>`);
       }
 
-      html += matches.slice(0, 8).map(s => `
-        <div class="subject-autocomplete-item" data-action="select" data-id="${s.id}">
-          <span>👤 ${getSubjectDisplayName(s)}</span>
-          <span style="font-size:0.75rem; color:var(--text-muted);">${tagCounts.get(s.id) || 0} photos</span>
-        </div>`).join('');
+      matches.forEach((s, idx) => {
+        const isMostPopular = idx === 0;
+        const nameDisplay = getSubjectDisplayName(s);
+        chips.push(`<button type="button" class="autocomplete-btn-chip ${isMostPopular ? 'popular-first-btn' : ''}" data-action="select" data-id="${s.id}">
+          <span class="btn-text-label">👤 ${nameDisplay}</span>
+          <span style="font-size:0.7rem; opacity:0.75;">(${tagCounts.get(s.id) || 0})</span>
+        </button>`);
+      });
 
-      if (!html) { dropdown.classList.remove('active'); return; }
+      if (chips.length === 0) { dropdown.classList.remove('active'); return; }
 
-      dropdown.innerHTML = html;
+      dropdown.innerHTML = chips.join('');
       dropdown.classList.add('active');
 
-      dropdown.querySelectorAll('.subject-autocomplete-item').forEach(item => {
+      dropdown.querySelectorAll('.autocomplete-btn-chip').forEach(item => {
         item.onclick = async (e) => {
           e.stopPropagation();
           const action = item.getAttribute('data-action');
           dropdown.classList.remove('active');
+          dropdown.dataset.focusedIndex = "-1";
           input.value = '';
 
           if (action === 'create') {
@@ -644,8 +733,11 @@
     input.addEventListener('focus', showAutocomplete);
     input.addEventListener('input', showAutocomplete);
 
+    bindAutocompleteGridKeyboard(input, dropdown);
+
     input.addEventListener('keydown', async (e) => {
-      if (e.key === 'Enter') {
+      const focusedIdx = parseInt(dropdown.dataset.focusedIndex || "-1", 10);
+      if (e.key === 'Enter' && focusedIdx === -1) {
         e.preventDefault();
         const val = input.value.trim();
         if (!val) return;
@@ -657,17 +749,18 @@
 
         const allTags = Array.from(tagCounts.keys()).sort((a, b) => tagCounts.get(b) - tagCounts.get(a));
         const matches = allTags.filter(t => t.toLowerCase().includes(val.toLowerCase()));
-
         const chosenTag = matches.length > 0 ? matches[0] : val;
 
         input.value = '';
         dropdown.classList.remove('active');
+        dropdown.dataset.focusedIndex = "-1";
         if (onSelectTag) await onSelectTag(chosenTag);
         setTimeout(() => input.focus(), 50);
       }
     });
 
     function showAutocomplete() {
+      dropdown.dataset.focusedIndex = "-1";
       const val = input.value.trim().toLowerCase();
       const tagCounts = new Map();
       currentMediaList.forEach(m => {
@@ -676,24 +769,36 @@
 
       const allTags = Array.from(tagCounts.keys()).sort((a, b) => tagCounts.get(b) - tagCounts.get(a));
       const matches = allTags.filter(t => t.toLowerCase().includes(val));
+      const exactMatch = tagCounts.has(input.value.trim());
 
-      let html = matches.slice(0, 8).map(t => `
-        <div class="tag-autocomplete-item" data-val="${t}">
-          <span>🏷️ ${t}</span>
-          <span style="font-size:0.75rem; color:var(--text-muted);">${tagCounts.get(t)} files</span>
-        </div>`).join('');
+      let chips = [];
+      if (val && !exactMatch) {
+        const rawVal = input.value.trim();
+        chips.push(`<button type="button" class="autocomplete-btn-chip create-new-btn" data-val="${rawVal}">
+          <span class="btn-text-label">➕ Tag "${rawVal}"</span>
+        </button>`);
+      }
 
-      if (!html) { dropdown.classList.remove('active'); return; }
+      matches.forEach((t, idx) => {
+        const isMostPopular = idx === 0;
+        chips.push(`<button type="button" class="autocomplete-btn-chip ${isMostPopular ? 'popular-first-btn' : ''}" data-val="${t}">
+          <span class="btn-text-label">🏷️ ${t}</span>
+          <span style="font-size:0.7rem; opacity:0.75;">(${tagCounts.get(t)})</span>
+        </button>`);
+      });
 
-      dropdown.innerHTML = html;
+      if (chips.length === 0) { dropdown.classList.remove('active'); return; }
+
+      dropdown.innerHTML = chips.join('');
       dropdown.classList.add('active');
 
-      dropdown.querySelectorAll('.tag-autocomplete-item').forEach(item => {
+      dropdown.querySelectorAll('.autocomplete-btn-chip').forEach(item => {
         item.onclick = async (e) => {
           e.stopPropagation();
           const selectedVal = item.getAttribute('data-val');
           input.value = '';
           dropdown.classList.remove('active');
+          dropdown.dataset.focusedIndex = "-1";
           if (onSelectTag) await onSelectTag(selectedVal);
           setTimeout(() => input.focus(), 50);
         };
@@ -1501,8 +1606,70 @@
       renderWizardParticipants();
     });
 
-    setupFloatingHeartOverlayListeners();
-    setupLightboxEditingSuite();
+    const lbModal = document.getElementById('lightboxModal');
+    if (lbModal) {
+      lbModal.addEventListener('click', (e) => {
+        const isInteractive = e.target.closest('img, video, input, select, button, a, label, .lightbox-footer, .lightbox-editor-toolbar, .video-clipper-panel, .lightbox-header, .lightbox-nav-btn');
+        if (!isInteractive) {
+          closeLightbox();
+        }
+      });
+    }
+
+    setupSmartSubjectAutocomplete('inlineSubjectInput', 'inlineSubjectAutocomplete', async (subId) => {
+      if (selectedMediaIds.size > 0) {
+        const selectedFiles = currentMediaList.filter(m => selectedMediaIds.has(m.id));
+        for (const m of selectedFiles) {
+          if (!m.subjectTags) m.subjectTags = [];
+          if (!m.subjectTags.includes(subId)) m.subjectTags.push(subId);
+          await db.put('media', m);
+        }
+        await loadAppState();
+        updateSelectionStateUI();
+        const subInput = document.getElementById('inlineSubjectInput');
+        if (subInput) setTimeout(() => subInput.focus(), 80);
+      }
+    });
+
+    setupNormalTagAutocomplete('inlineNormalTagInput', 'inlineNormalTagAutocomplete', async (tagVal) => {
+      if (selectedMediaIds.size > 0) {
+        const selectedFiles = currentMediaList.filter(m => selectedMediaIds.has(m.id));
+        for (const m of selectedFiles) {
+          if (!m.normalTags) m.normalTags = [];
+          if (!m.normalTags.includes(tagVal)) m.normalTags.push(tagVal);
+          await db.put('media', m);
+        }
+        await loadAppState();
+        updateSelectionStateUI();
+        const tagInput = document.getElementById('inlineNormalTagInput');
+        if (tagInput) setTimeout(() => tagInput.focus(), 80);
+      }
+    });
+
+    setupSmartDateAutocomplete('inlineSldInput', 'inlineSldAutocomplete');
+
+    setupSmartSubjectAutocomplete('inlineAlikeInput', 'inlineAlikeAutocomplete', async (subId) => {
+      if (selectedMediaIds.size > 0) {
+        const alikeInput = document.getElementById('inlineAlikeInput');
+        const raw = alikeInput?.value.trim() || '';
+        const parts = raw.split('::');
+        const strPart = (parts[1] || 'faint').trim().toLowerCase();
+        const strength = ['faint', 'medium', 'strong'].includes(strPart) ? strPart : 'faint';
+
+        const selectedFiles = currentMediaList.filter(m => selectedMediaIds.has(m.id));
+        for (const m of selectedFiles) {
+          if (!m.alikeTags) m.alikeTags = [];
+          if (!m.alikeTags.some(al => al.targetSubjectId === subId && al.strength === strength)) {
+            m.alikeTags.push({ targetSubjectId: subId, strength });
+          }
+          await db.put('media', m);
+        }
+        if (alikeInput) alikeInput.value = '';
+        await loadAppState();
+        updateSelectionStateUI();
+        if (alikeInput) setTimeout(() => alikeInput.focus(), 80);
+      }
+    });
 
     renderCurrentView();
   }
