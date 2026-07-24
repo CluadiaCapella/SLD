@@ -1252,6 +1252,11 @@
   let activeDetailEventId = null;
   let sldDefaultFullscreen = false;
 
+  let selectedEventYear = 'all';
+  let selectedEventMonth = 'all';
+  let subjectDetailComboSortHistory = ['eventPoints', 'action', 'heartPoints'];
+  let subjectDetailMediaSortHistory = ['totalPoints', 'pink', 'grey'];
+
   let wizardEventDate = null;
   let wizardSubjectCountsMap = new Map();
   let wizardSelectedActionCode = 1;
@@ -3741,7 +3746,7 @@
       const currentPts = currentActionPointsMap[code] ?? (DEFAULT_ACTION_POINTS[code] || 0.1);
       return `
         <div class="tag-chip-bubble action-tag-${code} nav-action-chip" data-code="${code}" style="display:inline-flex; align-items:center; gap:8px;">
-          <span style="cursor:pointer;" class="action-chip-name" data-code="${code}">⚡ ${displayName}</span>
+          <span style="cursor:pointer;" class="action-chip-name" data-code="${code}">${displayName}</span>
           <span style="font-size:0.75rem; opacity:0.8;">Pts:</span>
           <input type="number" step="0.1" min="0" max="100" class="input-text btn-sm action-pts-input" data-code="${code}" value="${currentPts}" style="width:64px; padding:2px 6px; font-size:0.8rem; background:rgba(0,0,0,0.3); border-color:rgba(255,255,255,0.3); color:#fff;">
         </div>`;
