@@ -4179,26 +4179,48 @@
       return;
     }
 
-    const renderCellThumbs = (mediaArray) => {
+    const renderHeartCardForList = (mediaArray, maxLimit, heartType, heartEmoji, thumbSize) => {
       if (!mediaArray || mediaArray.length === 0) return '';
-      return `<div class="sld-table-thumb-group" style="display:flex; flex-wrap:wrap; gap:4px; justify-content:center;">
-        ${mediaArray.map(m => `<div class="sld-mini-thumb-wrap" data-mid="${m.id}">${renderMediaThumbnailHTML(m, 'sld-mini-thumb')}</div>`).join('')}
-      </div>`;
+      const count = mediaArray.length;
+      const isMaxed = count > 0 && count === maxLimit;
+
+      let baseBg = 'rgba(255, 255, 255, 0.03)';
+      let baseBorder = 'var(--border-color)';
+      if (heartType === 'pink') { baseBg = 'rgba(255, 105, 180, 0.15)'; baseBorder = 'rgba(255, 105, 180, 0.4)'; }
+      else if (heartType === 'blue') { baseBg = 'rgba(56, 189, 248, 0.15)'; baseBorder = 'rgba(56, 189, 248, 0.4)'; }
+      else if (heartType === 'grey') { baseBg = 'rgba(148, 163, 184, 0.15)'; baseBorder = 'rgba(148, 163, 184, 0.4)'; }
+
+      const cardStyle = isMaxed
+        ? `background: rgba(16, 185, 129, 0.22); border: 2px solid #10b981; box-shadow: 0 0 10px rgba(16, 185, 129, 0.4); border-radius: var(--radius-md); padding: 8px; flex: 1; min-width: 100px;`
+        : `background: ${baseBg}; border: 2px solid ${baseBorder}; border-radius: var(--radius-md); padding: 8px; flex: 1; min-width: 100px;`;
+
+      let dim = '40px';
+      if (thumbSize === 'winner') dim = '100px';
+      else if (thumbSize === 'silver') dim = '64px';
+
+      const thumbsHTML = mediaArray.map(m => `
+        <div class="sld-mini-thumb-wrap" data-mid="${m.id}" style="width:${dim}; height:${dim}; border-radius:6px; overflow:hidden; display:inline-block; cursor:pointer;">
+          ${renderMediaThumbnailHTML(m, 'sld-mini-thumb', `width:${dim}; height:${dim}; object-fit:cover;`)}
+        </div>`).join('');
+
+      return `
+        <div class="heart-card-box" style="${cardStyle}">
+          <div style="font-size:0.8rem; font-weight:800; margin-bottom:6px; display:flex; align-items:center; justify-content:space-between;">
+            <span>${heartEmoji}</span>
+            <span style="opacity:0.85; font-size:0.75rem; font-weight:700;">${count}</span>
+          </div>
+          <div style="display:flex; flex-wrap:wrap; gap:6px; align-items:center;">
+            ${thumbsHTML}
+          </div>
+        </div>`;
     };
 
     const maxGold = currentMedalSettings.maxGold ?? 1;
     const maxSilver = currentMedalSettings.maxSilver ?? 2;
     const maxBronze = currentMedalSettings.maxBronze ?? 5;
 
-    const getCellHighlightStyle = (count, maxLimit) => {
-      if (count > 0 && count === maxLimit) {
-        return `background: rgba(16, 185, 129, 0.22); border: 2px solid #10b981; box-shadow: 0 0 10px rgba(16, 185, 129, 0.4); border-radius: 6px; padding: 6px; box-sizing: border-box;`;
-      }
-      return `background: rgba(255, 255, 255, 0.02); border: 2px solid var(--border-color); border-radius: 6px; padding: 6px; box-sizing: border-box;`;
-    };
-
     cardsContainer.innerHTML = sldList.map(item => `
-      <div class="sld-entry-card" data-tag="${item.dateTag}" style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-lg); padding:18px; box-shadow:var(--shadow-sm); width:fit-content; min-width:260px; max-width:100%; flex:0 1 auto;">
+      <div class="sld-entry-card" data-tag="${item.dateTag}" style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-lg); padding:18px; box-shadow:var(--shadow-sm); width:fit-content; min-width:300px; max-width:100%; flex:0 1 auto;">
         
         <!-- Header Row: Date (Left), File Count (Middle), 3-Dot Menu (Right) -->
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:12px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">
@@ -4219,38 +4241,40 @@
           </div>
         </div>
 
-        <!-- Trophy Matrix (4x4 Table - Starts compact and grows with content) -->
-        <div style="overflow-x:auto; width:fit-content; max-width:100%;">
-          <table class="sld-matrix-table" style="border-collapse:separate; border-spacing:6px; text-align:center; font-size:0.85rem; width:auto; min-width:200px;">
-            <thead>
-              <tr>
-                <th style="padding:4px; min-width:32px;"></th>
-                <th style="padding:6px; font-size:1.1rem; font-weight:800;">🥇</th>
-                <th style="padding:6px; font-size:1.1rem; font-weight:800;">🥈</th>
-                <th style="padding:6px; font-size:1.1rem; font-weight:800;">🥉</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <th style="padding:6px; font-size:1.1rem; font-weight:800;">🩷</th>
-                <td style="${getCellHighlightStyle(item.p3.length, maxGold)}">${renderCellThumbs(item.p3)}</td>
-                <td style="${getCellHighlightStyle(item.p2.length, maxSilver)}">${renderCellThumbs(item.p2)}</td>
-                <td style="${getCellHighlightStyle(item.p1.length, maxBronze)}">${renderCellThumbs(item.p1)}</td>
-              </tr>
-              <tr>
-                <th style="padding:6px; font-size:1.1rem; font-weight:800;">🩵</th>
-                <td style="${getCellHighlightStyle(item.b3.length, maxGold)}">${renderCellThumbs(item.b3)}</td>
-                <td style="${getCellHighlightStyle(item.b2.length, maxSilver)}">${renderCellThumbs(item.b2)}</td>
-                <td style="${getCellHighlightStyle(item.b1.length, maxBronze)}">${renderCellThumbs(item.b1)}</td>
-              </tr>
-              <tr>
-                <th style="padding:6px; font-size:1.1rem; font-weight:800;">🩶</th>
-                <td style="${getCellHighlightStyle(item.g3.length, maxGold)}">${renderCellThumbs(item.g3)}</td>
-                <td style="${getCellHighlightStyle(item.g2.length, maxSilver)}">${renderCellThumbs(item.g2)}</td>
-                <td style="${getCellHighlightStyle(item.g1.length, maxBronze)}">${renderCellThumbs(item.g1)}</td>
-              </tr>
-            </tbody>
-          </table>
+        <!-- Medalist Rows: Winners, Second place, Third Place -->
+        <div style="display:flex; flex-direction:column; gap:14px; width:100%;">
+          ${(item.p3.length || item.b3.length || item.g3.length) ? `
+            <div>
+              <div style="font-size:0.85rem; font-weight:800; color:#eab308; margin-bottom:6px;">🥇 Winners</div>
+              <div style="display:flex; flex-wrap:wrap; gap:8px;">
+                ${renderHeartCardForList(item.p3, maxGold, 'pink', '🩷 Pink', 'winner')}
+                ${renderHeartCardForList(item.b3, maxGold, 'blue', '🩵 Blue', 'winner')}
+                ${renderHeartCardForList(item.g3, maxGold, 'grey', '🩶 Grey', 'winner')}
+              </div>
+            </div>` : ''}
+
+          ${(item.p2.length || item.b2.length || item.g2.length) ? `
+            <div>
+              <div style="font-size:0.85rem; font-weight:800; color:#94a3b8; margin-bottom:6px;">🥈 Second place</div>
+              <div style="display:flex; flex-wrap:wrap; gap:8px;">
+                ${renderHeartCardForList(item.p2, maxSilver, 'pink', '🩷 Pink', 'silver')}
+                ${renderHeartCardForList(item.b2, maxSilver, 'blue', '🩵 Blue', 'silver')}
+                ${renderHeartCardForList(item.g2, maxSilver, 'grey', '🩶 Grey', 'silver')}
+              </div>
+            </div>` : ''}
+
+          ${(item.p1.length || item.b1.length || item.g1.length) ? `
+            <div>
+              <div style="font-size:0.85rem; font-weight:800; color:#cd7f32; margin-bottom:6px;">🥉 Third Place</div>
+              <div style="display:flex; flex-wrap:wrap; gap:8px;">
+                ${renderHeartCardForList(item.p1, maxBronze, 'pink', '🩷 Pink', 'bronze')}
+                ${renderHeartCardForList(item.b1, maxBronze, 'blue', '🩵 Blue', 'bronze')}
+                ${renderHeartCardForList(item.g1, maxBronze, 'grey', '🩶 Grey', 'bronze')}
+              </div>
+            </div>` : ''}
+
+          ${(!item.p3.length && !item.b3.length && !item.g3.length && !item.p2.length && !item.b2.length && !item.g2.length && !item.p1.length && !item.b1.length && !item.g1.length) ? `
+            <div class="text-muted" style="font-size:0.8rem; padding:4px 0;">No medals awarded yet.</div>` : ''}
         </div>
       </div>`).join('');
 
@@ -4352,6 +4376,10 @@
     const b1Exceeded = b1 > currentMedalSettings.maxBronze;
     const g1Exceeded = g1 > currentMedalSettings.maxBronze;
 
+    const maxGold = currentMedalSettings.maxGold ?? 1;
+    const maxSilver = currentMedalSettings.maxSilver ?? 2;
+    const maxBronze = currentMedalSettings.maxBronze ?? 5;
+
     const headerMedalsList = [];
     if (p3 > 0) headerMedalsList.push(`<span class="badge ${p3Exceeded ? 'medal-limit-exceeded' : ''}">🩷🥇 ${p3 > 1 ? p3 : ''}</span>`);
     if (b3 > 0) headerMedalsList.push(`<span class="badge ${b3Exceeded ? 'medal-limit-exceeded' : ''}">🩵🥇 ${b3 > 1 ? b3 : ''}</span>`);
@@ -4365,72 +4393,136 @@
     if (b1 > 0) headerMedalsList.push(`<span class="badge ${b1Exceeded ? 'medal-limit-exceeded' : ''}">🩵🥉 ${b1 > 1 ? b1 : ''}</span>`);
     if (g1 > 0) headerMedalsList.push(`<span class="badge ${g1Exceeded ? 'medal-limit-exceeded' : ''}">🩶🥉 ${g1 > 1 ? g1 : ''}</span>`);
 
-    const renderSldCardWithHeartToggles = (m) => {
-      const be = (m.blueBookEvents || []).find(e => e.dateTag === sldTag);
-      const pink = be?.heartTags?.pink || 0;
-      const grey = be?.heartTags?.grey || 0;
-      const blue = be?.heartTags?.blue || 0;
-      const borderClass = getMediaHighestPriorityGroupBorderClass(m);
+    const renderHeartCardForDetails = (mediaArray, maxLimit, heartType, heartEmoji, thumbSize) => {
+      if (!mediaArray || mediaArray.length === 0) return '';
+      const count = mediaArray.length;
+      const isMaxed = count > 0 && count === maxLimit;
+
+      let baseBg = 'rgba(255, 255, 255, 0.03)';
+      let baseBorder = 'var(--border-color)';
+      if (heartType === 'pink') { baseBg = 'rgba(255, 105, 180, 0.15)'; baseBorder = 'rgba(255, 105, 180, 0.4)'; }
+      else if (heartType === 'blue') { baseBg = 'rgba(56, 189, 248, 0.15)'; baseBorder = 'rgba(56, 189, 248, 0.4)'; }
+      else if (heartType === 'grey') { baseBg = 'rgba(148, 163, 184, 0.15)'; baseBorder = 'rgba(148, 163, 184, 0.4)'; }
+
+      const cardStyle = isMaxed
+        ? `background: rgba(16, 185, 129, 0.22); border: 2px solid #10b981; box-shadow: 0 0 10px rgba(16, 185, 129, 0.4); border-radius: var(--radius-lg); padding: 14px; flex: 1; min-width: 140px;`
+        : `background: ${baseBg}; border: 2px solid ${baseBorder}; border-radius: var(--radius-lg); padding: 14px; flex: 1; min-width: 140px;`;
+
+      let dim = '40px';
+      if (thumbSize === 'winner') dim = '100px';
+      else if (thumbSize === 'silver') dim = '64px';
+
+      const thumbsHTML = mediaArray.map(m => {
+        const borderClass = getMediaHighestPriorityGroupBorderClass(m);
+        const be = (m.blueBookEvents || []).find(e => e.dateTag === sldTag);
+        const pink = be?.heartTags?.pink || 0;
+        const grey = be?.heartTags?.grey || 0;
+        const blue = be?.heartTags?.blue || 0;
+
+        return `
+          <div class="media-card sld-grid-card ${borderClass}" data-id="${m.id}" style="width:${dim}; height:${dim}; border-radius:8px; overflow:hidden; position:relative; display:inline-block;">
+            ${renderMediaThumbnailHTML(m, '', `width:${dim}; height:${dim}; object-fit:cover;`)}
+            <div class="media-card-overlay" style="padding:2px;">
+              <div class="heart-toggle-group-row" style="background:rgba(0,0,0,0.7); padding:2px 4px; border-radius:8px; font-size:0.65rem;" data-mid="${m.id}">
+                ${getHeartBtnHTML('pink', pink)}
+                ${getHeartBtnHTML('grey', grey)}
+                ${getHeartBtnHTML('blue', blue)}
+              </div>
+            </div>
+          </div>`;
+      }).join('');
 
       return `
-        <div class="media-card sld-grid-card ${borderClass}" data-id="${m.id}">
-          ${renderMediaThumbnailHTML(m)}
-          <div class="media-card-overlay">
-            <div class="heart-toggle-group-row" style="background:rgba(0,0,0,0.6); padding:4px 8px; border-radius:12px;" data-mid="${m.id}">
-              ${getHeartBtnHTML('pink', pink)}
-              ${getHeartBtnHTML('grey', grey)}
-              ${getHeartBtnHTML('blue', blue)}
-            </div>
+        <div class="heart-medal-section-card" style="${cardStyle}">
+          <div style="font-size:0.95rem; font-weight:800; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between;">
+            <span>${heartEmoji}</span>
+            <span style="opacity:0.85; font-size:0.85rem; font-weight:700;">${count} files</span>
+          </div>
+          <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
+            ${thumbsHTML}
           </div>
         </div>`;
     };
 
     container.innerHTML = `
-      <button class="btn btn-secondary btn-sm" id="backToSldListBtn" style="margin-bottom:16px;">← Back to SLD List</button>
-
-      <div class="subject-card" style="max-width:100%; text-align:left; flex-direction:row; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px; margin-bottom:24px;">
-        <h2 style="margin:0;">💦 ${sldTag}</h2>
-        <div class="header-medals-group">
+      <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px; margin-bottom:20px; background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-lg); padding:16px 20px;">
+        <div style="display:flex; align-items:center; gap:16px;">
+          <button class="btn btn-secondary btn-sm" id="backToSldListBtn">← Back to SLD List</button>
+          <h2 style="margin:0; font-size:1.5rem; font-weight:800; color:var(--accent-blue);">📘 ${sldTag}</h2>
+          <span style="font-weight:700; font-size:0.95rem; background:rgba(56,189,248,0.15); color:var(--accent-blue); padding:4px 12px; border-radius:12px; border:1px solid rgba(56,189,248,0.3);">
+            📘 ${sldMedia.length} files
+          </span>
+        </div>
+        <div class="header-medals-group" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
           ${headerMedalsList.join('') || '<span class="text-muted">No medals awarded</span>'}
         </div>
       </div>
 
-      <!-- Tier 1: Gold Tier (🥇) -->
+      <!-- Row 1: Winners (🥇 100x100) -->
       ${(subP3.length || subB3.length || subG3.length) ? `
-      <div class="sld-tier-container">
-        <div class="sld-tier-subsections">
-          ${subP3.length > 0 ? `<div class="sld-subsection-card"><div class="sld-subsection-header"><span>🩷🥇 (${subP3.length})</span></div><div class="media-grid">${subP3.map(renderSldCardWithHeartToggles).join('')}</div></div>` : ''}
-          ${subB3.length > 0 ? `<div class="sld-subsection-card"><div class="sld-subsection-header"><span>🩵🥇 (${subB3.length})</span></div><div class="media-grid">${subB3.map(renderSldCardWithHeartToggles).join('')}</div></div>` : ''}
-          ${subG3.length > 0 ? `<div class="sld-subsection-card"><div class="sld-subsection-header"><span>🩶🥇 (${subG3.length})</span></div><div class="media-grid">${subG3.map(renderSldCardWithHeartToggles).join('')}</div></div>` : ''}
+      <div class="sld-tier-container" style="margin-bottom:24px;">
+        <div style="font-size:1.1rem; font-weight:800; color:#eab308; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+          <span>🥇 Winners</span>
+        </div>
+        <div style="display:flex; flex-wrap:wrap; gap:14px;">
+          ${renderHeartCardForDetails(subP3, maxGold, 'pink', '🩷 Pink', 'winner')}
+          ${renderHeartCardForDetails(subB3, maxGold, 'blue', '🩵 Blue', 'winner')}
+          ${renderHeartCardForDetails(subG3, maxGold, 'grey', '🩶 Grey', 'winner')}
         </div>
       </div>` : ''}
 
-      <!-- Tier 2: Silver Tier (🥈) -->
+      <!-- Row 2: Second place (🥈 64x64) -->
       ${(subP2.length || subB2.length || subG2.length) ? `
-      <div class="sld-tier-container">
-        <div class="sld-tier-subsections">
-          ${subP2.length > 0 ? `<div class="sld-subsection-card"><div class="sld-subsection-header"><span>🩷🥈 (${subP2.length})</span></div><div class="media-grid">${subP2.map(renderSldCardWithHeartToggles).join('')}</div></div>` : ''}
-          ${subB2.length > 0 ? `<div class="sld-subsection-card"><div class="sld-subsection-header"><span>🩵🥈 (${subB2.length})</span></div><div class="media-grid">${subB2.map(renderSldCardWithHeartToggles).join('')}</div></div>` : ''}
-          ${subG2.length > 0 ? `<div class="sld-subsection-card"><div class="sld-subsection-header"><span>🩶🥈 (${subG2.length})</span></div><div class="media-grid">${subG2.map(renderSldCardWithHeartToggles).join('')}</div></div>` : ''}
+      <div class="sld-tier-container" style="margin-bottom:24px;">
+        <div style="font-size:1.05rem; font-weight:800; color:#94a3b8; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+          <span>🥈 Second place</span>
+        </div>
+        <div style="display:flex; flex-wrap:wrap; gap:14px;">
+          ${renderHeartCardForDetails(subP2, maxSilver, 'pink', '🩷 Pink', 'silver')}
+          ${renderHeartCardForDetails(subB2, maxSilver, 'blue', '🩵 Blue', 'silver')}
+          ${renderHeartCardForDetails(subG2, maxSilver, 'grey', '🩶 Grey', 'silver')}
         </div>
       </div>` : ''}
 
-      <!-- Tier 3: Bronze Tier (🥉) -->
+      <!-- Row 3: Third Place (🥉 40x40) -->
       ${(subP1.length || subB1.length || subG1.length) ? `
-      <div class="sld-tier-container">
-        <div class="sld-tier-subsections">
-          ${subP1.length > 0 ? `<div class="sld-subsection-card"><div class="sld-subsection-header"><span>🩷🥉 (${subP1.length})</span></div><div class="media-grid">${subP1.map(renderSldCardWithHeartToggles).join('')}</div></div>` : ''}
-          ${subB1.length > 0 ? `<div class="sld-subsection-card"><div class="sld-subsection-header"><span>🩵🥉 (${subB1.length})</span></div><div class="media-grid">${subB1.map(renderSldCardWithHeartToggles).join('')}</div></div>` : ''}
-          ${subG1.length > 0 ? `<div class="sld-subsection-card"><div class="sld-subsection-header"><span>🩶🥉 (${subG1.length})</span></div><div class="media-grid">${subG1.map(renderSldCardWithHeartToggles).join('')}</div></div>` : ''}
+      <div class="sld-tier-container" style="margin-bottom:24px;">
+        <div style="font-size:1rem; font-weight:800; color:#cd7f32; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+          <span>🥉 Third Place</span>
+        </div>
+        <div style="display:flex; flex-wrap:wrap; gap:14px;">
+          ${renderHeartCardForDetails(subP1, maxBronze, 'pink', '🩷 Pink', 'bronze')}
+          ${renderHeartCardForDetails(subB1, maxBronze, 'blue', '🩵 Blue', 'bronze')}
+          ${renderHeartCardForDetails(subG1, maxBronze, 'grey', '🩶 Grey', 'bronze')}
         </div>
       </div>` : ''}
 
-      <!-- Tier 4: Base / No Medal Tier -->
+      <!-- Row 4: Base / No Medal Files -->
       ${noHeartMedia.length > 0 ? `
-      <div class="sld-tier-container">
-        <div class="sld-subsection-card" style="width:100%;">
-          <div class="sld-subsection-header"><span>⚪ Base / No Medal Tier (${noHeartMedia.length})</span></div>
-          <div class="media-grid">${noHeartMedia.map(renderSldCardWithHeartToggles).join('')}</div>
+      <div class="sld-tier-container" style="margin-bottom:24px;">
+        <div style="font-size:1rem; font-weight:800; color:var(--text-secondary); margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+          <span>⚪ Base / No Medal Tier (${noHeartMedia.length})</span>
+        </div>
+        <div style="display:flex; flex-wrap:wrap; gap:10px;">
+          ${noHeartMedia.map(m => {
+            const borderClass = getMediaHighestPriorityGroupBorderClass(m);
+            const be = (m.blueBookEvents || []).find(e => e.dateTag === sldTag);
+            const pink = be?.heartTags?.pink || 0;
+            const grey = be?.heartTags?.grey || 0;
+            const blue = be?.heartTags?.blue || 0;
+
+            return `
+              <div class="media-card sld-grid-card ${borderClass}" data-id="${m.id}" style="width:64px; height:64px; border-radius:8px; overflow:hidden; position:relative; display:inline-block;">
+                ${renderMediaThumbnailHTML(m, '', 'width:64px; height:64px; object-fit:cover;')}
+                <div class="media-card-overlay" style="padding:2px;">
+                  <div class="heart-toggle-group-row" style="background:rgba(0,0,0,0.7); padding:2px 4px; border-radius:8px; font-size:0.65rem;" data-mid="${m.id}">
+                    ${getHeartBtnHTML('pink', pink)}
+                    ${getHeartBtnHTML('grey', grey)}
+                    ${getHeartBtnHTML('blue', blue)}
+                  </div>
+                </div>
+              </div>`;
+          }).join('')}
         </div>
       </div>` : ''}`;
 
