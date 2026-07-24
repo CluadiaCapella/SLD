@@ -1086,6 +1086,99 @@
     if (lightboxCropperInstance) { lightboxCropperInstance.destroy(); lightboxCropperInstance = null; }
   }
 
+  function renderSubjectEventPointsTimelineChart(containerId, subjectId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    if (!window.Plotly) {
+      container.innerHTML = `<div class="empty-state">Chart library loading...</div>`;
+      return;
+    }
+
+    const subEvents = (currentEventsList || []).filter(e => e.subjectCounts && e.subjectCounts[subjectId]);
+    if (subEvents.length === 0) {
+      container.innerHTML = `<div class="empty-state">No recorded events for this subject.</div>`;
+      return;
+    }
+
+    subEvents.sort((a, b) => (a.dateTag || '').localeCompare(b.dateTag || ''));
+
+    let cumulative = 0;
+    const dates = [];
+    const pts = [];
+
+    subEvents.forEach(e => {
+      const weight = currentWeights?.actions?.[e.eventCode] ?? (e.eventCode * 2.5);
+      cumulative += weight;
+      dates.push(e.dateTag || e.date || 'Unknown');
+      pts.push(cumulative);
+    });
+
+    const trace = {
+      x: dates,
+      y: pts,
+      name: 'Event Points',
+      type: 'scatter',
+      mode: 'lines+markers',
+      fill: 'tozeroy',
+      line: { color: '#38bdf8', width: 3 }
+    };
+
+    const layout = { paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', font: { color: '#94a3b8' }, margin: { l: 40, r: 20, t: 20, b: 40 } };
+    window.Plotly.newPlot(containerId, [trace], layout, { responsive: true, displayModeBar: false });
+  }
+
+  function renderSubjectSldHeartPointsTimelineChart(containerId, subjectId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    if (!window.Plotly) {
+      container.innerHTML = `<div class="empty-state">Chart library loading...</div>`;
+      return;
+    }
+
+    const tagged = (currentMediaList || []).filter(m => m.subjectTags?.includes(subjectId));
+    const dateMap = new Map();
+
+    tagged.forEach(m => {
+      (m.blueBookEvents || []).forEach(be => {
+        if (!be.dateTag) return;
+        const p = be.heartTags?.pink || 0;
+        const g = be.heartTags?.grey || 0;
+        const b = be.heartTags?.blue || 0;
+        const prev = dateMap.get(be.dateTag) || { pink: 0, grey: 0, blue: 0 };
+        dateMap.set(be.dateTag, { pink: prev.pink + p, grey: prev.grey + g, blue: prev.blue + b });
+      });
+    });
+
+    const sortedDates = Array.from(dateMap.keys()).sort();
+    if (sortedDates.length === 0) {
+      container.innerHTML = `<div class="empty-state">No SLD events logged for this subject.</div>`;
+      return;
+    }
+
+    let cumPink = 0, cumGrey = 0, cumBlue = 0;
+    const dates = [];
+    const pinkPts = [], greyPts = [], bluePts = [];
+
+    sortedDates.forEach(d => {
+      const entry = dateMap.get(d);
+      cumPink += entry.pink * (currentWeights.pinkHeart ?? 5);
+      cumGrey += entry.grey * (currentWeights.greyHeart ?? 3);
+      cumBlue += entry.blue * (currentWeights.blueHeart ?? 1);
+
+      dates.push(d);
+      pinkPts.push(cumPink);
+      greyPts.push(cumGrey);
+      bluePts.push(cumBlue);
+    });
+
+    const trace1 = { x: dates, y: pinkPts, name: '🩷 Pink Pts', type: 'scatter', mode: 'lines+markers', line: { color: '#ff69b4', width: 2.5 } };
+    const trace2 = { x: dates, y: greyPts, name: '🩶 Grey Pts', type: 'scatter', mode: 'lines+markers', line: { color: '#94a3b8', width: 2.5 } };
+    const trace3 = { x: dates, y: bluePts, name: '🩵 Blue Pts', type: 'scatter', mode: 'lines+markers', line: { color: '#38bdf8', width: 2.5 } };
+
+    const layout = { paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', font: { color: '#94a3b8' }, margin: { l: 40, r: 20, t: 20, b: 40 } };
+    window.Plotly.newPlot(containerId, [trace1, trace2, trace3], layout, { responsive: true, displayModeBar: false });
+  }
+
   function renderPinkAccumulationChart(containerId, timelineData = []) {
     const container = document.getElementById(containerId);
     if (!container || !window.Plotly) return;
@@ -3094,20 +3187,30 @@
       }
     });
 
-    // Render Timeline Charts
-    renderSubjectEventPointsTimelineChart('subEventTimelineChart', subject.id);
-    renderSubjectSldHeartPointsTimelineChart('subSldTimelineChart', subject.id);
+    // Render Timeline Charts safely
+    try {
+      renderSubjectEventPointsTimelineChart('subEventTimelineChart', subject.id);
+      renderSubjectSldHeartPointsTimelineChart('subSldTimelineChart', subject.id);
+    } catch (chartErr) {
+      console.warn('Timeline chart error:', chartErr);
+    }
 
     // Combination Element Clicks & Sort Buttons
     container.querySelectorAll('.combination-element-card').forEach(el => {
-      el.onclick = () => {
-        activeDetailComboKey = el.getAttribute('data-combokey');
-        switchView('combinationDetailsView');
+      el.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const comboKey = el.getAttribute('data-combokey');
+        if (comboKey) {
+          activeDetailComboKey = comboKey;
+          switchView('combinationDetailsView');
+        }
       };
     });
 
     container.querySelectorAll('.combo-sort-btn').forEach(btn => {
-      btn.onclick = () => {
+      btn.onclick = (e) => {
+        e.preventDefault();
         const k = btn.getAttribute('data-sort');
         if (detailComboSortKey === k) detailComboSortDir = detailComboSortDir === 'asc' ? 'desc' : 'asc';
         else { detailComboSortKey = k; detailComboSortDir = 'desc'; }
@@ -3117,7 +3220,8 @@
 
     // Media Sort Buttons
     container.querySelectorAll('.media-sort-btn').forEach(btn => {
-      btn.onclick = () => {
+      btn.onclick = (e) => {
+        e.preventDefault();
         const k = btn.getAttribute('data-sort');
         if (detailMediaSortKey === k) detailMediaSortDir = detailMediaSortDir === 'asc' ? 'desc' : 'asc';
         else { detailMediaSortKey = k; detailMediaSortDir = 'desc'; }
@@ -3126,8 +3230,11 @@
     });
 
     container.querySelectorAll('.sub-detail-media').forEach(card => {
-      card.onclick = () => {
-        openLightboxById(card.getAttribute('data-id'));
+      card.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const mediaId = card.getAttribute('data-id');
+        if (mediaId) openLightboxById(mediaId);
       };
     });
   }
@@ -3278,10 +3385,15 @@
 
   function renderCombinationDetailsPage(stats) {
     const container = document.getElementById('combinationDetailsContent');
-    if (!activeDetailComboKey) { switchView('subjectsView'); return; }
-    const combo = stats.allCombinations.find(c => `${c.subjectId1}::${c.subjectId2}` === activeDetailComboKey);
+    const comboKeyParts = (activeDetailComboKey || '').split('::');
+    const combo = stats.allCombinations.find(c => {
+      const ids = c.subjectIds || [c.subjectId1, c.subjectId2];
+      return ids.length === comboKeyParts.length && comboKeyParts.every(id => ids.includes(id));
+    }) || stats.allCombinations.find(c => `${c.subjectId1}::${c.subjectId2}` === activeDetailComboKey);
+
     if (!combo) return;
-    const sharedMedia = currentMediaList.filter(m => m.subjectTags?.includes(combo.subjectId1) && m.subjectTags?.includes(combo.subjectId2));
+    const subIds = combo.subjectIds || [combo.subjectId1, combo.subjectId2];
+    const sharedMedia = currentMediaList.filter(m => subIds.every(sId => m.subjectTags?.includes(sId)));
 
     container.innerHTML = `
       <button class="btn btn-secondary btn-sm" id="backToSubjectsComboBtn" style="margin-bottom:16px;">← Back to Subjects</button>
