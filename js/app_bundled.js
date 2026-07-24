@@ -5659,6 +5659,7 @@
   let aiFilterMode = 'all'; // 'all', 'ai_only', 'human_only'
 
   function setupEventListeners() {
+    setupAutoSaveSettings();
     document.getElementById('globalUndoBtn')?.addEventListener('click', triggerGlobalUndo);
 
     const aiFilterBtn = document.getElementById('aiFilterToggleBtn');
@@ -5759,22 +5760,65 @@
       renderCurrentView();
     });
 
-    document.getElementById('saveMedalSettingsBtn')?.addEventListener('click', async () => {
+  /* Upload Progress Modal Helpers */
+  function showUploadProgressModal(title = 'Uploading Media Files...', message = 'Scanning and importing selected files...') {
+    const modal = document.getElementById('uploadProgressModal');
+    const titleEl = document.getElementById('uploadProgressTitle');
+    const msgEl = document.getElementById('uploadProgressMessage');
+    const barEl = document.getElementById('uploadProgressBar');
+    const pctEl = document.getElementById('uploadProgressPercent');
+
+    if (titleEl) titleEl.textContent = title;
+    if (msgEl) msgEl.textContent = message;
+    if (barEl) barEl.style.width = '0%';
+    if (pctEl) pctEl.textContent = '0%';
+    if (modal) modal.style.display = 'flex';
+  }
+
+  function updateUploadProgress(percent, message) {
+    const barEl = document.getElementById('uploadProgressBar');
+    const pctEl = document.getElementById('uploadProgressPercent');
+    const msgEl = document.getElementById('uploadProgressMessage');
+
+    const pct = Math.min(100, Math.max(0, Math.round(percent)));
+    if (barEl) barEl.style.width = `${pct}%`;
+    if (pctEl) pctEl.textContent = `${pct}%`;
+    if (msgEl && message) msgEl.textContent = message;
+  }
+
+  function hideUploadProgressModal() {
+    const modal = document.getElementById('uploadProgressModal');
+    if (modal) modal.style.display = 'none';
+  }
+
+  /* Auto-save Settings Listeners */
+  function setupAutoSaveSettings() {
+    const bindAutoSave = (elementId, saveCallback) => {
+      const el = document.getElementById(elementId);
+      if (el && !el.dataset.autoSaveBound) {
+        el.dataset.autoSaveBound = 'true';
+        el.addEventListener('input', saveCallback);
+        el.addEventListener('change', saveCallback);
+      }
+    };
+
+    const saveTrophySettings = async () => {
       currentMedalSettings = {
-        goldPts: parseFloat(document.getElementById('goldPointValueInput').value) || 1.0,
-        silverPts: parseFloat(document.getElementById('silverPointValueInput').value) || 0.3,
-        bronzePts: parseFloat(document.getElementById('bronzePointValueInput').value) || 0.1,
-        maxGold: parseInt(document.getElementById('maxGoldPerHeartInput').value, 10) || 1,
-        maxSilver: parseInt(document.getElementById('maxSilverPerHeartInput').value, 10) || 2,
-        maxBronze: parseInt(document.getElementById('maxBronzePerHeartInput').value, 10) || 5
+        goldPts: parseFloat(document.getElementById('goldPointValueInput')?.value) || 1.0,
+        silverPts: parseFloat(document.getElementById('silverPointValueInput')?.value) || 0.3,
+        bronzePts: parseFloat(document.getElementById('bronzePointValueInput')?.value) || 0.1,
+        maxGold: parseInt(document.getElementById('maxGoldPerHeartInput')?.value, 10) || 1,
+        maxSilver: parseInt(document.getElementById('maxSilverPerHeartInput')?.value, 10) || 2,
+        maxBronze: parseInt(document.getElementById('maxBronzePerHeartInput')?.value, 10) || 5
       };
       await db.setSetting('medalSettings', currentMedalSettings);
-      await loadAppState();
-      renderCurrentView();
-      alert('Medal rules & limits saved!');
+    };
+
+    ['goldPointValueInput', 'maxGoldPerHeartInput', 'silverPointValueInput', 'maxSilverPerHeartInput', 'bronzePointValueInput', 'maxBronzePerHeartInput'].forEach(id => {
+      bindAutoSave(id, saveTrophySettings);
     });
 
-    document.getElementById('saveAlikeSettingsBtn')?.addEventListener('click', async () => {
+    const saveAlikeSettings = async () => {
       alikeSettings = {
         faint: parseFloat(document.getElementById('alikeFaintPctInput')?.value) || 15,
         medium: parseFloat(document.getElementById('alikeMediumPctInput')?.value) || 30,
@@ -5783,11 +5827,14 @@
       globalPointsDisplayMode = document.getElementById('globalPointsDisplayModeSelect')?.value || 'points';
       await db.setSetting('alikeSettings', alikeSettings);
       await db.setSetting('globalPointsDisplayMode', globalPointsDisplayMode);
-      alert('🪞 Alike settings saved successfully!');
       renderCurrentView();
+    };
+
+    ['alikeFaintPctInput', 'alikeMediumPctInput', 'alikeStrongPctInput', 'globalPointsDisplayModeSelect'].forEach(id => {
+      bindAutoSave(id, saveAlikeSettings);
     });
 
-    document.getElementById('saveTagPrefixSettingsBtn')?.addEventListener('click', async () => {
+    const savePrefixSettings = async () => {
       tagPrefixSettings = {
         subject: document.getElementById('prefixSubjectInput')?.value || '🔴,🟠,🟡,🟢,🔵,🟣,🟤,🖤,⚪',
         normal: document.getElementById('prefixNormalTagInput')?.value || '🧿',
@@ -5796,148 +5843,167 @@
         sld: document.getElementById('prefixSldInput')?.value || '🪾'
       };
       await db.setSetting('tagPrefixSettings', tagPrefixSettings);
-      alert('🏷️ Tag prefix metadata rules saved successfully!');
+    };
+
+    ['prefixSubjectInput', 'prefixNormalTagInput', 'prefixActionTagInput', 'prefixHeartInput', 'prefixSldInput'].forEach(id => {
+      bindAutoSave(id, savePrefixSettings);
     });
+  }
 
-    document.getElementById('exportCollectionZipBtn')?.addEventListener('click', exportMediaCollectionZip);
-    document.getElementById('importCollectionFileInput')?.addEventListener('change', (e) => {
-      if (e.target.files[0]) importMediaCollectionZip(e.target.files[0]);
-    });
+  /* File & Folder Upload with Progress & Chunking */
+  function parseTagPrefixes(filename) {
+    const subjectPrefixes = (tagPrefixSettings.subject || '🔴,🟠,🟡,🟢,🔵,🟣,🟤,🖤,⚪').split(',').map(s => s.trim()).filter(Boolean);
+    const normalPrefixes = (tagPrefixSettings.normal || '🧿').split(',').map(s => s.trim()).filter(Boolean);
+    const actionPrefixes = (tagPrefixSettings.action || '🧿').split(',').map(s => s.trim()).filter(Boolean);
+    const heartPrefixes = (tagPrefixSettings.heart || '🩷,🩵,🩶').split(',').map(s => s.trim()).filter(Boolean);
+    const sldPrefixes = (tagPrefixSettings.sld || '🪾').split(',').map(s => s.trim()).filter(Boolean);
 
-    document.getElementById('exportDataSettingsBtn')?.addEventListener('click', exportDataAndSettingsZip);
-    document.getElementById('importDataSettingsFileInput')?.addEventListener('change', (e) => {
-      if (e.target.files[0]) importDataAndSettingsZip(e.target.files[0]);
-    });
+    const parsedSubjects = [];
+    const parsedNormalTags = [];
+    let parsedSldDate = null;
+    let parsedActionCode = null;
+    let parsedHearts = { pink: 0, grey: 0, blue: 0 };
 
-    function parseTagPrefixes(filename) {
-      const subjectPrefixes = (tagPrefixSettings.subject || '🔴,🟠,🟡,🟢,🔵,🟣,🟤,🖤,⚪').split(',').map(s => s.trim()).filter(Boolean);
-      const normalPrefixes = (tagPrefixSettings.normal || '🧿').split(',').map(s => s.trim()).filter(Boolean);
-      const actionPrefixes = (tagPrefixSettings.action || '🧿').split(',').map(s => s.trim()).filter(Boolean);
-      const heartPrefixes = (tagPrefixSettings.heart || '🩷,🩵,🩶').split(',').map(s => s.trim()).filter(Boolean);
-      const sldPrefixes = (tagPrefixSettings.sld || '🪾').split(',').map(s => s.trim()).filter(Boolean);
+    const segments = filename.replace(/\.[^/.]+$/, "").split(/[_\s,-]+/);
+    for (const seg of segments) {
+      if (!seg) continue;
 
-      const parsedSubjects = [];
-      const parsedNormalTags = [];
-      let parsedSldDate = null;
-      let parsedActionCode = null;
-      let parsedHearts = { pink: 0, grey: 0, blue: 0 };
-
-      const segments = filename.replace(/\.[^/.]+$/, "").split(/[_\s,-]+/);
-      for (const seg of segments) {
-        if (!seg) continue;
-
-        let subMatched = false;
-        for (const pref of subjectPrefixes) {
-          if (seg.startsWith(pref)) {
-            const val = seg.substring(pref.length).trim();
-            if (val) {
-              const sub = currentSubjectsList.find(s => s.name.toLowerCase() === val.toLowerCase());
-              if (sub) parsedSubjects.push(sub.id);
-              subMatched = true;
-              break;
-            }
+      let subMatched = false;
+      for (const pref of subjectPrefixes) {
+        if (seg.startsWith(pref)) {
+          const val = seg.substring(pref.length).trim();
+          if (val) {
+            const sub = currentSubjectsList.find(s => s.name.toLowerCase() === val.toLowerCase());
+            if (sub) parsedSubjects.push(sub.id);
+            subMatched = true;
+            break;
           }
         }
-        if (subMatched) continue;
+      }
+      if (subMatched) continue;
 
-        for (const pref of sldPrefixes) {
-          if (seg.startsWith(pref)) {
-            const val = seg.substring(pref.length).trim();
-            if (val) parsedSldDate = val;
-          }
+      for (const pref of sldPrefixes) {
+        if (seg.startsWith(pref)) {
+          const val = seg.substring(pref.length).trim();
+          if (val) parsedSldDate = val;
         }
+      }
 
-        for (const pref of normalPrefixes) {
-          if (seg.startsWith(pref)) {
-            const val = seg.substring(pref.length).trim();
-            const numMatch = val.match(/^(\d{1,2})$/);
-            if (numMatch) {
-              parsedActionCode = parseInt(numMatch[1], 10);
-            } else if (val) {
-              parsedNormalTags.push(val);
-            }
-          }
-        }
-
-        for (const pref of heartPrefixes) {
-          if (seg.startsWith(pref)) {
-            const val = seg.substring(pref.length).trim();
-            if (pref === '🩷') parsedHearts.pink = parseInt(val, 10) || 1;
-            if (pref === '🩵') parsedHearts.blue = parseInt(val, 10) || 1;
-            if (pref === '🩶') parsedHearts.grey = parseInt(val, 10) || 1;
+      for (const pref of normalPrefixes) {
+        if (seg.startsWith(pref)) {
+          const val = seg.substring(pref.length).trim();
+          const numMatch = val.match(/^(\d{1,2})$/);
+          if (numMatch) {
+            parsedActionCode = parseInt(numMatch[1], 10);
+          } else if (val) {
+            parsedNormalTags.push(val);
           }
         }
       }
 
-      return { parsedSubjects, parsedNormalTags, parsedSldDate, parsedActionCode, parsedHearts };
+      for (const pref of heartPrefixes) {
+        if (seg.startsWith(pref)) {
+          const val = seg.substring(pref.length).trim();
+          if (pref === '🩷') parsedHearts.pink = parseInt(val, 10) || 1;
+          if (pref === '🩵') parsedHearts.blue = parseInt(val, 10) || 1;
+          if (pref === '🩶') parsedHearts.grey = parseInt(val, 10) || 1;
+        }
+      }
     }
 
-    const processFilesArray = async (filesList) => {
-      const files = Array.from(filesList).filter(f => f.type.startsWith('image/') || f.type.startsWith('video/') || f.name.match(/\.(jpg|jpeg|png|gif|webp|mp4|webm|mov)$/i));
-      if (files.length === 0) return;
+    return { parsedSubjects, parsedNormalTags, parsedSldDate, parsedActionCode, parsedHearts };
+  }
 
-      const activeProfileId = await db.getActiveProfileId();
-      const existingMedia = await db.getActiveMedia();
-      const existingHashes = new Set(existingMedia.map(m => m.hash).filter(Boolean));
+  const processFilesArray = async (filesList) => {
+    const files = Array.from(filesList).filter(f => f.type.startsWith('image/') || f.type.startsWith('video/') || f.name.match(/\.(jpg|jpeg|png|gif|webp|mp4|webm|mov)$/i));
+    if (files.length === 0) {
+      alert('No supported image or video files found in the selection.');
+      return;
+    }
 
-      let addedCount = 0;
-      let duplicateCount = 0;
+    showUploadProgressModal('📤 Uploading Media...', `Found ${files.length} file(s). Starting import...`);
 
-      const readPromises = files.map(file => {
+    const activeProfileId = await db.getActiveProfileId();
+    const existingMedia = await db.getActiveMedia();
+    const existingHashes = new Set(existingMedia.map(m => m.hash).filter(Boolean));
+
+    let addedCount = 0;
+    let duplicateCount = 0;
+    let processedCount = 0;
+
+    const BATCH_SIZE = 4;
+    for (let i = 0; i < files.length; i += BATCH_SIZE) {
+      const chunk = files.slice(i, i + BATCH_SIZE);
+      await Promise.all(chunk.map(file => {
         return new Promise((resolve) => {
           const reader = new FileReader();
           reader.onload = async (evt) => {
-            const dataUrl = evt.target.result;
-            const fileHash = await calculateContentHash(dataUrl);
+            try {
+              const dataUrl = evt.target.result;
+              const fileHash = await calculateContentHash(dataUrl);
 
-            if (existingHashes.has(fileHash)) {
-              duplicateCount++;
+              if (existingHashes.has(fileHash)) {
+                duplicateCount++;
+              } else {
+                existingHashes.add(fileHash);
+                addedCount++;
+
+                const compressedThumb = await createCompressedThumbnail(file.type, dataUrl);
+                const { parsedSubjects, parsedNormalTags, parsedSldDate, parsedHearts } = parseTagPrefixes(file.name);
+
+                const blueBookEvents = [];
+                if (parsedSldDate) {
+                  blueBookEvents.push({
+                    id: 'be-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+                    dateTag: parsedSldDate,
+                    heartTags: parsedHearts
+                  });
+                }
+
+                const mediaItem = {
+                  id: 'media-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
+                  profileId: activeProfileId,
+                  filename: file.name,
+                  type: file.type,
+                  dataUrl: dataUrl,
+                  thumbnailUrl: compressedThumb,
+                  hash: fileHash,
+                  blueBookEvents: blueBookEvents,
+                  subjectTags: parsedSubjects,
+                  normalTags: parsedNormalTags,
+                  viewTransform: { rotate: 0, clipStart: 0, clipEnd: null }
+                };
+                await db.put('media', mediaItem);
+              }
+            } catch (err) {
+              console.warn('Error reading upload item:', file.name, err);
+            } finally {
+              processedCount++;
+              const pct = (processedCount / files.length) * 100;
+              updateUploadProgress(pct, `Importing file ${processedCount} of ${files.length} (${addedCount} added)...`);
               resolve();
-              return;
             }
-            existingHashes.add(fileHash);
-            addedCount++;
-
-            const compressedThumb = await createCompressedThumbnail(file.type, dataUrl);
-            const { parsedSubjects, parsedNormalTags, parsedSldDate, parsedHearts } = parseTagPrefixes(file.name);
-
-            const blueBookEvents = [];
-            if (parsedSldDate) {
-              blueBookEvents.push({
-                id: 'be-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
-                dateTag: parsedSldDate,
-                heartTags: parsedHearts
-              });
-            }
-
-            const mediaItem = {
-              id: 'media-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
-              profileId: activeProfileId,
-              filename: file.name,
-              type: file.type,
-              dataUrl: dataUrl,
-              thumbnailUrl: compressedThumb,
-              hash: fileHash,
-              blueBookEvents: blueBookEvents,
-              subjectTags: parsedSubjects,
-              normalTags: parsedNormalTags,
-              viewTransform: { rotate: 0, clipStart: 0, clipEnd: null }
-            };
-            await db.put('media', mediaItem);
+          };
+          reader.onerror = () => {
+            processedCount++;
             resolve();
           };
           reader.readAsDataURL(file);
         });
-      });
+      }));
+    }
 
-      await Promise.all(readPromises);
+    updateUploadProgress(100, 'Finishing up...');
+    await loadAppState();
+    renderCurrentView();
 
-      await loadAppState();
-      renderCurrentView();
+    setTimeout(() => {
+      hideUploadProgressModal();
       let msg = `Successfully uploaded ${addedCount} media file(s).`;
       if (duplicateCount > 0) msg += ` Skipped ${duplicateCount} duplicate file(s).`;
       alert(msg);
-    };
+    }, 300);
+  };
 
     const uploadInput = document.getElementById('mediaFileInput');
     if (uploadInput) uploadInput.addEventListener('change', (e) => processFilesArray(e.target.files));
