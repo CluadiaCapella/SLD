@@ -1478,6 +1478,126 @@
     return '💦💦<span style="opacity:0.5;" title="2.5 Max Faded Count">💦</span>';
   }
 
+  /* ==========================================================================
+     PWA & AUTO-UPDATE MANAGER
+     ========================================================================== */
+  let deferredPrompt = null;
+  let isAutoUpdateEnabled = true;
+
+  async function initPWAandUpdates() {
+    const toggleEl = document.getElementById('autoUpdateToggle');
+    const checkBtn = document.getElementById('checkForUpdatesBtn');
+    const installBtn = document.getElementById('installPwaBtn');
+
+    const savedAutoUpdate = await db.getSetting('isAutoUpdateEnabled');
+    if (savedAutoUpdate !== null && savedAutoUpdate !== undefined) {
+      isAutoUpdateEnabled = !!savedAutoUpdate;
+    }
+    if (toggleEl) {
+      toggleEl.checked = isAutoUpdateEnabled;
+      toggleEl.onchange = async () => {
+        isAutoUpdateEnabled = toggleEl.checked;
+        await db.setSetting('isAutoUpdateEnabled', isAutoUpdateEnabled);
+      };
+    }
+
+    if (checkBtn) {
+      checkBtn.onclick = () => checkForAppUpdates(true);
+    }
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      if (installBtn) {
+        installBtn.style.display = 'inline-block';
+        installBtn.onclick = () => {
+          deferredPrompt.prompt();
+          deferredPrompt.userChoice.then((choice) => {
+            if (choice.outcome === 'accepted') {
+              installBtn.style.display = 'none';
+            }
+            deferredPrompt = null;
+          });
+        };
+      }
+    });
+
+    if ('serviceWorker' in navigator) {
+      try {
+        const reg = await navigator.serviceWorker.register('./sw.js');
+        reg.onupdatefound = () => {
+          const installingWorker = reg.installing;
+          if (installingWorker) {
+            installingWorker.onstatechange = () => {
+              if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                handleNewVersionDetected();
+              }
+            };
+          }
+        };
+      } catch (err) {
+        console.warn('Service worker registration failed:', err);
+      }
+    }
+
+    if (isAutoUpdateEnabled) {
+      checkForAppUpdates(false);
+    }
+  }
+
+  async function checkForAppUpdates(userTriggered = false) {
+    try {
+      const res = await fetch('./version.json?t=' + Date.now());
+      if (!res.ok) return;
+      const data = await res.json();
+      const currentLocalVersion = await db.getSetting('appVersion');
+
+      if (currentLocalVersion && currentLocalVersion !== data.version) {
+        handleNewVersionDetected(data.version);
+      } else {
+        await db.setSetting('appVersion', data.version);
+        if (userTriggered) alert(`Your app is already up to date! (V${data.version})`);
+      }
+    } catch (err) {
+      if (userTriggered) alert('Unable to check for updates offline.');
+    }
+  }
+
+  async function handleNewVersionDetected(newVer = '') {
+    if (isAutoUpdateEnabled) {
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        for (const reg of regs) {
+          if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+        }
+      }
+      setTimeout(() => window.location.reload(), 500);
+    } else {
+      showUpdateAvailableBanner(newVer);
+    }
+  }
+
+  function showUpdateAvailableBanner(newVer = '') {
+    let banner = document.getElementById('appUpdateBanner');
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'appUpdateBanner';
+      banner.style.cssText = `
+        position: fixed; top: 70px; left: 50%; transform: translateX(-50%); z-index: 9999;
+        background: linear-gradient(135deg, var(--accent-pink), var(--accent-blue));
+        color: #fff; padding: 10px 20px; border-radius: 30px; font-weight: 800; font-size: 0.85rem;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.5); display: flex; align-items: center; gap: 12px;
+      `;
+      document.body.appendChild(banner);
+    }
+    banner.innerHTML = `
+      <span>🚀 New Version Available! ${newVer ? '(V' + newVer + ')' : ''}</span>
+      <button class="btn btn-secondary btn-sm" id="reloadUpdateBtn" style="background:#fff; color:#000; font-weight:800;">Update Now</button>
+      <button style="background:none; border:none; color:#fff; cursor:pointer; font-weight:bold;" onclick="this.parentElement.remove()">✖</button>
+    `;
+    document.getElementById('reloadUpdateBtn').onclick = () => window.location.reload();
+  }
+
   async function initApp() {
     triggerSplashScreen();
 
@@ -1491,6 +1611,7 @@
     setupNavigation();
     setupEventListeners();
     setupNavbarAutoHide();
+    initPWAandUpdates();
 
     document.getElementById('headerBrandLogo')?.addEventListener('click', () => {
       triggerSplashScreen(() => {
