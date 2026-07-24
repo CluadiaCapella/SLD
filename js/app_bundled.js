@@ -1700,6 +1700,10 @@
     const filterTag = document.getElementById('mediaFilterTagSelect')?.value || 'all';
 
     const filtered = currentMediaList.filter(m => {
+      const isAi = m.isAiGenerated || (m.normalTags || []).includes('AI');
+      if (aiFilterMode === 'ai_only' && !isAi) return false;
+      if (aiFilterMode === 'human_only' && isAi) return false;
+
       // Header Group Filter Toggle Check
       if (!m.subjectTags || m.subjectTags.length === 0) {
         if (disabledGroupIds.has('__none__')) return false;
@@ -1772,11 +1776,14 @@
         return `<span class="subject-tag-pill nav-sub-pill" data-subid="${subId}">${getSubjectDisplayName(sub)}</span>`;
       }).join('');
 
+      const isAi = m.isAiGenerated || (m.normalTags || []).includes('AI');
+
       return `
         <div class="media-card ${borderClass} ${isSelected ? 'selected' : ''}" data-id="${m.id}">
           ${renderMediaThumbnailHTML(m)}
           <div class="media-card-overlay">
             <div class="media-card-badges">
+              ${isAi ? `<span class="badge" style="background:linear-gradient(135deg, #a855f7, #6366f1); color:#fff; font-weight:800; border-radius:4px; padding:2px 6px;">🤖 AI</span>` : ''}
               ${blueEvents.length > 0 ? `<span class="heart-badge blue">📘 ${blueEvents.length}</span>` : ''}
               ${pinkTotal > 0 ? `<span class="heart-badge pink">🩷 ${pinkTotal}</span>` : ''}
               ${greyTotal > 0 ? `<span class="heart-badge grey">🩶 ${greyTotal}</span>` : ''}
@@ -2221,6 +2228,40 @@
       } else {
         setAvatarBtn.style.display = 'none';
       }
+    }
+
+    const lbAiBtn = document.getElementById('lbAiToggleBtn');
+    if (lbAiBtn) {
+      const isAi = media.isAiGenerated || (media.normalTags || []).includes('AI');
+      if (isAi) {
+        lbAiBtn.style.background = 'linear-gradient(135deg, #a855f7, #6366f1)';
+        lbAiBtn.style.color = '#ffffff';
+        lbAiBtn.style.fontWeight = '800';
+        lbAiBtn.style.opacity = '1';
+        lbAiBtn.style.filter = 'grayscale(0)';
+        lbAiBtn.style.borderColor = '#a855f7';
+      } else {
+        lbAiBtn.style.background = 'var(--bg-secondary)';
+        lbAiBtn.style.color = 'var(--text-muted)';
+        lbAiBtn.style.fontWeight = '600';
+        lbAiBtn.style.opacity = '0.5';
+        lbAiBtn.style.filter = 'grayscale(1)';
+        lbAiBtn.style.borderColor = 'var(--border-color)';
+      }
+
+      lbAiBtn.onclick = async () => {
+        const newAiState = !(media.isAiGenerated || (media.normalTags || []).includes('AI'));
+        media.isAiGenerated = newAiState;
+        if (!media.normalTags) media.normalTags = [];
+        if (newAiState) {
+          if (!media.normalTags.includes('AI')) media.normalTags.push('AI');
+        } else {
+          media.normalTags = media.normalTags.filter(t => t !== 'AI');
+        }
+        await db.put('media', media);
+        renderLightboxContent();
+        renderCurrentView();
+      };
     }
 
     document.getElementById('lbOpenCropModalBtn').onclick = () => openLightboxCropModal(media);
@@ -3007,6 +3048,11 @@
     if (!subject) return;
 
     let taggedMedia = currentMediaList.filter(m => m.subjectTags?.includes(subject.id));
+    if (aiFilterMode === 'ai_only') {
+      taggedMedia = taggedMedia.filter(m => m.isAiGenerated || (m.normalTags || []).includes('AI'));
+    } else if (aiFilterMode === 'human_only') {
+      taggedMedia = taggedMedia.filter(m => !m.isAiGenerated && !(m.normalTags || []).includes('AI'));
+    }
     const group = getSubjectGroup(subject.groupId);
     const groupColor = group?.color || '#a855f7';
     const borderClass = group?.cssClass || '';
@@ -3557,7 +3603,12 @@
 
     if (!combo) return;
     const subIds = combo.subjectIds || [combo.subjectId1, combo.subjectId2];
-    const sharedMedia = currentMediaList.filter(m => subIds.every(sId => m.subjectTags?.includes(sId)));
+    let sharedMedia = currentMediaList.filter(m => subIds.every(sId => m.subjectTags?.includes(sId)));
+    if (aiFilterMode === 'ai_only') {
+      sharedMedia = sharedMedia.filter(m => m.isAiGenerated || (m.normalTags || []).includes('AI'));
+    } else if (aiFilterMode === 'human_only') {
+      sharedMedia = sharedMedia.filter(m => !m.isAiGenerated && !(m.normalTags || []).includes('AI'));
+    }
 
     container.innerHTML = `
       <button class="btn btn-secondary btn-sm" id="backToSubjectsComboBtn" style="margin-bottom:16px;">← Back to Subjects</button>
@@ -4870,8 +4921,63 @@
   }
 
   /* Event Listeners */
+  let aiFilterMode = 'all'; // 'all', 'ai_only', 'human_only'
+
   function setupEventListeners() {
     document.getElementById('globalUndoBtn')?.addEventListener('click', triggerGlobalUndo);
+
+    const aiFilterBtn = document.getElementById('aiFilterToggleBtn');
+    if (aiFilterBtn) {
+      aiFilterBtn.onclick = () => {
+        if (aiFilterMode === 'all') aiFilterMode = 'ai_only';
+        else if (aiFilterMode === 'ai_only') aiFilterMode = 'human_only';
+        else aiFilterMode = 'all';
+
+        if (aiFilterMode === 'all') {
+          aiFilterBtn.textContent = '🤖 All Media';
+          aiFilterBtn.style.background = '';
+          aiFilterBtn.style.color = '';
+          aiFilterBtn.style.fontWeight = '600';
+        } else if (aiFilterMode === 'ai_only') {
+          aiFilterBtn.textContent = '🤖 AI Only';
+          aiFilterBtn.style.background = 'linear-gradient(135deg, #a855f7, #6366f1)';
+          aiFilterBtn.style.color = '#ffffff';
+          aiFilterBtn.style.fontWeight = '800';
+        } else if (aiFilterMode === 'human_only') {
+          aiFilterBtn.textContent = '👤 Non-AI';
+          aiFilterBtn.style.background = 'var(--accent-blue)';
+          aiFilterBtn.style.color = '#ffffff';
+          aiFilterBtn.style.fontWeight = '800';
+        }
+
+        renderCurrentView();
+      };
+    }
+
+    const toggleSelectionAiBtn = document.getElementById('toggleSelectionAiBtn');
+    if (toggleSelectionAiBtn) {
+      toggleSelectionAiBtn.onclick = async () => {
+        if (selectedMediaIds.size === 0) return;
+        const selectedFiles = currentMediaList.filter(m => selectedMediaIds.has(m.id));
+
+        const allAreAi = selectedFiles.every(m => m.isAiGenerated || (m.normalTags || []).includes('AI'));
+        const newStatus = !allAreAi;
+
+        for (const m of selectedFiles) {
+          m.isAiGenerated = newStatus;
+          if (!m.normalTags) m.normalTags = [];
+          if (newStatus) {
+            if (!m.normalTags.includes('AI')) m.normalTags.push('AI');
+          } else {
+            m.normalTags = m.normalTags.filter(t => t !== 'AI');
+          }
+          await db.put('media', m);
+        }
+
+        await loadAppState();
+        renderCurrentView();
+      };
+    }
 
     document.getElementById('openManageGroupsBtn')?.addEventListener('click', openManageGroupsModal);
     document.getElementById('closeManageGroupsBtn')?.addEventListener('click', () => {

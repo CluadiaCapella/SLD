@@ -73,6 +73,7 @@
         <div class="search-filter-group" style="flex-wrap:wrap;">
           <input type="text" id="mediaSearchInput" class="input-text" placeholder="Search filenames, tags, subjects..." style="flex:1; min-width:200px;">
           <button class="btn btn-secondary" id="toggleMediaGroupBtn" title="Toggle grouping by Subject Group">📁 Grouping: ON</button>
+          <button class="btn btn-secondary btn-sm" id="aiFilterToggleBtn">🤖 All Media</button>
           <select id="mediaFilterTagSelect" class="select-input">
             <option value="all">All Media</option>
             <option value="hasBlueEvents">💦 SLD Events</option>
@@ -97,6 +98,7 @@
       <div id="selectionBanner" class="selection-banner-sticky" style="display:none;">
         <span id="selectedCount">0 file(s) selected</span>
         <div class="selection-actions" style="display:flex; align-items:center; gap:8px;">
+          <button class="btn btn-secondary btn-sm" id="toggleSelectionAiBtn">🤖 Toggle AI</button>
           <button class="btn btn-secondary btn-sm" id="openMultiSelectTagsBtn">🏷️ Tags</button>
           <div class="dropdown-container" id="mediaBatchMenuContainer" style="position:relative;">
             <button class="btn btn-secondary btn-sm" id="mediaBatchMenuBtn">•••</button>
@@ -540,6 +542,7 @@
       <button class="btn btn-secondary btn-sm" id="lbRotateLeftBtn">↩️ Rotate Left</button>
       <button class="btn btn-secondary btn-sm" id="lbRotateRightBtn">↪️ Rotate Right</button>
       <button class="btn btn-secondary btn-sm" id="lbOpenCropModalBtn">✂️ Crop</button>
+      <button class="btn btn-secondary btn-sm" id="lbAiToggleBtn">🤖 AI</button>
       <button class="btn btn-secondary btn-sm" id="lbSetAvatarBtn" style="display:none; color:var(--accent-pink); font-weight:700;">👤 Use as Avatar</button>
       <button class="btn btn-secondary btn-sm" id="lbResetCropBtn" style="display:none; color:#ef4444;">🔄 Clear Crop</button>
       <button class="btn btn-secondary btn-sm" id="lbToggleVideoClipperBtn" style="display:none;">✂️ Video Clipper (A-B)</button>
