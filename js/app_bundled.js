@@ -2538,9 +2538,20 @@
      ========================================================================== */
   let lightboxSourceContext = null;
 
-  function openLightboxById(mediaId, skipPushState = false, sourceContext = null) {
+  async function openLightboxById(mediaId, skipPushState = false, sourceContext = null) {
     lightboxSourceContext = sourceContext;
-    const idx = currentMediaList.findIndex(m => m.id === mediaId);
+    let idx = currentMediaList.findIndex(m => m.id === mediaId);
+    if (idx < 0 && mediaId) {
+      try {
+        const item = await db.get('media', mediaId);
+        if (item) {
+          currentMediaList.push(item);
+          idx = currentMediaList.length - 1;
+        }
+      } catch (err) {
+        console.warn('Error fetching lightbox media by ID:', err);
+      }
+    }
     if (idx >= 0) openLightbox(idx, skipPushState);
   }
 
@@ -4887,26 +4898,25 @@
       else if (heartType === 'blue') { baseBg = 'rgba(56, 189, 248, 0.15)'; baseBorder = 'rgba(56, 189, 248, 0.4)'; }
       else if (heartType === 'grey') { baseBg = 'rgba(148, 163, 184, 0.15)'; baseBorder = 'rgba(148, 163, 184, 0.4)'; }
 
-      const cardStyle = isMaxed
-        ? `background: rgba(16, 185, 129, 0.22); border: 2px solid #10b981; box-shadow: 0 0 10px rgba(16, 185, 129, 0.4); border-radius: var(--radius-md); padding: 8px; flex: 1; min-width: 100px;`
-        : `background: ${baseBg}; border: 2px solid ${baseBorder}; border-radius: var(--radius-md); padding: 8px; flex: 1; min-width: 100px;`;
+      const isWinner = thumbSize === 'winner';
+      const dim = isWinner ? '400px' : '200px';
 
-      let dim = '40px';
-      if (thumbSize === 'winner') dim = '100px';
-      else if (thumbSize === 'silver') dim = '64px';
+      const cardStyle = isMaxed
+        ? `background: rgba(16, 185, 129, 0.22); border: 2px solid #10b981; box-shadow: 0 0 10px rgba(16, 185, 129, 0.4); border-radius: var(--radius-lg); padding: 12px; flex: ${isWinner ? '1 1 100%' : '1'}; min-width: ${isWinner ? '420px' : '220px'};`
+        : `background: ${baseBg}; border: 2px solid ${baseBorder}; border-radius: var(--radius-lg); padding: 12px; flex: ${isWinner ? '1 1 100%' : '1'}; min-width: ${isWinner ? '420px' : '220px'};`;
 
       const thumbsHTML = mediaArray.map(m => `
-        <div class="sld-mini-thumb-wrap" data-mid="${m.id}" style="width:${dim}; height:${dim}; border-radius:6px; overflow:hidden; display:inline-block; cursor:pointer;">
-          ${renderMediaThumbnailHTML(m, 'sld-mini-thumb', `width:${dim}; height:${dim}; object-fit:cover;`)}
+        <div class="sld-mini-thumb-wrap" data-mid="${m.id}" style="width:${dim}; height:${dim}; border-radius:8px; overflow:hidden; display:inline-block; cursor:pointer;">
+          ${renderMediaThumbnailHTML(m, 'sld-mini-thumb', `width:${dim}; height:${dim}; object-fit:cover; display:block;`)}
         </div>`).join('');
 
       return `
         <div class="heart-card-box" style="${cardStyle}">
-          <div style="font-size:0.8rem; font-weight:800; margin-bottom:6px; display:flex; align-items:center; justify-content:space-between;">
+          <div style="font-size:0.85rem; font-weight:800; margin-bottom:8px; display:flex; align-items:center; justify-content:space-between;">
             <span>${heartEmoji}</span>
-            <span style="opacity:0.85; font-size:0.75rem; font-weight:700;">${count}</span>
+            <span style="opacity:0.85; font-size:0.8rem; font-weight:700;">${count} files</span>
           </div>
-          <div style="display:flex; flex-wrap:wrap; gap:6px; align-items:center;">
+          <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
             ${thumbsHTML}
           </div>
         </div>`;
@@ -5101,13 +5111,12 @@
       else if (heartType === 'blue') { baseBg = 'rgba(56, 189, 248, 0.15)'; baseBorder = 'rgba(56, 189, 248, 0.4)'; }
       else if (heartType === 'grey') { baseBg = 'rgba(148, 163, 184, 0.15)'; baseBorder = 'rgba(148, 163, 184, 0.4)'; }
 
-      const cardStyle = isMaxed
-        ? `background: rgba(16, 185, 129, 0.22); border: 2px solid #10b981; box-shadow: 0 0 10px rgba(16, 185, 129, 0.4); border-radius: var(--radius-lg); padding: 14px; flex: 1; min-width: 140px;`
-        : `background: ${baseBg}; border: 2px solid ${baseBorder}; border-radius: var(--radius-lg); padding: 14px; flex: 1; min-width: 140px;`;
+      const isWinner = thumbSize === 'winner';
+      const dim = isWinner ? '400px' : '200px';
 
-      let dim = '40px';
-      if (thumbSize === 'winner') dim = '100px';
-      else if (thumbSize === 'silver') dim = '64px';
+      const cardStyle = isMaxed
+        ? `background: rgba(16, 185, 129, 0.22); border: 2px solid #10b981; box-shadow: 0 0 10px rgba(16, 185, 129, 0.4); border-radius: var(--radius-lg); padding: 14px; flex: ${isWinner ? '1 1 100%' : '1'}; min-width: ${isWinner ? '420px' : '220px'};`
+        : `background: ${baseBg}; border: 2px solid ${baseBorder}; border-radius: var(--radius-lg); padding: 14px; flex: ${isWinner ? '1 1 100%' : '1'}; min-width: ${isWinner ? '420px' : '220px'};`;
 
       const thumbsHTML = mediaArray.map(m => {
         const borderClass = getMediaHighestPriorityGroupBorderClass(m);
@@ -5117,10 +5126,10 @@
         const blue = be?.heartTags?.blue || 0;
 
         return `
-          <div class="media-card sld-grid-card ${borderClass}" data-id="${m.id}" style="width:${dim}; height:${dim}; border-radius:8px; overflow:hidden; position:relative; display:inline-block;">
-            ${renderMediaThumbnailHTML(m, '', `width:${dim}; height:${dim}; object-fit:cover;`)}
-            <div class="media-card-overlay" style="padding:2px;">
-              <div class="heart-toggle-group-row" style="background:rgba(0,0,0,0.7); padding:2px 4px; border-radius:8px; font-size:0.65rem;" data-mid="${m.id}">
+          <div class="media-card sld-grid-card ${borderClass}" data-id="${m.id}" style="width:${dim}; height:${dim}; border-radius:12px; overflow:hidden; position:relative; display:inline-block; cursor:pointer;">
+            ${renderMediaThumbnailHTML(m, '', `width:${dim}; height:${dim}; object-fit:cover; display:block;`)}
+            <div class="media-card-overlay" style="padding:4px; pointer-events:none;">
+              <div class="heart-toggle-group-row" style="background:rgba(0,0,0,0.75); padding:3px 6px; border-radius:8px; font-size:0.75rem; pointer-events:auto;" data-mid="${m.id}">
                 ${getHeartBtnHTML('pink', pink)}
                 ${getHeartBtnHTML('grey', grey)}
                 ${getHeartBtnHTML('blue', blue)}
@@ -5135,7 +5144,7 @@
             <span>${heartEmoji}</span>
             <span style="opacity:0.85; font-size:0.85rem; font-weight:700;">${count} files</span>
           </div>
-          <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
+          <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center;">
             ${thumbsHTML}
           </div>
         </div>`;
@@ -5155,24 +5164,24 @@
         </div>
       </div>
 
-      <!-- Row 1: Winners (🥇 100x100) -->
+      <!-- Row 1: Winners (🥇 400x400) -->
       ${(subP3.length || subB3.length || subG3.length) ? `
       <div class="sld-tier-container" style="margin-bottom:24px;">
         <div style="font-size:1.1rem; font-weight:800; color:#eab308; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
-          <span>🥇 Winners</span>
+          <span>🥇 Winners (400x400)</span>
         </div>
         <div style="display:flex; flex-wrap:wrap; gap:14px;">
-          ${renderHeartCardForDetails(subP3, maxGold, 'pink', '🩷 Pink', 'winner')}
-          ${renderHeartCardForDetails(subB3, maxGold, 'blue', '🩵 Blue', 'winner')}
-          ${renderHeartCardForDetails(subG3, maxGold, 'grey', '🩶 Grey', 'winner')}
+          ${renderHeartCardForDetails(subP3, maxGold, 'pink', '🩷 Pink Winners', 'winner')}
+          ${renderHeartCardForDetails(subB3, maxGold, 'blue', '🩵 Blue Winners', 'winner')}
+          ${renderHeartCardForDetails(subG3, maxGold, 'grey', '🩶 Grey Winners', 'winner')}
         </div>
       </div>` : ''}
 
-      <!-- Row 2: Second place (🥈 64x64) -->
+      <!-- Row 2: Second place (🥈 200x200) -->
       ${(subP2.length || subB2.length || subG2.length) ? `
       <div class="sld-tier-container" style="margin-bottom:24px;">
         <div style="font-size:1.05rem; font-weight:800; color:#94a3b8; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
-          <span>🥈 Second place</span>
+          <span>🥈 Second place (200x200)</span>
         </div>
         <div style="display:flex; flex-wrap:wrap; gap:14px;">
           ${renderHeartCardForDetails(subP2, maxSilver, 'pink', '🩷 Pink', 'silver')}
@@ -5181,11 +5190,11 @@
         </div>
       </div>` : ''}
 
-      <!-- Row 3: Third Place (🥉 40x40) -->
+      <!-- Row 3: Third Place (🥉 200x200) -->
       ${(subP1.length || subB1.length || subG1.length) ? `
       <div class="sld-tier-container" style="margin-bottom:24px;">
         <div style="font-size:1rem; font-weight:800; color:#cd7f32; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
-          <span>🥉 Third Place</span>
+          <span>🥉 Third Place (200x200)</span>
         </div>
         <div style="display:flex; flex-wrap:wrap; gap:14px;">
           ${renderHeartCardForDetails(subP1, maxBronze, 'pink', '🩷 Pink', 'bronze')}
@@ -5194,13 +5203,13 @@
         </div>
       </div>` : ''}
 
-      <!-- Row 4: Base / No Medal Files -->
+      <!-- Row 4: Base / No Medal Files (200x200) -->
       ${noHeartMedia.length > 0 ? `
       <div class="sld-tier-container" style="margin-bottom:24px;">
         <div style="font-size:1rem; font-weight:800; color:var(--text-secondary); margin-bottom:12px; display:flex; align-items:center; gap:8px;">
           <span>⚪ Base / No Medal Tier (${noHeartMedia.length})</span>
         </div>
-        <div style="display:flex; flex-wrap:wrap; gap:10px;">
+        <div style="display:flex; flex-wrap:wrap; gap:12px;">
           ${noHeartMedia.map(m => {
             const borderClass = getMediaHighestPriorityGroupBorderClass(m);
             const be = (m.blueBookEvents || []).find(e => e.dateTag === sldTag);
@@ -5209,10 +5218,10 @@
             const blue = be?.heartTags?.blue || 0;
 
             return `
-              <div class="media-card sld-grid-card ${borderClass}" data-id="${m.id}" style="width:64px; height:64px; border-radius:8px; overflow:hidden; position:relative; display:inline-block;">
-                ${renderMediaThumbnailHTML(m, '', 'width:64px; height:64px; object-fit:cover;')}
-                <div class="media-card-overlay" style="padding:2px;">
-                  <div class="heart-toggle-group-row" style="background:rgba(0,0,0,0.7); padding:2px 4px; border-radius:8px; font-size:0.65rem;" data-mid="${m.id}">
+              <div class="media-card sld-grid-card ${borderClass}" data-id="${m.id}" style="width:200px; height:200px; border-radius:12px; overflow:hidden; position:relative; display:inline-block; cursor:pointer;">
+                ${renderMediaThumbnailHTML(m, '', 'width:200px; height:200px; object-fit:cover; display:block;')}
+                <div class="media-card-overlay" style="padding:4px; pointer-events:none;">
+                  <div class="heart-toggle-group-row" style="background:rgba(0,0,0,0.75); padding:3px 6px; border-radius:8px; font-size:0.75rem; pointer-events:auto;" data-mid="${m.id}">
                     ${getHeartBtnHTML('pink', pink)}
                     ${getHeartBtnHTML('grey', grey)}
                     ${getHeartBtnHTML('blue', blue)}
