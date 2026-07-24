@@ -2089,7 +2089,10 @@
   /* ==========================================================================
      9. LIGHTBOX MEDIA VIEWER (PRESERVES VIDEO CROPPING Status)
      ========================================================================== */
-  function openLightboxById(mediaId, skipPushState = false) {
+  let lightboxSourceContext = null;
+
+  function openLightboxById(mediaId, skipPushState = false, sourceContext = null) {
+    lightboxSourceContext = sourceContext;
     const idx = currentMediaList.findIndex(m => m.id === mediaId);
     if (idx >= 0) openLightbox(idx, skipPushState);
   }
@@ -2181,6 +2184,43 @@
     } else {
       if (toggleClipperBtn) toggleClipperBtn.style.display = 'none';
       if (clipperPanel) clipperPanel.style.display = 'none';
+    }
+
+    const setAvatarBtn = document.getElementById('lbSetAvatarBtn');
+    if (setAvatarBtn) {
+      if (lightboxSourceContext && lightboxSourceContext.name) {
+        setAvatarBtn.style.display = 'inline-flex';
+        setAvatarBtn.textContent = `👤 Use as ${lightboxSourceContext.name}'s Avatar`;
+        setAvatarBtn.onclick = () => {
+          openMediaCropperModal({
+            imageSrcUrl: media.viewTransform?.croppedViewUrl || media.dataUrl,
+            isVideo: isVideo,
+            videoSrcUrl: isVideo ? media.dataUrl : null,
+            modalTitle: `Crop ${lightboxSourceContext.name}'s Avatar`,
+            onSave: async (croppedUrl) => {
+              if (lightboxSourceContext.type === 'subject') {
+                const sub = currentSubjectsList.find(s => s.id === lightboxSourceContext.id);
+                if (sub) {
+                  sub.avatarUrl = croppedUrl;
+                  await db.put('subjects', sub);
+                }
+              } else if (lightboxSourceContext.type === 'combo') {
+                const comboKey = lightboxSourceContext.key;
+                const stats = calculateAllStats();
+                const combo = (stats?.allCombinations || []).find(c => (c.comboKey === comboKey || (c.subjectIds || [c.subjectId1, c.subjectId2]).join('::') === comboKey));
+                if (combo) {
+                  combo.avatarUrl = croppedUrl;
+                  await db.put('combinations', combo);
+                }
+              }
+              await loadAppState();
+              renderCurrentView();
+            }
+          });
+        };
+      } else {
+        setAvatarBtn.style.display = 'none';
+      }
     }
 
     document.getElementById('lbOpenCropModalBtn').onclick = () => openLightboxCropModal(media);
@@ -3039,12 +3079,42 @@
         </div>
       </div>
 
-      <!-- Quick Event Input -->
-      <div style="margin-bottom:24px; background:var(--bg-card); padding:16px; border-radius:var(--radius-lg); border:1px solid var(--border-color);">
-        <h4 style="margin-bottom:8px;">➕ Create Event for ${getSubjectDisplayName(subject)}</h4>
-        <div class="date-autocomplete-container" style="max-width:320px;">
-          <input type="text" id="subPageEventDateInput" class="input-text btn-sm" placeholder="Event Date (Enter)..." style="width:100%;">
-          <div id="subPageEventDateAutocomplete" class="date-autocomplete-dropdown"></div>
+      <!-- Events Section -->
+      <div style="background:var(--bg-card); padding:20px; border-radius:var(--radius-lg); border:1px solid var(--border-color); margin-bottom:32px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">
+          <h3 style="font-size:1.3rem; font-weight:800; margin:0;">📅 ${getSubjectDisplayName(subject)}'s Events (${subEvents.length})</h3>
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <div class="date-autocomplete-container" style="min-width:200px;">
+              <input type="text" id="subPageEventDateInput" class="input-text btn-sm" placeholder="Event Date (Enter)..." style="width:100%;">
+              <div id="subPageEventDateAutocomplete" class="date-autocomplete-dropdown"></div>
+            </div>
+            <button class="btn btn-primary btn-sm" id="subPageCreateEventBtn">➕ Create Event</button>
+          </div>
+        </div>
+
+        <!-- Recent Events Filters & Gallery -->
+        <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px; flex-wrap:wrap;">
+          <span class="text-muted" style="font-size:0.85rem; font-weight:700;">Filter Events:</span>
+          <select id="subEventYearFilter" class="select-input btn-sm">
+            <option value="all">All Years</option>
+            ${eventYears.map(y => `<option value="${y}" ${selectedEventYear === y ? 'selected' : ''}>${y}</option>`).join('')}
+          </select>
+          <select id="subEventMonthFilter" class="select-input btn-sm">
+            <option value="all">All Months</option>
+            ${['01','02','03','04','05','06','07','08','09','10','11','12'].map(m => `<option value="${m}" ${selectedEventMonth === m ? 'selected' : ''}>Month ${m}</option>`).join('')}
+          </select>
+        </div>
+
+        <div style="display:flex; gap:16px; overflow-x:auto; padding-bottom:12px; scrollbar-width:thin;">
+          ${filteredEventsHTML}
+        </div>
+      </div>
+
+      <!-- Actions Summary Section -->
+      <div style="margin-bottom:32px; background:var(--bg-card); padding:20px; border-radius:var(--radius-lg); border:1px solid var(--border-color);">
+        <h3 style="font-size:1.3rem; font-weight:800; margin-bottom:16px;">💋 ${getSubjectDisplayName(subject)}'s Actions</h3>
+        <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:12px;">
+          ${actionsGridHTML}
         </div>
       </div>
 
@@ -3187,6 +3257,32 @@
       }
     });
 
+    const createEvtBtn = document.getElementById('subPageCreateEventBtn');
+    if (createEvtBtn) {
+      createEvtBtn.onclick = () => {
+        const dateInput = document.getElementById('subPageEventDateInput');
+        const rawDate = dateInput?.value || '';
+        const parsedDate = parseSmartDateInput(rawDate);
+        openEventCreationWizard(parsedDate, [subject.id]);
+      };
+    }
+
+    const yearFilter = document.getElementById('subEventYearFilter');
+    if (yearFilter) {
+      yearFilter.onchange = () => {
+        selectedEventYear = yearFilter.value;
+        renderSubjectDetailsPage(stats);
+      };
+    }
+
+    const monthFilter = document.getElementById('subEventMonthFilter');
+    if (monthFilter) {
+      monthFilter.onchange = () => {
+        selectedEventMonth = monthFilter.value;
+        renderSubjectDetailsPage(stats);
+      };
+    }
+
     // Render Timeline Charts safely
     try {
       renderSubjectEventPointsTimelineChart('subEventTimelineChart', subject.id);
@@ -3209,22 +3305,90 @@
     });
 
     container.querySelectorAll('.combo-sort-btn').forEach(btn => {
+      const k = btn.getAttribute('data-sort');
+      const idx = subjectDetailComboSortHistory.indexOf(k);
+      const isPrimary = (k === detailComboSortKey);
+
+      let label = btn.getAttribute('data-base-label') || btn.textContent.replace(/[▲▼]/g, '').trim();
+      btn.setAttribute('data-base-label', label);
+      btn.textContent = isPrimary ? `${label} ${detailComboSortDir === 'asc' ? '▲' : '▼'}` : label;
+
+      if (idx === 0) {
+        btn.style.background = 'var(--accent-pink)';
+        btn.style.color = '#ffffff';
+        btn.style.borderColor = 'var(--accent-pink)';
+        btn.style.fontWeight = '800';
+      } else if (idx === 1) {
+        btn.style.background = 'rgba(255, 105, 180, 0.45)';
+        btn.style.color = '#ffffff';
+        btn.style.borderColor = 'rgba(255, 105, 180, 0.6)';
+        btn.style.fontWeight = '700';
+      } else if (idx === 2) {
+        btn.style.background = 'rgba(255, 105, 180, 0.22)';
+        btn.style.color = '#ffffff';
+        btn.style.borderColor = 'rgba(255, 105, 180, 0.35)';
+        btn.style.fontWeight = '600';
+      } else {
+        btn.style.background = '';
+        btn.style.color = '';
+        btn.style.borderColor = '';
+      }
+
       btn.onclick = (e) => {
         e.preventDefault();
-        const k = btn.getAttribute('data-sort');
         if (detailComboSortKey === k) detailComboSortDir = detailComboSortDir === 'asc' ? 'desc' : 'asc';
         else { detailComboSortKey = k; detailComboSortDir = 'desc'; }
+
+        const histIdx = subjectDetailComboSortHistory.indexOf(k);
+        if (histIdx >= 0) subjectDetailComboSortHistory.splice(histIdx, 1);
+        subjectDetailComboSortHistory.unshift(k);
+        if (subjectDetailComboSortHistory.length > 3) subjectDetailComboSortHistory.pop();
+
         renderSubjectDetailsPage(stats);
       };
     });
 
     // Media Sort Buttons
     container.querySelectorAll('.media-sort-btn').forEach(btn => {
+      const k = btn.getAttribute('data-sort');
+      const idx = subjectDetailMediaSortHistory.indexOf(k);
+      const isPrimary = (k === detailMediaSortKey);
+
+      let label = btn.getAttribute('data-base-label') || btn.textContent.replace(/[▲▼]/g, '').trim();
+      btn.setAttribute('data-base-label', label);
+      btn.textContent = isPrimary ? `${label} ${detailMediaSortDir === 'asc' ? '▲' : '▼'}` : label;
+
+      if (idx === 0) {
+        btn.style.background = 'var(--accent-pink)';
+        btn.style.color = '#ffffff';
+        btn.style.borderColor = 'var(--accent-pink)';
+        btn.style.fontWeight = '800';
+      } else if (idx === 1) {
+        btn.style.background = 'rgba(255, 105, 180, 0.45)';
+        btn.style.color = '#ffffff';
+        btn.style.borderColor = 'rgba(255, 105, 180, 0.6)';
+        btn.style.fontWeight = '700';
+      } else if (idx === 2) {
+        btn.style.background = 'rgba(255, 105, 180, 0.22)';
+        btn.style.color = '#ffffff';
+        btn.style.borderColor = 'rgba(255, 105, 180, 0.35)';
+        btn.style.fontWeight = '600';
+      } else {
+        btn.style.background = '';
+        btn.style.color = '';
+        btn.style.borderColor = '';
+      }
+
       btn.onclick = (e) => {
         e.preventDefault();
-        const k = btn.getAttribute('data-sort');
         if (detailMediaSortKey === k) detailMediaSortDir = detailMediaSortDir === 'asc' ? 'desc' : 'asc';
         else { detailMediaSortKey = k; detailMediaSortDir = 'desc'; }
+
+        const histIdx = subjectDetailMediaSortHistory.indexOf(k);
+        if (histIdx >= 0) subjectDetailMediaSortHistory.splice(histIdx, 1);
+        subjectDetailMediaSortHistory.unshift(k);
+        if (subjectDetailMediaSortHistory.length > 3) subjectDetailMediaSortHistory.pop();
+
         renderSubjectDetailsPage(stats);
       };
     });
@@ -3234,7 +3398,7 @@
         e.preventDefault();
         e.stopPropagation();
         const mediaId = card.getAttribute('data-id');
-        if (mediaId) openLightboxById(mediaId);
+        if (mediaId) openLightboxById(mediaId, false, { type: 'subject', id: subject.id, name: getSubjectDisplayName(subject) });
       };
     });
   }
@@ -3426,8 +3590,11 @@
     });
 
     container.querySelectorAll('.combo-detail-media').forEach(card => {
-      card.onclick = () => {
-        openLightboxById(card.getAttribute('data-id'));
+      card.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const mediaId = card.getAttribute('data-id');
+        if (mediaId) openLightboxById(mediaId, false, { type: 'combo', key: activeDetailComboKey, name: combo.name });
       };
     });
   }
