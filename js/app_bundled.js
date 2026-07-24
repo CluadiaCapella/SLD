@@ -3688,6 +3688,11 @@
 
     const thoughtCardsHTML = thoughtCardsList.length > 0 ? thoughtCardsList.join('') : '<p class="text-muted" style="grid-column: 1 / -1;">No Thought subjects added yet.</p>';
 
+    const heroMediaBg = subject.avatarUrl || (taggedMedia[0] ? (taggedMedia[0].customThumbnail || taggedMedia[0].dataUrl || taggedMedia[0].filename) : null);
+    const heroCardBgStyle = heroMediaBg 
+      ? `position:relative; overflow:hidden; background: linear-gradient(135deg, rgba(15, 23, 42, 0.88) 0%, rgba(2, 6, 23, 0.95) 100%), url('${heroMediaBg}') center/cover no-repeat; border:1px solid var(--border-color); border-radius:var(--radius-lg); padding:24px; text-align:left; margin-bottom:24px; box-shadow:var(--shadow-md); backdrop-filter:blur(10px);`
+      : `background: linear-gradient(135deg, ${groupColor}22 0%, var(--bg-card) 65%); border:1px solid var(--border-color); border-radius:var(--radius-lg); padding:24px; text-align:left; margin-bottom:24px;`;
+
     container.innerHTML = `
       <button class="btn btn-secondary btn-sm" id="backToSubjectsBtn" style="margin-bottom:16px;">← Back to Subjects</button>
 
