@@ -384,22 +384,40 @@
       canvas.height = 200;
       const ctx = canvas.getContext('2d');
 
+      const drawTopCenteredCrop = (source) => {
+        const sw = source.naturalWidth || source.videoWidth || source.width || 200;
+        const sh = source.naturalHeight || source.videoHeight || source.height || 200;
+        const cropSize = Math.min(sw, sh);
+        const sx = Math.max(0, Math.floor((sw - cropSize) / 2));
+        const sy = 0; // Top-centered vertically
+
+        ctx.drawImage(source, sx, sy, cropSize, cropSize, 0, 0, 200, 200);
+      };
+
       if (fileType?.startsWith('video')) {
         const video = document.createElement('video');
         video.src = dataUrl;
         video.preload = 'metadata';
         video.currentTime = 0.5;
         video.onseeked = () => {
-          ctx.drawImage(video, 0, 0, 200, 200);
-          resolve(canvas.toDataURL('image/jpeg', 0.85));
+          try {
+            drawTopCenteredCrop(video);
+            resolve(canvas.toDataURL('image/jpeg', 0.85));
+          } catch (e) {
+            resolve(null);
+          }
         };
         video.onerror = () => resolve(null);
       } else {
         const img = new Image();
         img.crossOrigin = 'anonymous';
         img.onload = () => {
-          ctx.drawImage(img, 0, 0, 200, 200);
-          resolve(canvas.toDataURL('image/jpeg', 0.85));
+          try {
+            drawTopCenteredCrop(img);
+            resolve(canvas.toDataURL('image/jpeg', 0.85));
+          } catch (e) {
+            resolve(null);
+          }
         };
         img.onerror = () => resolve(null);
         img.src = dataUrl;
@@ -5660,6 +5678,7 @@
 
   function setupEventListeners() {
     setupAutoSaveSettings();
+    document.getElementById('regenerateThumbnailsBtn')?.addEventListener('click', regenerateAllThumbnails);
     document.getElementById('globalUndoBtn')?.addEventListener('click', triggerGlobalUndo);
 
     const aiFilterBtn = document.getElementById('aiFilterToggleBtn');
@@ -5921,7 +5940,8 @@
       return;
     }
 
-    showUploadProgressModal('📤 Uploading Media...', `Found ${files.length} file(s). Starting import...`);
+    showUploadProgressModal('📤 Uploading Media Files...', `Found ${files.length} file(s). Starting import...`);
+    await new Promise(r => requestAnimationFrame(() => setTimeout(r, 60)));
 
     const activeProfileId = await db.getActiveProfileId();
     const existingMedia = await db.getActiveMedia();
@@ -5991,6 +6011,7 @@
           reader.readAsDataURL(file);
         });
       }));
+      await new Promise(r => setTimeout(r, 0));
     }
 
     updateUploadProgress(100, 'Finishing up...');
@@ -6004,6 +6025,53 @@
       alert(msg);
     }, 300);
   };
+
+  async function regenerateAllThumbnails() {
+    const allMedia = await db.getActiveMedia();
+    if (allMedia.length === 0) {
+      alert('No media files found in the active collection.');
+      return;
+    }
+
+    if (!confirm(`Re-generate thumbnails for ${allMedia.length} file(s)? Custom user-uploaded thumbnails will be preserved.`)) return;
+
+    showUploadProgressModal('🔄 Regenerating Thumbnails...', `Processing 0 of ${allMedia.length}...`);
+    await new Promise(r => requestAnimationFrame(() => setTimeout(r, 60)));
+
+    let updatedCount = 0;
+    let skippedCustomCount = 0;
+
+    for (let i = 0; i < allMedia.length; i++) {
+      const m = allMedia[i];
+      if (m.customThumbnail) {
+        skippedCustomCount++;
+      } else {
+        try {
+          const newThumb = await createCompressedThumbnail(m.type, m.dataUrl);
+          if (newThumb) {
+            m.thumbnailUrl = newThumb;
+            await db.put('media', m);
+            updatedCount++;
+          }
+        } catch (err) {
+          console.warn('Failed to regenerate thumbnail for:', m.filename, err);
+        }
+      }
+
+      const pct = ((i + 1) / allMedia.length) * 100;
+      updateUploadProgress(pct, `Re-generating ${i + 1} of ${allMedia.length} (${updatedCount} updated)...`);
+      await new Promise(r => setTimeout(r, 0));
+    }
+
+    updateUploadProgress(100, 'Thumbnail regeneration complete!');
+    await loadAppState();
+    renderCurrentView();
+
+    setTimeout(() => {
+      hideUploadProgressModal();
+      alert(`Re-generated ${updatedCount} thumbnail(s). Preserved ${skippedCustomCount} custom thumbnail(s).`);
+    }, 300);
+  }
 
     const uploadInput = document.getElementById('mediaFileInput');
     if (uploadInput) uploadInput.addEventListener('change', (e) => processFilesArray(e.target.files));
