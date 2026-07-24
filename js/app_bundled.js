@@ -1286,6 +1286,8 @@
   let activeDetailEventId = null;
   let sldDefaultFullscreen = false;
   let activeSubjectsTab = 'subjects';
+  let sldSortKey = 'date';
+  let sldSortDir = 'desc';
 
   let selectedEventYear = 'all';
   let selectedEventMonth = 'all';
@@ -4115,12 +4117,65 @@
       }
     }
 
-    const sldList = Array.from(sldTagMap.values()).sort((a, b) => {
-      return convertDateTagToIso(b.dateTag).localeCompare(convertDateTagToIso(a.dateTag));
+    // Update sort buttons UI in SLD page toolbar
+    document.querySelectorAll('.sld-sort-btn').forEach(btn => {
+      const key = btn.getAttribute('data-sort');
+      if (key === sldSortKey) {
+        btn.classList.add('active');
+        btn.innerHTML = btn.innerHTML.replace(/[▲▼]/g, '').trim() + ' ' + (sldSortDir === 'asc' ? '▲' : '▼');
+      } else {
+        btn.classList.remove('active');
+        btn.innerHTML = btn.innerHTML.replace(/[▲▼]/g, '').trim();
+      }
+
+      btn.onclick = () => {
+        if (sldSortKey === key) {
+          sldSortDir = sldSortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+          sldSortKey = key;
+          sldSortDir = 'desc';
+        }
+        renderSldListPage();
+      };
+    });
+
+    const filterInput = document.getElementById('sldFilterInput');
+    if (filterInput && !filterInput.dataset.bound) {
+      filterInput.dataset.bound = 'true';
+      filterInput.oninput = () => renderSldListPage();
+    }
+
+    let sldList = Array.from(sldTagMap.values());
+
+    const filterQuery = (document.getElementById('sldFilterInput')?.value || '').toLowerCase().trim();
+    if (filterQuery) {
+      sldList = sldList.filter(item => {
+        const mediaArray = Array.from(item.mediaSet).map(mId => currentMediaList.find(m => m.id === mId)).filter(Boolean);
+        return mediaArray.some(m => {
+          const nameMatch = (m.filename || '').toLowerCase().includes(filterQuery);
+          const subMatch = (m.subjectTags || []).some(sId => {
+            const sub = currentSubjectsList.find(s => s.id === sId);
+            return sub && getSubjectDisplayName(sub).toLowerCase().includes(filterQuery);
+          });
+          const sldMatch = (item.dateTag || '').toLowerCase().includes(filterQuery);
+          const tagMatch = (m.normalTags || []).some(t => t.toLowerCase().includes(filterQuery));
+          return nameMatch || subMatch || sldMatch || tagMatch;
+        });
+      });
+    }
+
+    sldList.sort((a, b) => {
+      let comp = 0;
+      if (sldSortKey === 'date') {
+        comp = convertDateTagToIso(a.dateTag).localeCompare(convertDateTagToIso(b.dateTag));
+      } else if (sldSortKey === 'files') {
+        comp = a.mediaSet.size - b.mediaSet.size;
+      }
+      return sldSortDir === 'asc' ? comp : -comp;
     });
 
     if (sldList.length === 0) {
-      cardsContainer.innerHTML = `<div class="empty-state">No SLD events recorded yet. Upload media or batch add SLD dates.</div>`;
+      cardsContainer.innerHTML = `<div class="empty-state">No matching SLD events found.</div>`;
       return;
     }
 
@@ -4137,9 +4192,9 @@
 
     const getCellHighlightStyle = (count, maxLimit) => {
       if (count > 0 && count === maxLimit) {
-        return `background: rgba(16, 185, 129, 0.22); border: 2px solid #10b981; box-shadow: 0 0 10px rgba(16, 185, 129, 0.4); border-radius: 6px; padding: 6px;`;
+        return `background: rgba(16, 185, 129, 0.22); border: 2px solid #10b981; box-shadow: 0 0 10px rgba(16, 185, 129, 0.4); border-radius: 6px; padding: 6px; box-sizing: border-box;`;
       }
-      return `border: 1px solid var(--border-color); padding: 6px; border-radius: 4px;`;
+      return `background: rgba(255, 255, 255, 0.02); border: 2px solid var(--border-color); border-radius: 6px; padding: 6px; box-sizing: border-box;`;
     };
 
     cardsContainer.innerHTML = sldList.map(item => `
