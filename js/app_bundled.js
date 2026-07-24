@@ -2680,16 +2680,20 @@
     if (index < 0 || index >= currentMediaList.length) return;
     lightboxIndex = index;
     const modal = document.getElementById('lightboxModal');
+    if (!modal) return;
 
+    modal.style.display = 'flex';
+    modal.classList.add('active');
+
+    const heartOverlay = document.getElementById('floatingHeartOverlay');
     if (sldDefaultFullscreen) {
       modal.classList.add('fullscreen-mode');
-      document.getElementById('floatingHeartOverlay').style.display = 'flex';
+      if (heartOverlay) heartOverlay.style.display = 'flex';
     } else {
       modal.classList.remove('fullscreen-mode');
-      document.getElementById('floatingHeartOverlay').style.display = 'none';
+      if (heartOverlay) heartOverlay.style.display = 'none';
     }
 
-    modal.classList.add('active');
     renderLightboxContent();
 
     if (!skipPushState) {
@@ -2713,7 +2717,8 @@
       modal.classList.remove('active', 'fullscreen-mode');
       modal.style.display = 'none';
     }
-    document.getElementById('floatingHeartOverlay').style.display = 'none';
+    const heartOverlay = document.getElementById('floatingHeartOverlay');
+    if (heartOverlay) heartOverlay.style.display = 'none';
     lightboxIndex = -1;
 
     if (isAlreadyOpen && !isPopState) {
