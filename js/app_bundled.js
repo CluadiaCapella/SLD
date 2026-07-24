@@ -233,17 +233,35 @@
     let html = `<option value="" ${!currentGroupId ? 'selected' : ''}>None</option>`;
     html += currentSubjectGroupsList.map(g => {
       let cleanName = g.name.trim();
-      cleanName = cleanName.replace(/^[🟤🟣🟢🟡🟠🔴🔵⚪⚫\s]+/g, '').trim();
+      cleanName = cleanName.replace(/^[🟤🟣🟢🟡🟠🔴🔵⚪⚫⭐\s]+/g, '').trim();
       const label = `${g.emoji || '⚪'} ${cleanName}`;
       return `<option value="${g.id}" ${currentGroupId === g.id ? 'selected' : ''}>${label}</option>`;
     }).join('');
+    html += `<option value="__rename_group__">✏️ Rename a Group...</option>`;
     html += `<option value="__add_custom__">➕ Add Custom Group...</option>`;
     html += `<option value="__manage_groups__">⚙️ Rearrange / Delete Groups...</option>`;
     return html;
   }
 
   async function handleGroupSelectAction(selectedVal, subjectOrSubjectId) {
-    if (selectedVal === '__add_custom__') {
+    if (selectedVal === '__rename_group__') {
+      let currentG = null;
+      if (typeof subjectOrSubjectId === 'object' && subjectOrSubjectId && subjectOrSubjectId.groupId) {
+        currentG = getSubjectGroup(subjectOrSubjectId.groupId);
+      }
+      const groupToRename = currentG || currentSubjectGroupsList[0];
+      if (!groupToRename) return true;
+
+      const currentText = groupToRename.name.replace(/^[🟤🟣🟢🟡🟠🔴🔵⚪⚫⭐\s]+/g, '').trim();
+      const newText = prompt(`Enter new text for group "${groupToRename.name}":\n(The emoji/icon "${groupToRename.emoji || '⚪'}" will stay fixed)`, currentText);
+      if (newText && newText.trim() && newText.trim() !== currentText) {
+        groupToRename.name = `${groupToRename.emoji || '⚪'} ${newText.trim()}`;
+        await db.setSetting('subjectGroups', currentSubjectGroupsList);
+        await loadAppState();
+        renderCurrentView();
+      }
+      return true;
+    } else if (selectedVal === '__add_custom__') {
       const name = prompt('Enter a name for the new custom group:');
       if (name && name.trim()) {
         const gId = 'custom-' + Date.now();
@@ -1551,10 +1569,10 @@
       const nav = document.getElementById('bottomNavBar');
       if (!nav) return;
       const currentScrollY = window.scrollY;
-      if (currentScrollY > lastScrollY && currentScrollY > 60) {
-        nav.classList.add('nav-hidden');
-      } else if (currentScrollY < lastScrollY) {
+      if (currentScrollY > lastScrollY && currentScrollY > 40) {
         nav.classList.remove('nav-hidden');
+      } else if (currentScrollY < lastScrollY) {
+        nav.classList.add('nav-hidden');
       }
       lastScrollY = currentScrollY;
     });
@@ -3096,21 +3114,33 @@
       9: '#0ea5e9', 10: '#6366f1', 11: '#8b5cf6', 12: '#f43f5e'
     };
 
-    const actionCodesList = Array.from({ length: 12 }, (_, i) => i + 1);
+    const actionCodesList = Array.from({ length: 12 }, (_, i) => 12 - i);
+    let totalActionCount = 0;
     const actionsGridHTML = actionCodesList.map(code => {
       const actColor = ACTION_HEX_MAP[code] || 'var(--accent-blue)';
       const displayName = getActionDisplayName(code);
       const comboCount = subjectCombos.filter(c => c.maxActionCode === code).length;
+      if (comboCount === 0) return '';
+      totalActionCount += comboCount;
       return `
         <div style="background:var(--bg-card); border:1px solid ${actColor}55; border-radius:var(--radius-md); padding:12px; display:flex; align-items:center; justify-content:space-between; gap:10px;">
           <div style="display:flex; align-items:center; gap:8px;">
             <div style="font-weight:800; font-size:0.9rem; color:var(--text-primary);">${displayName}</div>
           </div>
           <span class="subject-stat-badge" style="background:${actColor}22; color:${actColor}; font-weight:800; font-size:0.85rem; padding:4px 8px; border-radius:12px; border:1px solid ${actColor}55;">
-            ${comboCount} combo(s)
+            ${comboCount}
           </span>
         </div>`;
     }).join('');
+
+    const actionsSectionHTML = totalActionCount > 0 ? `
+      <!-- Actions Summary Section -->
+      <div style="margin-bottom:32px; background:var(--bg-card); padding:20px; border-radius:var(--radius-lg); border:1px solid var(--border-color);">
+        <h3 style="font-size:1.3rem; font-weight:800; margin-bottom:16px;">💋 ${getSubjectDisplayName(subject)}'s Actions</h3>
+        <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:12px;">
+          ${actionsGridHTML}
+        </div>
+      </div>` : '';
 
     // Events Gallery Computation
     const subEvents = (currentEventsList || []).filter(e => e.subjectCounts && e.subjectCounts[subject.id]);
@@ -3239,13 +3269,7 @@
         </div>
       </div>
 
-      <!-- Actions Summary Section -->
-      <div style="margin-bottom:32px; background:var(--bg-card); padding:20px; border-radius:var(--radius-lg); border:1px solid var(--border-color);">
-        <h3 style="font-size:1.3rem; font-weight:800; margin-bottom:16px;">💋 ${getSubjectDisplayName(subject)}'s Actions</h3>
-        <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:12px;">
-          ${actionsGridHTML}
-        </div>
-      </div>
+      ${actionsSectionHTML}
 
       <!-- 2 Timeline Analytics Graphs -->
       <h3 style="margin:28px 0 16px 0; font-size:1.3rem; font-weight:800;">📊 Subject Analytics</h3>
@@ -3552,7 +3576,8 @@
           <span style="font-size:1.1rem;">${g.emoji || '📁'}</span>
           <strong>${g.name}</strong>
         </div>
-        <div>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <button class="btn btn-secondary btn-sm rename-group-btn" data-id="${g.id}">✏️ Rename</button>
           ${!g.isBuiltIn ? `<button class="btn btn-danger btn-sm delete-group-btn" data-id="${g.id}">🗑️</button>` : '<span class="text-muted" style="font-size:0.75rem;">Built-in</span>'}
         </div>
       </div>`).join('');
@@ -3581,6 +3606,24 @@
           renderCurrentView();
         }
       });
+    });
+
+    container.querySelectorAll('.rename-group-btn').forEach(btn => {
+      btn.onclick = async () => {
+        const gId = btn.getAttribute('data-id');
+        const group = currentSubjectGroupsList.find(g => g.id === gId);
+        if (!group) return;
+
+        const currentText = group.name.replace(/^[🟤🟣🟢🟡🟠🔴🔵⚪⚫⭐\s]+/g, '').trim();
+        const newText = prompt(`Enter new text for group "${group.name}":\n(The emoji/icon "${group.emoji || '📁'}" will stay fixed)`, currentText);
+        if (newText && newText.trim() && newText.trim() !== currentText) {
+          group.name = `${group.emoji || '📁'} ${newText.trim()}`;
+          await db.setSetting('subjectGroups', currentSubjectGroupsList);
+          await loadAppState();
+          renderGroupsList();
+          renderCurrentView();
+        }
+      };
     });
 
     container.querySelectorAll('.delete-group-btn').forEach(btn => {
@@ -3671,8 +3714,9 @@
         await db.put('subjects', savedSubject);
       });
 
+      activeDetailSubjectId = null;
       await loadAppState();
-      renderCurrentView();
+      switchView('subjectsView');
     }
   }
 
@@ -4173,7 +4217,7 @@
     tableBody.innerHTML = sorted.map(evt => {
       const dateStr = evt.dateTag || new Date(evt.date).toLocaleDateString();
       const actionCode = evt.eventCode || 1;
-      const tagBadge = `<span class="tag-chip-bubble action-tag-${actionCode}">⚡ ${getActionDisplayName(actionCode)}</span>`;
+      const tagBadge = `<span class="tag-chip-bubble action-tag-${actionCode}">${getActionDisplayName(actionCode)}</span>`;
 
       const participants = Object.keys(evt.subjectCounts || {}).map(subId => {
         const sub = currentSubjectsList.find(s => s.id === subId);
@@ -4195,9 +4239,30 @@
           <td>${tagBadge}</td>
           <td>${participants || ''}</td>
           <td>${mediaThumbsHTML}</td>
-          <td><button class="btn btn-danger btn-sm delete-evt-btn" data-evtid="${evt.id}">🗑️</button></td>
+          <td style="text-align:right;">
+            <div class="dropdown-container" style="position:relative; display:inline-block;">
+              <button class="btn btn-secondary btn-sm evt-menu-btn">•••</button>
+              <div class="dropdown-menu evt-dropdown" style="display:none; position:absolute; right:0; top:100%; z-index:10; background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:6px; min-width:160px; box-shadow:var(--shadow-md);">
+                <button class="btn btn-danger btn-sm delete-evt-btn" data-evtid="${evt.id}" style="width:100%; text-align:left;">🗑️ Delete this Event</button>
+              </div>
+            </div>
+          </td>
         </tr>`;
     }).join('');
+
+    tableBody.querySelectorAll('.evt-menu-btn').forEach(btn => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        const dropdown = btn.nextElementSibling;
+        const isShown = dropdown.style.display === 'block';
+        document.querySelectorAll('.evt-dropdown').forEach(d => d.style.display = 'none');
+        if (!isShown) dropdown.style.display = 'block';
+      };
+    });
+
+    document.addEventListener('click', () => {
+      document.querySelectorAll('.evt-dropdown').forEach(d => d.style.display = 'none');
+    });
 
     tableBody.querySelectorAll('.evt-media-thumb').forEach(thumb => {
       thumb.onclick = (e) => {
