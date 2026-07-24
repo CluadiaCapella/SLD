@@ -1316,6 +1316,9 @@
   let subjectDetailComboSortHistory = ['eventPoints', 'action', 'heartPoints'];
   let subjectDetailMediaSortHistory = ['totalPoints', 'pink', 'grey'];
 
+  let subjectAlikeSortKey = 'percentage';
+  let subjectAlikeSortDir = 'desc';
+
   let wizardEventDate = null;
   let wizardSubjectCountsMap = new Map();
   let wizardSelectedActionCode = 1;
@@ -3558,10 +3561,121 @@
         </div>`;
     }).join('') : '<p class="text-muted" style="padding:12px 0;">No matching events found.</p>';
 
-    const heroMediaBg = subject.avatarUrl || (taggedMedia[0] ? (taggedMedia[0].customThumbnail || taggedMedia[0].dataUrl || taggedMedia[0].filename) : null);
-    const heroCardBgStyle = heroMediaBg 
-      ? `position:relative; overflow:hidden; background: linear-gradient(135deg, rgba(15, 23, 42, 0.88) 0%, rgba(2, 6, 23, 0.95) 100%), url('${heroMediaBg}') center/cover no-repeat; border:1px solid var(--border-color); border-radius:var(--radius-lg); padding:24px; text-align:left; margin-bottom:24px; box-shadow:var(--shadow-md); backdrop-filter:blur(10px);`
-      : `background: linear-gradient(135deg, ${groupColor}22 0%, var(--bg-card) 65%); border:1px solid var(--border-color); border-radius:var(--radius-lg); padding:24px; text-align:left; margin-bottom:24px;`;
+    // -------------------------------------------------------------------------
+    // Subject Alikes List & Calculation
+    // -------------------------------------------------------------------------
+    subject.alikeSubjects = subject.alikeSubjects || [];
+    let alikeList = [...subject.alikeSubjects];
+
+    alikeList.sort((a, b) => {
+      const aTargetSStat = stats.allSubjectStats.find(s => s.subject.id === a.targetSubjectId) || { totalPoints: 0, heartPoints: 0 };
+      const bTargetSStat = stats.allSubjectStats.find(s => s.subject.id === b.targetSubjectId) || { totalPoints: 0, heartPoints: 0 };
+      const aPts = ((a.percentage || 0) / 100) * 0.45 * (aTargetSStat.heartPoints || aTargetSStat.totalPoints || 0);
+      const bPts = ((b.percentage || 0) / 100) * 0.45 * (bTargetSStat.heartPoints || bTargetSStat.totalPoints || 0);
+
+      let comp = 0;
+      if (subjectAlikeSortKey === 'percentage') {
+        comp = (a.percentage || 0) - (b.percentage || 0);
+      } else if (subjectAlikeSortKey === 'sldPoints') {
+        comp = aPts - bPts;
+      }
+      return subjectAlikeSortDir === 'asc' ? comp : -comp;
+    });
+
+    const alikeCardsHTML = alikeList.length > 0 ? alikeList.map(item => {
+      const targetSub = currentSubjectsList.find(s => s.id === item.targetSubjectId);
+      if (!targetSub) return '';
+      const targetSStat = stats.allSubjectStats.find(s => s.subject.id === item.targetSubjectId) || { totalPoints: 0, heartPoints: 0 };
+      const targetSldPts = targetSStat.heartPoints || targetSStat.totalPoints || 0;
+      const pct = item.percentage || 15.0;
+      const calculatedPts = (pct / 100) * 0.45 * targetSldPts;
+
+      const targetGroup = getSubjectGroup(targetSub.groupId);
+      const bClass = targetGroup?.cssClass || '';
+      const targetTagged = currentMediaList.filter(m => m.subjectTags?.includes(targetSub.id));
+
+      const mainThumbHTML = targetSub.avatarUrl 
+        ? `<img src="${targetSub.avatarUrl}" class="combination-main-thumb ${bClass}" style="width:100%; height:160px; object-fit:cover; object-position:top center;">`
+        : targetTagged[0]
+          ? renderMediaThumbnailHTML(targetTagged[0], `combination-main-thumb ${bClass}`)
+          : `<div class="combination-main-thumb ${bClass}" style="width:100%; height:160px; display:flex; align-items:center; justify-content:center; font-size:48px; background:var(--bg-secondary);">👤</div>`;
+
+      return `
+        <div class="subject-card ${bClass}" style="position:relative; background:var(--bg-secondary); border-radius:var(--radius-lg); overflow:hidden; border:1px solid var(--border-color); width:180px;">
+          ${mainThumbHTML}
+          <button class="btn btn-danger btn-sm remove-alike-btn" data-targetid="${item.targetSubjectId}" style="position:absolute; top:6px; right:6px; z-index:5; padding:2px 6px; font-size:0.75rem; border-radius:50%; opacity:0.9;">✖</button>
+          
+          <div style="position:absolute; bottom:0; left:0; right:0; background:linear-gradient(to top, rgba(2,6,23,0.95) 0%, rgba(2,6,23,0.75) 75%, transparent 100%); padding:8px; display:flex; flex-direction:column; gap:4px; z-index:4;">
+            <div style="font-weight:800; font-size:0.85rem; color:#fff; text-shadow:0 1px 3px #000; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:center;">
+              ${getSubjectDisplayName(targetSub)}
+            </div>
+            
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:4px;">
+              <div style="display:flex; align-items:center; gap:1px; background:rgba(168,85,247,0.3); border:1px solid #a855f7; border-radius:6px; padding:1px 4px; font-weight:800; font-size:0.75rem; color:#e9d5ff;">
+                <span>🪞</span>
+                <input type="number" step="0.1" min="0.1" max="99.9" class="input-text btn-sm edit-alike-pct-input" data-targetid="${item.targetSubjectId}" value="${pct}" style="width:44px; padding:0; text-align:center; font-size:0.75rem; background:transparent; border:none; color:#fff; font-weight:800;">
+                <span>%</span>
+              </div>
+              <span style="background:rgba(56,189,248,0.3); border:1px solid #38bdf8; border-radius:6px; padding:2px 4px; font-weight:800; font-size:0.7rem; color:#7dd3fc;" title="${pct}% * 0.45 * ${targetSldPts} SLD Pts">
+                ⭐ ${calculatedPts.toFixed(1)}
+              </span>
+            </div>
+          </div>
+        </div>`;
+    }).join('') : '<p class="text-muted" style="grid-column: 1 / -1;">No Alike subjects added yet.</p>';
+
+    // -------------------------------------------------------------------------
+    // Subject Thoughts List
+    // -------------------------------------------------------------------------
+    subject.thoughtSubjects = subject.thoughtSubjects || [];
+    let thoughtsList = [...subject.thoughtSubjects];
+
+    const thoughtCardsHTML = thoughtsList.length > 0 ? thoughtsList.map(item => {
+      const targetSub = currentSubjectsList.find(s => s.id === item.targetSubjectId);
+      if (!targetSub) return '';
+      const targetGroup = getSubjectGroup(targetSub.groupId);
+      const bClass = targetGroup?.cssClass || '';
+      const targetTagged = currentMediaList.filter(m => m.subjectTags?.includes(targetSub.id));
+
+      const beauty = item.beauty ?? 0;
+      const hotness = item.hotness ?? 0;
+      const personality = item.personality ?? 0;
+
+      const mainThumbHTML = targetSub.avatarUrl 
+        ? `<img src="${targetSub.avatarUrl}" class="combination-main-thumb ${bClass}" style="width:100%; height:170px; object-fit:cover; object-position:top center;">`
+        : targetTagged[0]
+          ? renderMediaThumbnailHTML(targetTagged[0], `combination-main-thumb ${bClass}`)
+          : `<div class="combination-main-thumb ${bClass}" style="width:100%; height:170px; display:flex; align-items:center; justify-content:center; font-size:48px; background:var(--bg-secondary);">👤</div>`;
+
+      return `
+        <div class="subject-card ${bClass}" style="position:relative; background:var(--bg-secondary); border-radius:var(--radius-lg); overflow:hidden; border:1px solid var(--border-color); width:180px;">
+          ${mainThumbHTML}
+          <button class="btn btn-danger btn-sm remove-thought-btn" data-targetid="${item.targetSubjectId}" style="position:absolute; top:6px; right:6px; z-index:5; padding:2px 6px; font-size:0.75rem; border-radius:50%; opacity:0.9;">✖</button>
+          
+          <div style="position:absolute; bottom:0; left:0; right:0; background:linear-gradient(to top, rgba(2,6,23,0.95) 0%, rgba(2,6,23,0.75) 75%, transparent 100%); padding:8px; display:flex; flex-direction:column; gap:4px; z-index:4;">
+            <div style="font-weight:800; font-size:0.85rem; color:#fff; text-shadow:0 1px 3px #000; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:center;">
+              ${getSubjectDisplayName(targetSub)}
+            </div>
+            
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:3px;">
+              <div style="display:flex; flex-direction:column; align-items:center; background:rgba(56,189,248,0.25); border:1px solid #38bdf8; border-radius:4px; padding:2px 2px; flex:1;" title="Beauty (Blue)">
+                <span style="font-size:0.65rem; color:#7dd3fc; font-weight:700;">💙 Bty</span>
+                <input type="number" step="1" class="input-text btn-sm edit-thought-beauty-input" data-targetid="${item.targetSubjectId}" value="${beauty}" style="width:100%; padding:0; text-align:center; font-size:0.75rem; background:transparent; border:none; color:#fff; font-weight:800;">
+              </div>
+
+              <div style="display:flex; flex-direction:column; align-items:center; background:rgba(239,68,68,0.25); border:1px solid #ef4444; border-radius:4px; padding:2px 2px; flex:1;" title="Hotness (Red)">
+                <span style="font-size:0.65rem; color:#fca5a5; font-weight:700;">❤️ Hot</span>
+                <input type="number" step="1" class="input-text btn-sm edit-thought-hotness-input" data-targetid="${item.targetSubjectId}" value="${hotness}" style="width:100%; padding:0; text-align:center; font-size:0.75rem; background:transparent; border:none; color:#fff; font-weight:800;">
+              </div>
+
+              <div style="display:flex; flex-direction:column; align-items:center; background:rgba(34,197,94,0.25); border:1px solid #22c55e; border-radius:4px; padding:2px 2px; flex:1;" title="Personality (Green)">
+                <span style="font-size:0.65rem; color:#86efac; font-weight:700;">💚 Psn</span>
+                <input type="number" step="1" class="input-text btn-sm edit-thought-personality-input" data-targetid="${item.targetSubjectId}" value="${personality}" style="width:100%; padding:0; text-align:center; font-size:0.75rem; background:transparent; border:none; color:#fff; font-weight:800;">
+              </div>
+            </div>
+          </div>
+        </div>`;
+    }).join('') : '<p class="text-muted" style="grid-column: 1 / -1;">No Thought subjects added yet.</p>';
 
     container.innerHTML = `
       <button class="btn btn-secondary btn-sm" id="backToSubjectsBtn" style="margin-bottom:16px;">← Back to Subjects</button>
@@ -3704,6 +3818,43 @@
               </div>
             </div>`;
         }).join('') : '<p class="text-muted" style="grid-column: 1 / -1;">No subject combinations found.</p>'}
+      </div>
+
+      <!-- 🪞 Subject Alikes Section -->
+      <div style="background:var(--bg-card); padding:20px; border-radius:var(--radius-lg); border:1px solid var(--border-color); margin-bottom:32px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">
+          <h3 style="font-size:1.3rem; font-weight:800; margin:0;">🪞 ${getSubjectDisplayName(subject)}'s Alikes (${alikeList.length})</h3>
+          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+            <div style="display:flex; gap:6px; align-items:center;">
+              <span class="text-muted" style="font-size:0.8rem; font-weight:700;">Sort:</span>
+              <button class="btn btn-secondary btn-sm alike-sort-btn ${subjectAlikeSortKey === 'percentage' ? 'active' : ''}" data-sort="percentage">🪞 % Alike</button>
+              <button class="btn btn-secondary btn-sm alike-sort-btn ${subjectAlikeSortKey === 'sldPoints' ? 'active' : ''}" data-sort="sldPoints">📘 SLD Points</button>
+            </div>
+            <div class="subject-autocomplete-container" style="min-width:200px;">
+              <input type="text" id="subPageAlikeInput" class="input-text btn-sm" placeholder="+ Add Alike subject..." style="width:100%;">
+              <div id="subPageAlikeAutocomplete" class="subject-autocomplete-dropdown"></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap:16px;">
+          ${alikeCardsHTML}
+        </div>
+      </div>
+
+      <!-- 💭 Subject Thoughts Section -->
+      <div style="background:var(--bg-card); padding:20px; border-radius:var(--radius-lg); border:1px solid var(--border-color); margin-bottom:32px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">
+          <h3 style="font-size:1.3rem; font-weight:800; margin:0;">💭 ${getSubjectDisplayName(subject)}'s Thoughts (${thoughtsList.length})</h3>
+          <div class="subject-autocomplete-container" style="min-width:200px;">
+            <input type="text" id="subPageThoughtInput" class="input-text btn-sm" placeholder="+ Add Thought subject..." style="width:100%;">
+            <div id="subPageThoughtAutocomplete" class="subject-autocomplete-dropdown"></div>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap:16px;">
+          ${thoughtCardsHTML}
+        </div>
       </div>
 
       <!-- Tagged Photos & Videos Section -->
@@ -3913,6 +4064,109 @@
         e.stopPropagation();
         const mediaId = card.getAttribute('data-id');
         if (mediaId) openLightboxById(mediaId, false, { type: 'subject', id: subject.id, name: getSubjectDisplayName(subject) });
+      };
+    });
+
+    // Alikes Autocomplete, Sort, Edit, Remove
+    setupSmartSubjectAutocomplete('subPageAlikeInput', 'subPageAlikeAutocomplete', async (targetSubId) => {
+      if (targetSubId === subject.id) return;
+      subject.alikeSubjects = subject.alikeSubjects || [];
+      if (!subject.alikeSubjects.some(a => a.targetSubjectId === targetSubId)) {
+        subject.alikeSubjects.push({ targetSubjectId: targetSubId, percentage: 15.0 });
+        await db.put('subjects', subject);
+        await loadAppState();
+        renderSubjectDetailsPage(stats);
+      }
+    });
+
+    container.querySelectorAll('.alike-sort-btn').forEach(btn => {
+      btn.onclick = () => {
+        const k = btn.getAttribute('data-sort');
+        if (subjectAlikeSortKey === k) {
+          subjectAlikeSortDir = subjectAlikeSortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+          subjectAlikeSortKey = k;
+          subjectAlikeSortDir = 'desc';
+        }
+        renderSubjectDetailsPage(stats);
+      };
+    });
+
+    container.querySelectorAll('.edit-alike-pct-input').forEach(input => {
+      input.onclick = (e) => e.stopPropagation();
+      input.onchange = async (e) => {
+        const targetId = input.getAttribute('data-targetid');
+        let val = parseFloat(e.target.value);
+        if (isNaN(val) || val < 0.1) val = 0.1;
+        if (val > 99.9) val = 99.9;
+        val = Math.round(val * 10) / 10;
+        input.value = val;
+
+        subject.alikeSubjects = subject.alikeSubjects || [];
+        const item = subject.alikeSubjects.find(a => a.targetSubjectId === targetId);
+        if (item) {
+          item.percentage = val;
+          await db.put('subjects', subject);
+          await loadAppState();
+          renderSubjectDetailsPage(stats);
+        }
+      };
+    });
+
+    container.querySelectorAll('.remove-alike-btn').forEach(btn => {
+      btn.onclick = async (e) => {
+        e.stopPropagation();
+        const targetId = btn.getAttribute('data-targetid');
+        subject.alikeSubjects = (subject.alikeSubjects || []).filter(a => a.targetSubjectId !== targetId);
+        await db.put('subjects', subject);
+        await loadAppState();
+        renderSubjectDetailsPage(stats);
+      };
+    });
+
+    // Thoughts Autocomplete, Edit, Remove
+    setupSmartSubjectAutocomplete('subPageThoughtInput', 'subPageThoughtAutocomplete', async (targetSubId) => {
+      if (targetSubId === subject.id) return;
+      subject.thoughtSubjects = subject.thoughtSubjects || [];
+      if (!subject.thoughtSubjects.some(t => t.targetSubjectId === targetSubId)) {
+        subject.thoughtSubjects.push({ targetSubjectId: targetSubId, beauty: 0, hotness: 0, personality: 0 });
+        await db.put('subjects', subject);
+        await loadAppState();
+        renderSubjectDetailsPage(stats);
+      }
+    });
+
+    const bindThoughtEdit = (selector, field) => {
+      container.querySelectorAll(selector).forEach(input => {
+        input.onclick = (e) => e.stopPropagation();
+        input.onchange = async (e) => {
+          const targetId = input.getAttribute('data-targetid');
+          let val = parseInt(e.target.value, 10);
+          if (isNaN(val)) val = 0;
+          input.value = val;
+
+          subject.thoughtSubjects = subject.thoughtSubjects || [];
+          const item = subject.thoughtSubjects.find(t => t.targetSubjectId === targetId);
+          if (item) {
+            item[field] = val;
+            await db.put('subjects', subject);
+          }
+        };
+      });
+    };
+
+    bindThoughtEdit('.edit-thought-beauty-input', 'beauty');
+    bindThoughtEdit('.edit-thought-hotness-input', 'hotness');
+    bindThoughtEdit('.edit-thought-personality-input', 'personality');
+
+    container.querySelectorAll('.remove-thought-btn').forEach(btn => {
+      btn.onclick = async (e) => {
+        e.stopPropagation();
+        const targetId = btn.getAttribute('data-targetid');
+        subject.thoughtSubjects = (subject.thoughtSubjects || []).filter(t => t.targetSubjectId !== targetId);
+        await db.put('subjects', subject);
+        await loadAppState();
+        renderSubjectDetailsPage(stats);
       };
     });
   }
