@@ -105,7 +105,8 @@
             <button class="btn btn-secondary btn-sm" id="toggleSelectionAiBtn">🤖 AI</button>
             <div class="dropdown-container" id="mediaBatchMenuContainer" style="position:relative;">
               <button class="btn btn-secondary btn-sm" id="mediaBatchMenuBtn">•••</button>
-              <div class="dropdown-menu" id="mediaBatchDropdown" style="display:none; position:absolute; right:0; top:100%; z-index:10; background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:6px; min-width:150px; box-shadow:var(--shadow-md);">
+              <div class="dropdown-menu" id="mediaBatchDropdown" style="display:none; position:absolute; right:0; top:100%; z-index:10; background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:6px; min-width:160px; box-shadow:var(--shadow-md);">
+                <button class="btn btn-secondary btn-sm" id="exportSelectedMediaBtn" style="width:100%; text-align:left; margin-bottom:4px;">📥 Export Selected Files</button>
                 <button class="btn btn-danger btn-sm" id="deleteSelectedMediaBtn" style="width:100%; text-align:left;">🗑️ Delete Selected</button>
               </div>
             </div>
@@ -493,6 +494,83 @@
           <button class="btn btn-secondary btn-sm" id="regenerateThumbnailsBtn" style="margin-top:10px;">🔄 Regenerate All Thumbnails</button>
         </div>
 
+        <!-- 🌐 Peer-to-Peer Device Sync Card -->
+        <div class="chart-card">
+          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+            <div>
+              <h3 style="margin:0;">🌐 Peer-to-Peer Device Sync</h3>
+              <p class="text-muted" style="font-size:0.85rem; margin-top:4px;">Connect devices directly over LAN, Wi-Fi, or Tailscale. Sync profiles, settings, tags, events, and media in real time without a server.</p>
+            </div>
+            <span id="p2pSyncStatusBadge" class="subject-stat-badge" style="background:rgba(255,255,255,0.1); color:var(--text-muted); border:1px solid var(--border-color);">⚪ Disconnected</span>
+          </div>
+
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:16px; margin-top:16px; background:var(--bg-secondary); padding:16px; border-radius:var(--radius-md); border:1px solid var(--border-color);">
+            <div>
+              <label class="form-label" style="font-size:0.8rem; margin-bottom:4px;">Your Device Name</label>
+              <input type="text" id="syncDeviceNameInput" class="input-text btn-sm" value="Device 1" placeholder="e.g. MacBook Pro" style="width:100%;">
+            </div>
+
+            <div>
+              <label class="form-label" style="font-size:0.8rem; margin-bottom:4px;">Generate Pairing Link / Code</label>
+              <button class="btn btn-primary btn-sm" id="generatePairCodeBtn" style="width:100%;">⚡ Generate Pair Code</button>
+            </div>
+
+            <div>
+              <label class="form-label" style="font-size:0.8rem; margin-bottom:4px;">Connect to Peer Device</label>
+              <div style="display:flex; gap:6px;">
+                <input type="text" id="connectPeerCodeInput" class="input-text btn-sm" placeholder="Paste Pair Code / Key..." style="flex:1;">
+                <button class="btn btn-accent-blue btn-sm" id="connectPeerBtn">🔗 Connect</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pair Code Display Box -->
+          <div id="pairCodeDisplayArea" style="display:none; margin-top:14px; background:rgba(56,189,248,0.1); border:1px solid #38bdf8; border-radius:var(--radius-md); padding:12px;">
+            <div style="font-size:0.85rem; font-weight:800; color:#7dd3fc; margin-bottom:6px;">📋 Share this Pair Code with your second device:</div>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <input type="text" id="activePairCodeInput" class="input-text btn-sm" readonly style="flex:1; font-family:monospace; font-size:0.8rem; background:rgba(0,0,0,0.5); color:#fff;">
+              <button class="btn btn-secondary btn-sm" id="copyPairCodeBtn">📋 Copy</button>
+            </div>
+            <p class="text-muted" style="font-size:0.75rem; margin-top:6px; margin-bottom:0;">Open SLD on your second device, paste this code under "Connect to Peer Device", and click Connect.</p>
+          </div>
+
+          <!-- Connected Peers List -->
+          <div style="margin-top:16px;">
+            <h4 style="font-size:0.95rem; font-weight:800; margin-bottom:8px;">📱 Connected Devices</h4>
+            <div id="connectedPeersList" style="display:flex; flex-direction:column; gap:8px;">
+              <p class="text-muted" style="font-size:0.8rem; margin:0;">No devices paired currently.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 💾 Storage Allowance & Limits Card -->
+        <div class="chart-card">
+          <h3>💾 Device Storage Allowance & Limits</h3>
+          <p class="text-muted" style="font-size:0.85rem; margin-top:4px;">Set maximum IndexedDB disk space allowance for background high-resolution media sync on this device.</p>
+          <div style="display:flex; align-items:center; gap:16px; margin-top:12px; flex-wrap:wrap;">
+            <div class="form-group" style="min-width:200px;">
+              <label class="form-label" style="font-size:0.8rem;">Max Media Storage Limit</label>
+              <select id="maxStorageLimitSelect" class="select-input btn-sm">
+                <option value="1">1 GB</option>
+                <option value="2">2 GB</option>
+                <option value="5" selected>5 GB</option>
+                <option value="10">10 GB</option>
+                <option value="50">50 GB</option>
+                <option value="unlimited">Unlimited (No Limit)</option>
+              </select>
+            </div>
+            <div style="flex:1; min-width:220px; background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:10px 14px;">
+              <div style="display:flex; justify-content:space-between; font-size:0.8rem; font-weight:700; margin-bottom:4px;">
+                <span>Disk Usage:</span>
+                <span id="storageUsageText" style="color:var(--accent-pink);">Calculating...</span>
+              </div>
+              <div style="background:rgba(0,0,0,0.3); border-radius:6px; height:8px; overflow:hidden;">
+                <div id="storageUsageBar" style="width:0%; height:100%; background:linear-gradient(90deg, var(--accent-blue), var(--accent-pink)); transition:width 0.3s ease;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="chart-card">
           <h3>🖼️ Collections Manager</h3>
           <p class="text-muted" style="font-size:0.85rem; margin-top:4px;">Manage, export, import, duplicate, or drag-and-merge media collections.</p>
@@ -619,6 +697,7 @@
     <div class="lightbox-header">
       <div id="lightboxTitle" style="font-weight:700; color:#fff;"></div>
       <div style="display:flex; align-items:center; gap:12px;">
+        <button class="btn btn-secondary btn-sm" id="lbDownloadOriginalBtn">📥 Download Original</button>
         <button class="btn btn-secondary btn-sm" id="lbEditThumbnailBtn">✂️ Edit Thumbnail</button>
         <span id="lightboxCounter" class="text-muted" style="font-size:0.85rem;"></span>
         <button class="btn btn-secondary btn-sm" id="closeLightboxBtn">✖ Close</button>

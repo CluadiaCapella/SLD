@@ -5950,13 +5950,438 @@
     }
   }
 
+  /* ==========================================================================
+     MEDIA EXPORTER & DOWNLOADER
+     ========================================================================== */
+  async function downloadSingleMediaFile(mediaId) {
+    const m = currentMediaList.find(item => item.id === mediaId) || await db.get('media', mediaId);
+    if (!m || !m.dataUrl) {
+      alert('Original media content not available for download.');
+      return;
+    }
+
+    try {
+      const a = document.createElement('a');
+      a.href = m.dataUrl;
+      a.download = m.filename || `media_${mediaId}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error('Download error:', err);
+      alert('Failed to download media file.');
+    }
+  }
+
+  async function exportSelectedMediaFiles() {
+    if (selectedMediaIds.size === 0) {
+      alert('No media files selected for export.');
+      return;
+    }
+
+    const selectedList = currentMediaList.filter(m => selectedMediaIds.has(m.id));
+    if (selectedList.length === 1) {
+      downloadSingleMediaFile(selectedList[0].id);
+      return;
+    }
+
+    for (let i = 0; i < selectedList.length; i++) {
+      const m = selectedList[i];
+      downloadSingleMediaFile(m.id);
+      await new Promise(r => setTimeout(r, 250));
+    }
+  }
+
+  /* ==========================================================================
+     STORAGE LIMITS & USAGE GAUGE
+     ========================================================================== */
+  let maxStorageLimitGb = 5;
+
+  async function updateStorageGauge() {
+    const textEl = document.getElementById('storageUsageText');
+    const barEl = document.getElementById('storageUsageBar');
+    const selectEl = document.getElementById('maxStorageLimitSelect');
+
+    const savedLimit = await db.getSetting('maxStorageLimitGb');
+    if (savedLimit !== null && savedLimit !== undefined) {
+      maxStorageLimitGb = savedLimit;
+      if (selectEl) selectEl.value = String(savedLimit);
+    }
+
+    if ('storage' in navigator && 'estimate' in navigator.storage) {
+      try {
+        const est = await navigator.storage.estimate();
+        const usageMb = (est.usage || 0) / (1024 * 1024);
+        const usageGb = usageMb / 1024;
+        const quotaGb = (est.quota || 0) / (1024 * 1024 * 1024);
+
+        let limitDisplay = maxStorageLimitGb === 'unlimited' ? `${quotaGb.toFixed(1)} GB Quota` : `${maxStorageLimitGb} GB Limit`;
+        if (textEl) textEl.textContent = `${usageMb < 1000 ? usageMb.toFixed(1) + ' MB' : usageGb.toFixed(2) + ' GB'} / ${limitDisplay}`;
+
+        let pct = 0;
+        if (maxStorageLimitGb === 'unlimited') {
+          pct = quotaGb > 0 ? (usageGb / quotaGb) * 100 : 0;
+        } else {
+          pct = (usageGb / parseFloat(maxStorageLimitGb)) * 100;
+        }
+        if (barEl) barEl.style.width = `${Math.min(100, Math.max(2, pct))}%`;
+      } catch (err) {
+        if (textEl) textEl.textContent = 'Storage Estimate Unavailable';
+      }
+    } else if (textEl) {
+      textEl.textContent = 'Storage API Unsupported';
+    }
+  }
+
+  /* ==========================================================================
+     WEBRTC PEER-TO-PEER SYNC ENGINE
+     ========================================================================== */
+  let rtcPeerConnection = null;
+  let rtcDataChannel = null;
+  let isP2pConnected = false;
+  let p2pDeviceName = 'Device 1';
+
+  const RTC_CONFIG = {
+    iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' }
+    ]
+  };
+
+  function updateP2pStatusUI(status, text) {
+    const badge = document.getElementById('p2pSyncStatusBadge');
+    if (!badge) return;
+
+    if (status === 'connected') {
+      badge.textContent = `🟢 Connected (${text || 'Live Sync'})`;
+      badge.style.background = 'rgba(34,197,94,0.2)';
+      badge.style.color = '#22c55e';
+      badge.style.borderColor = '#22c55e';
+    } else if (status === 'connecting') {
+      badge.textContent = `🟡 ${text || 'Connecting...'}`;
+      badge.style.background = 'rgba(234,179,8,0.2)';
+      badge.style.color = '#eab308';
+      badge.style.borderColor = '#eab308';
+    } else {
+      badge.textContent = '⚪ Disconnected';
+      badge.style.background = 'rgba(255,255,255,0.1)';
+      badge.style.color = 'var(--text-muted)';
+      badge.style.borderColor = 'var(--border-color)';
+    }
+  }
+
+  function setupDataChannelEvents(channel) {
+    rtcDataChannel = channel;
+
+    channel.onopen = () => {
+      isP2pConnected = true;
+      updateP2pStatusUI('connected', p2pDeviceName || 'Peer');
+      renderConnectedPeersUI();
+
+      sendP2pMessage({
+        type: 'handshake',
+        deviceName: p2pDeviceName,
+        timestamp: Date.now()
+      });
+      triggerPriorityQueueSync();
+    };
+
+    channel.onclose = () => {
+      isP2pConnected = false;
+      updateP2pStatusUI('disconnected');
+      renderConnectedPeersUI();
+    };
+
+    channel.onmessage = async (evt) => {
+      try {
+        const msg = JSON.parse(evt.data);
+        await handleIncomingP2pMessage(msg);
+      } catch (err) {
+        console.error('Failed to parse incoming P2P message:', err);
+      }
+    };
+  }
+
+  function renderConnectedPeersUI() {
+    const container = document.getElementById('connectedPeersList');
+    if (!container) return;
+
+    if (!isP2pConnected) {
+      container.innerHTML = '<p class="text-muted" style="font-size:0.8rem; margin:0;">No devices paired currently.</p>';
+      return;
+    }
+
+    container.innerHTML = `
+      <div style="background:var(--bg-primary); padding:10px 14px; border-radius:var(--radius-md); border:1px solid #22c55e; display:flex; align-items:center; justify-content:space-between;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:1.2rem;">💻</span>
+          <div>
+            <div style="font-weight:800; font-size:0.85rem; color:#fff;">${p2pDeviceName}</div>
+            <div style="font-size:0.75rem; color:#86efac;">🟢 Connected & Synced</div>
+          </div>
+        </div>
+        <button class="btn btn-danger btn-sm" id="disconnectP2pBtn">Disconnect</button>
+      </div>`;
+
+    document.getElementById('disconnectP2pBtn')?.addEventListener('click', disconnectP2p);
+  }
+
+  function disconnectP2p() {
+    if (rtcDataChannel) rtcDataChannel.close();
+    if (rtcPeerConnection) rtcPeerConnection.close();
+    rtcDataChannel = null;
+    rtcPeerConnection = null;
+    isP2pConnected = false;
+    updateP2pStatusUI('disconnected');
+    renderConnectedPeersUI();
+  }
+
+  function sendP2pMessage(msgObj) {
+    if (rtcDataChannel && rtcDataChannel.readyState === 'open') {
+      rtcDataChannel.send(JSON.stringify(msgObj));
+    }
+  }
+
+  async function generatePairCode() {
+    updateP2pStatusUI('connecting', 'Generating Pairing SDP...');
+    rtcPeerConnection = new RTCPeerConnection(RTC_CONFIG);
+    const channel = rtcPeerConnection.createDataChannel('sld-sync-channel');
+    setupDataChannelEvents(channel);
+
+    const candidates = [];
+    rtcPeerConnection.onicecandidate = (e) => {
+      if (e.candidate) candidates.push(e.candidate);
+    };
+
+    const offer = await rtcPeerConnection.createOffer();
+    await rtcPeerConnection.setLocalDescription(offer);
+
+    await new Promise(r => setTimeout(r, 1000));
+
+    const payload = {
+      offer: rtcPeerConnection.localDescription,
+      candidates,
+      deviceName: document.getElementById('syncDeviceNameInput')?.value || 'Device 1'
+    };
+
+    const encodedCode = btoa(JSON.stringify(payload));
+    const codeArea = document.getElementById('pairCodeDisplayArea');
+    const inputEl = document.getElementById('activePairCodeInput');
+
+    if (codeArea && inputEl) {
+      inputEl.value = encodedCode;
+      codeArea.style.display = 'block';
+    }
+    updateP2pStatusUI('connecting', 'Awaiting Peer Connection...');
+  }
+
+  async function connectToPeer(codeStr) {
+    if (!codeStr || !codeStr.trim()) { alert('Please enter a valid Pair Code.'); return; }
+    try {
+      updateP2pStatusUI('connecting', 'Connecting to Peer...');
+      const payload = JSON.parse(atob(codeStr.trim()));
+
+      if (payload.offer) {
+        rtcPeerConnection = new RTCPeerConnection(RTC_CONFIG);
+        rtcPeerConnection.ondatachannel = (e) => setupDataChannelEvents(e.channel);
+
+        rtcPeerConnection.onicecandidate = (e) => {
+          if (e.candidate) {
+            sendP2pMessage({ type: 'candidate', candidate: e.candidate });
+          }
+        };
+
+        await rtcPeerConnection.setRemoteDescription(new RTCSessionDescription(payload.offer));
+        if (payload.candidates) {
+          for (const c of payload.candidates) {
+            await rtcPeerConnection.addIceCandidate(new RTCIceCandidate(c));
+          }
+        }
+
+        const answer = await rtcPeerConnection.createAnswer();
+        await rtcPeerConnection.setLocalDescription(answer);
+
+        await new Promise(r => setTimeout(r, 1000));
+
+        const answerPayload = {
+          answer: rtcPeerConnection.localDescription,
+          deviceName: document.getElementById('syncDeviceNameInput')?.value || 'Device 2'
+        };
+
+        const answerCode = btoa(JSON.stringify(answerPayload));
+        const codeArea = document.getElementById('pairCodeDisplayArea');
+        const inputEl = document.getElementById('activePairCodeInput');
+
+        if (codeArea && inputEl) {
+          inputEl.value = answerCode;
+          codeArea.style.display = 'block';
+          alert('Copy this Answer Code back to Device 1 to finalize pairing!');
+        }
+      } else if (payload.answer) {
+        if (!rtcPeerConnection) {
+          alert('Please click "Generate Pair Code" on this machine first before connecting the answer.');
+          return;
+        }
+        await rtcPeerConnection.setRemoteDescription(new RTCSessionDescription(payload.answer));
+      }
+    } catch (err) {
+      console.error('Peer connection error:', err);
+      alert('Error connecting to peer. Please verify the pair code.');
+      updateP2pStatusUI('disconnected');
+    }
+  }
+
+  /* PRIORITY SYNC QUEUE HANDLER */
+  async function triggerPriorityQueueSync() {
+    if (!isP2pConnected) return;
+
+    // Priority 1: Settings, Profiles, Subjects, Groups, Action Maps, Prefixes
+    const subjects = await db.getAll('subjects');
+    const groups = await db.getAll('subjectGroups');
+    const actionPointsMap = await db.getSetting('actionPointsMap');
+    const medalSettings = await db.getSetting('medalSettings');
+
+    sendP2pMessage({
+      type: 'sync_priority_1',
+      payload: { subjects, groups, actionPointsMap, medalSettings }
+    });
+
+    // Priority 2: Events
+    const events = await db.getAll('events');
+    sendP2pMessage({
+      type: 'sync_priority_2',
+      payload: { events }
+    });
+
+    // Priority 3: Media Metadata & Thumbnails (Unified Package)
+    const activeMedia = await db.getActiveMedia();
+    const metadataAndThumbsPackage = activeMedia.map(m => ({
+      id: m.id,
+      profileId: m.profileId,
+      collectionId: m.collectionId,
+      filename: m.filename,
+      type: m.type,
+      thumbnailUrl: m.thumbnailUrl || m.customThumbnail,
+      customThumbnail: m.customThumbnail || null,
+      hash: m.hash,
+      blueBookEvents: m.blueBookEvents || [],
+      subjectTags: m.subjectTags || [],
+      normalTags: m.normalTags || [],
+      viewTransform: m.viewTransform || {}
+    }));
+
+    sendP2pMessage({
+      type: 'sync_priority_3',
+      payload: { media: metadataAndThumbsPackage }
+    });
+
+    // Priority 4: Background High-Res Media File Blobs (Chunked Sequential Transfer)
+    setTimeout(async () => {
+      for (const m of activeMedia) {
+        if (!isP2pConnected) break;
+        if (m.dataUrl) {
+          sendP2pMessage({
+            type: 'sync_priority_4_media_chunk',
+            payload: { id: m.id, dataUrl: m.dataUrl }
+          });
+          await new Promise(r => setTimeout(r, 100));
+        }
+      }
+    }, 1500);
+  }
+
+  async function handleIncomingP2pMessage(msg) {
+    if (!msg || !msg.type) return;
+
+    if (msg.type === 'handshake') {
+      p2pDeviceName = msg.deviceName || 'Sibling Device';
+      updateP2pStatusUI('connected', p2pDeviceName);
+      renderConnectedPeersUI();
+    } else if (msg.type === 'candidate') {
+      if (rtcPeerConnection && msg.candidate) {
+        try { await rtcPeerConnection.addIceCandidate(new RTCIceCandidate(msg.candidate)); } catch (e) {}
+      }
+    } else if (msg.type === 'sync_priority_1') {
+      const { subjects, groups, actionPointsMap, medalSettings } = msg.payload || {};
+      if (subjects) for (const s of subjects) await db.put('subjects', s);
+      if (groups) for (const g of groups) await db.put('subjectGroups', g);
+      if (actionPointsMap) await db.setSetting('actionPointsMap', actionPointsMap);
+      if (medalSettings) await db.setSetting('medalSettings', medalSettings);
+      await loadAppState();
+      renderCurrentView();
+    } else if (msg.type === 'sync_priority_2') {
+      const { events } = msg.payload || {};
+      if (events) for (const e of events) await db.put('events', e);
+      await loadAppState();
+      renderCurrentView();
+    } else if (msg.type === 'sync_priority_3') {
+      const { media } = msg.payload || {};
+      if (media) {
+        for (const metaItem of media) {
+          const existing = await db.get('media', metaItem.id);
+          if (!existing) {
+            await db.put('media', {
+              ...metaItem,
+              dataUrl: metaItem.thumbnailUrl || ''
+            });
+          } else {
+            await db.put('media', {
+              ...existing,
+              ...metaItem,
+              dataUrl: existing.dataUrl || metaItem.thumbnailUrl || ''
+            });
+          }
+        }
+        await loadAppState();
+        renderCurrentView();
+      }
+    } else if (msg.type === 'sync_priority_4_media_chunk') {
+      const { id, dataUrl } = msg.payload || {};
+      if (id && dataUrl) {
+        const existing = await db.get('media', id);
+        if (existing) {
+          existing.dataUrl = dataUrl;
+          await db.put('media', existing);
+        }
+      }
+    }
+  }
+
   /* Event Listeners */
-  let aiFilterMode = 'all'; // 'all', 'ai_only', 'human_only'
+  let aiFilterMode = 'all';
 
   function setupEventListeners() {
     setupAutoSaveSettings();
     document.getElementById('regenerateThumbnailsBtn')?.addEventListener('click', regenerateAllThumbnails);
     document.getElementById('globalUndoBtn')?.addEventListener('click', triggerGlobalUndo);
+
+    // Download & Export Listeners
+    document.getElementById('lbDownloadOriginalBtn')?.addEventListener('click', () => {
+      if (lightboxIndex >= 0 && activeLightboxList[lightboxIndex]) {
+        downloadSingleMediaFile(activeLightboxList[lightboxIndex].id);
+      }
+    });
+    document.getElementById('exportSelectedMediaBtn')?.addEventListener('click', exportSelectedMediaFiles);
+
+    // WebRTC & Storage Listeners
+    document.getElementById('generatePairCodeBtn')?.addEventListener('click', generatePairCode);
+    document.getElementById('connectPeerBtn')?.addEventListener('click', () => {
+      const val = document.getElementById('connectPeerCodeInput')?.value;
+      connectToPeer(val);
+    });
+    document.getElementById('copyPairCodeBtn')?.addEventListener('click', () => {
+      const input = document.getElementById('activePairCodeInput');
+      if (input && input.value) {
+        navigator.clipboard.writeText(input.value);
+        alert('Pair code copied to clipboard!');
+      }
+    });
+    document.getElementById('maxStorageLimitSelect')?.addEventListener('change', async (e) => {
+      await db.setSetting('maxStorageLimitGb', e.target.value);
+      updateStorageGauge();
+    });
+
+    updateStorageGauge();
 
     const aiFilterBtn = document.getElementById('aiFilterToggleBtn');
     if (aiFilterBtn) {
