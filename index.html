@@ -60,10 +60,14 @@
           <h1>🖼️ Media Collection</h1>
           <p>Browse, batch tag, and organize media files.</p>
         </div>
-        <div class="page-actions">
+        <div class="page-actions" style="display:flex; gap:8px;">
           <label class="btn btn-primary" style="cursor:pointer;">
-            📤 Upload Media
+            📤 Upload Files
             <input type="file" id="mediaFileInput" multiple accept="image/*,video/*" style="display:none;">
+          </label>
+          <label class="btn btn-secondary" style="cursor:pointer;">
+            📁 Add Folder
+            <input type="file" id="mediaFolderInput" webkitdirectory directory multiple style="display:none;">
           </label>
         </div>
       </div>
@@ -73,7 +77,7 @@
         <div class="search-filter-group" style="flex-wrap:wrap;">
           <input type="text" id="mediaSearchInput" class="input-text" placeholder="Search filenames, tags, subjects..." style="flex:1; min-width:200px;">
           <button class="btn btn-secondary" id="toggleMediaGroupBtn" title="Toggle grouping by Subject Group">📁 Grouping: ON</button>
-          <button class="btn btn-secondary btn-sm" id="aiFilterToggleBtn">🤖 All Media</button>
+          <button class="btn btn-secondary btn-sm" id="aiFilterToggleBtn">🖼️ All Media</button>
           <select id="mediaFilterTagSelect" class="select-input">
             <option value="all">All Media</option>
             <option value="hasBlueEvents">💦 SLD Events</option>
@@ -90,24 +94,34 @@
           <button type="button" class="btn btn-secondary btn-sm sort-toggle-btn" data-key="pinkPts">🩷 Pink Pts</button>
           <button type="button" class="btn btn-secondary btn-sm sort-toggle-btn" data-key="greyPts">🩶 Grey Pts</button>
           <button type="button" class="btn btn-secondary btn-sm sort-toggle-btn" data-key="bluePts">🩵 Blue Pts</button>
-          <button type="button" class="btn btn-secondary btn-sm sort-toggle-btn" data-key="sldCount">📘 SLD Count</button>
         </div>
       </div>
 
-      <!-- Sticky Multi-Selection Floating Action Bar -->
-      <div id="selectionBanner" class="selection-banner-sticky" style="display:none;">
-        <span id="selectedCount">0 file(s) selected</span>
-        <div class="selection-actions" style="display:flex; align-items:center; gap:8px;">
-          <button class="btn btn-secondary btn-sm" id="toggleSelectionAiBtn">🤖 Toggle AI</button>
-          <button class="btn btn-secondary btn-sm" id="openMultiSelectTagsBtn">🏷️ Tags</button>
-          <div class="dropdown-container" id="mediaBatchMenuContainer" style="position:relative;">
-            <button class="btn btn-secondary btn-sm" id="mediaBatchMenuBtn">•••</button>
-            <div class="dropdown-menu" id="mediaBatchDropdown" style="display:none; position:absolute; right:0; top:100%; z-index:10; background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:6px; min-width:150px; box-shadow:var(--shadow-md);">
-              <button class="btn btn-danger btn-sm" id="deleteSelectedMediaBtn" style="width:100%; text-align:left;">🗑️ Delete Selected</button>
+      <!-- Sticky Multi-Selection Floating Action Bar with Inline Tagging -->
+      <div id="selectionBanner" class="selection-banner-sticky" style="display:none; flex-direction:column; gap:10px; width:95%; max-width:1100px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; width:100%; flex-wrap:wrap; gap:8px;">
+          <span id="selectedCount" style="font-weight:800; font-size:0.95rem;">0 file(s) selected</span>
+          <div class="selection-actions" style="display:flex; align-items:center; gap:8px;">
+            <button class="btn btn-secondary btn-sm" id="toggleSelectionAiBtn">🤖 AI</button>
+            <div class="dropdown-container" id="mediaBatchMenuContainer" style="position:relative;">
+              <button class="btn btn-secondary btn-sm" id="mediaBatchMenuBtn">•••</button>
+              <div class="dropdown-menu" id="mediaBatchDropdown" style="display:none; position:absolute; right:0; top:100%; z-index:10; background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:6px; min-width:150px; box-shadow:var(--shadow-md);">
+                <button class="btn btn-danger btn-sm" id="deleteSelectedMediaBtn" style="width:100%; text-align:left;">🗑️ Delete Selected</button>
+              </div>
             </div>
+            <button class="btn btn-secondary btn-sm" id="clearSelectionBtn">✖ Clear Selection</button>
           </div>
-          <button class="btn btn-secondary btn-sm" id="clearSelectionBtn">✖ Clear Selection</button>
         </div>
+
+        <!-- Inline Tagging Fields directly inside Selection Banner -->
+        <div style="display:flex; flex-wrap:wrap; gap:8px; width:100%; align-items:center; background:rgba(0,0,0,0.25); padding:8px; border-radius:var(--radius-md);">
+          <input type="text" id="inlineSubjectInput" class="input-text btn-sm" placeholder="+ Subject..." style="flex:1; min-width:120px;">
+          <input type="text" id="inlineNormalTagInput" class="input-text btn-sm" placeholder="+ Normal Tag..." style="flex:1; min-width:120px;">
+          <input type="text" id="inlineSldInput" class="input-text btn-sm" placeholder="+ SLD Date..." style="flex:1; min-width:110px;">
+          <input type="text" id="inlineAlikeInput" class="input-text btn-sm" placeholder="+ 🪞 Alike (Sub::faint)..." style="flex:1; min-width:150px;">
+        </div>
+
+        <div id="selectionInlineTagsChips" style="display:flex; flex-wrap:wrap; gap:6px; width:100%;"></div>
       </div>
 
       <!-- Popup Modal for Multi-Selection Tagging & Inspection -->
@@ -418,6 +432,62 @@
             </div>
           </div>
           <button class="btn btn-primary btn-sm" id="saveMedalSettingsBtn" style="margin-top:14px;">💾 Save Medal Rules</button>
+        </div>
+
+        <div class="chart-card">
+          <h3>🪞 Alike Tags & Points Settings</h3>
+          <p class="text-muted" style="font-size:0.85rem; margin-top:4px;">Configure percentage points shared to reminded subjects when an Alike tag is attached.</p>
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-top:12px;">
+            <div class="form-group">
+              <label class="form-label">Faint Alike Points %</label>
+              <input type="number" id="alikeFaintPctInput" class="input-text btn-sm" value="15">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Medium Alike Points %</label>
+              <input type="number" id="alikeMediumPctInput" class="input-text btn-sm" value="30">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Strong Alike Points %</label>
+              <input type="number" id="alikeStrongPctInput" class="input-text btn-sm" value="45">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Global SLD Points View Mode</label>
+              <select id="globalPointsDisplayModeSelect" class="select-input btn-sm">
+                <option value="points">Points Only (e.g. 100 pts)</option>
+                <option value="pointsWithAlike">Points (Alikes) (e.g. 100 (15) pts)</option>
+                <option value="pointsPlusAlike">Points + Alikes (e.g. 115 pts)</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn btn-primary btn-sm" id="saveAlikeSettingsBtn" style="margin-top:14px;">💾 Save Alike Settings</button>
+        </div>
+
+        <div class="chart-card">
+          <h3>🏷️ Tag Import Metadata & Prefix Rules</h3>
+          <p class="text-muted" style="font-size:0.85rem; margin-top:4px;">Define comma-separated prefix symbols to automatically recognize subjects, normal tags, action tags, hearts, and SLD dates when importing media metadata/tags.</p>
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:12px; margin-top:12px;">
+            <div class="form-group">
+              <label class="form-label">Subject Tag Prefixes (comma-separated)</label>
+              <input type="text" id="prefixSubjectInput" class="input-text btn-sm" value="🔴,🟠,🟡,🟢,🔵,🟣,🟤,🖤,⚪">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Normal Tag Prefixes</label>
+              <input type="text" id="prefixNormalTagInput" class="input-text btn-sm" value="🧿">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Action Tag Prefixes</label>
+              <input type="text" id="prefixActionTagInput" class="input-text btn-sm" value="🧿">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Heart Points Prefixes</label>
+              <input type="text" id="prefixHeartInput" class="input-text btn-sm" value="🩷,🩵,🩶">
+            </div>
+            <div class="form-group">
+              <label class="form-label">SLD Tag Prefixes</label>
+              <input type="text" id="prefixSldInput" class="input-text btn-sm" value="🪾">
+            </div>
+          </div>
+          <button class="btn btn-primary btn-sm" id="saveTagPrefixSettingsBtn" style="margin-top:14px;">💾 Save Prefix Rules</button>
         </div>
 
         <div class="chart-card">

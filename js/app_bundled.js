@@ -1289,6 +1289,10 @@
   let sldSortKey = 'date';
   let sldSortDir = 'desc';
 
+  let tagPrefixSettings = { subject: '🔴,🟠,🟡,🟢,🔵,🟣,🟤,🖤,⚪', normal: '🧿', action: '🧿', heart: '🩷,🩵,🩶', sld: '🪾' };
+  let alikeSettings = { faint: 15, medium: 30, strong: 45 };
+  let globalPointsDisplayMode = 'points';
+
   let selectedEventYear = 'all';
   let selectedEventMonth = 'all';
   let subjectDetailComboSortHistory = ['eventPoints', 'action', 'heartPoints'];
@@ -1611,6 +1615,10 @@
     currentActionPointsMap = (await db.getSetting('actionPointsMap')) || DEFAULT_ACTION_POINTS;
     currentMedalSettings = (await db.getSetting('medalSettings')) || DEFAULT_MEDAL_SETTINGS;
     currentSubjectGroupsList = (await db.getSetting('subjectGroups')) || DEFAULT_SUBJECT_GROUPS;
+
+    tagPrefixSettings = (await db.getSetting('tagPrefixSettings')) || { subject: '🔴,🟠,🟡,🟢,🔵,🟣,🟤,🖤,⚪', normal: '🧿', action: '🧿', heart: '🩷,🩵,🩶', sld: '🪾' };
+    alikeSettings = (await db.getSetting('alikeSettings')) || { faint: 15, medium: 30, strong: 45 };
+    globalPointsDisplayMode = (await db.getSetting('globalPointsDisplayMode')) || 'points';
 
     const theme = (await db.getSetting('theme')) || 'dark';
     document.documentElement.setAttribute('data-theme', theme);
@@ -1975,18 +1983,211 @@
   function updateSelectionStateUI() {
     const selectionBanner = document.getElementById('selectionBanner');
     const selectedCountEl = document.getElementById('selectedCount');
-    const modal = document.getElementById('multiSelectTagsModal');
 
     if (selectedMediaIds.size > 0) {
       selectionBanner.style.display = 'flex';
-      selectionBanner.className = 'selection-banner-sticky';
       selectedCountEl.textContent = `${selectedMediaIds.size} file(s) selected`;
-      renderSelectionTagsPanel();
+      renderSelectionInlineTags();
     } else {
       selectionBanner.style.display = 'none';
-      if (modal) modal.style.display = 'none';
       renderMediaBrowser();
     }
+  }
+
+  function setupInlineSelectionTagInputs() {
+    const subInput = document.getElementById('inlineSubjectInput');
+    const normalInput = document.getElementById('inlineNormalTagInput');
+    const sldInput = document.getElementById('inlineSldInput');
+    const alikeInput = document.getElementById('inlineAlikeInput');
+
+    if (subInput && !subInput.dataset.bound) {
+      subInput.dataset.bound = 'true';
+      subInput.onkeydown = async (e) => {
+        if (e.key === 'Enter' && subInput.value.trim() && selectedMediaIds.size > 0) {
+          const nameVal = subInput.value.trim();
+          let sub = currentSubjectsList.find(s => s.name.toLowerCase() === nameVal.toLowerCase());
+          if (!sub) {
+            const pId = await db.getActiveProfileId();
+            sub = { id: 'sub-' + Date.now(), profileId: pId, name: nameVal, groupId: 'green', avatarUrl: null };
+            await db.put('subjects', sub);
+          }
+          const selectedFiles = currentMediaList.filter(m => selectedMediaIds.has(m.id));
+          for (const m of selectedFiles) {
+            if (!m.subjectTags) m.subjectTags = [];
+            if (!m.subjectTags.includes(sub.id)) m.subjectTags.push(sub.id);
+            await db.put('media', m);
+          }
+          subInput.value = '';
+          await loadAppState();
+          updateSelectionStateUI();
+        }
+      };
+    }
+
+    if (normalInput && !normalInput.dataset.bound) {
+      normalInput.dataset.bound = 'true';
+      normalInput.onkeydown = async (e) => {
+        if (e.key === 'Enter' && normalInput.value.trim() && selectedMediaIds.size > 0) {
+          const tagVal = normalInput.value.trim();
+          const selectedFiles = currentMediaList.filter(m => selectedMediaIds.has(m.id));
+          for (const m of selectedFiles) {
+            if (!m.normalTags) m.normalTags = [];
+            if (!m.normalTags.includes(tagVal)) m.normalTags.push(tagVal);
+            await db.put('media', m);
+          }
+          normalInput.value = '';
+          await loadAppState();
+          updateSelectionStateUI();
+        }
+      };
+    }
+
+    if (sldInput && !sldInput.dataset.bound) {
+      sldInput.dataset.bound = 'true';
+      sldInput.onkeydown = async (e) => {
+        if (e.key === 'Enter' && sldInput.value.trim() && selectedMediaIds.size > 0) {
+          const dateTagVal = sldInput.value.trim();
+          const selectedFiles = currentMediaList.filter(m => selectedMediaIds.has(m.id));
+          for (const m of selectedFiles) {
+            if (!m.blueBookEvents) m.blueBookEvents = [];
+            if (!m.blueBookEvents.some(be => be.dateTag === dateTagVal)) {
+              m.blueBookEvents.push({
+                id: 'be-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+                dateTag: dateTagVal,
+                heartTags: { pink: 0, grey: 0, blue: 0 }
+              });
+            }
+            await db.put('media', m);
+          }
+          sldInput.value = '';
+          await loadAppState();
+          updateSelectionStateUI();
+        }
+      };
+    }
+
+    if (alikeInput && !alikeInput.dataset.bound) {
+      alikeInput.dataset.bound = 'true';
+      alikeInput.onkeydown = async (e) => {
+        if (e.key === 'Enter' && alikeInput.value.trim() && selectedMediaIds.size > 0) {
+          const raw = alikeInput.value.trim();
+          const parts = raw.split('::');
+          const namePart = parts[0].trim();
+          const strPart = (parts[1] || 'faint').trim().toLowerCase();
+          const strength = ['faint', 'medium', 'strong'].includes(strPart) ? strPart : 'faint';
+
+          let sub = currentSubjectsList.find(s => s.name.toLowerCase() === namePart.toLowerCase());
+          if (!sub) {
+            const pId = await db.getActiveProfileId();
+            sub = { id: 'sub-' + Date.now(), profileId: pId, name: namePart, groupId: 'green', avatarUrl: null };
+            await db.put('subjects', sub);
+          }
+
+          const selectedFiles = currentMediaList.filter(m => selectedMediaIds.has(m.id));
+          for (const m of selectedFiles) {
+            if (!m.alikeTags) m.alikeTags = [];
+            if (!m.alikeTags.some(al => al.targetSubjectId === sub.id && al.strength === strength)) {
+              m.alikeTags.push({ targetSubjectId: sub.id, strength: strength });
+            }
+            await db.put('media', m);
+          }
+          alikeInput.value = '';
+          await loadAppState();
+          updateSelectionStateUI();
+        }
+      };
+    }
+  }
+
+  function renderSelectionInlineTags() {
+    setupInlineSelectionTagInputs();
+    const chipsContainer = document.getElementById('selectionInlineTagsChips');
+    if (!chipsContainer) return;
+
+    const selectedFiles = currentMediaList.filter(m => selectedMediaIds.has(m.id));
+    if (selectedFiles.length === 0) {
+      chipsContainer.innerHTML = '';
+      return;
+    }
+
+    const sldCounts = new Map();
+    const subCounts = new Map();
+    const tagCounts = new Map();
+    const alikeCounts = new Map();
+
+    selectedFiles.forEach(m => {
+      (m.blueBookEvents || []).forEach(be => { if (be.dateTag) sldCounts.set(be.dateTag, (sldCounts.get(be.dateTag) || 0) + 1); });
+      (m.subjectTags || []).forEach(sId => subCounts.set(sId, (subCounts.get(sId) || 0) + 1));
+      (m.normalTags || []).forEach(t => tagCounts.set(t, (tagCounts.get(t) || 0) + 1));
+      (m.alikeTags || []).forEach(al => {
+        const key = `${al.targetSubjectId}::${al.strength}`;
+        alikeCounts.set(key, (alikeCounts.get(key) || 0) + 1);
+      });
+    });
+
+    const totalSelected = selectedFiles.length;
+    let html = '';
+
+    subCounts.forEach((count, sId) => {
+      const sub = currentSubjectsList.find(s => s.id === sId);
+      html += `
+        <span class="tag-chip-bubble" style="background:var(--accent-pink)22; border:1px solid var(--accent-pink); padding:2px 8px; border-radius:12px; font-size:0.8rem; display:inline-flex; align-items:center; gap:6px;">
+          👤 ${getSubjectDisplayName(sub)} (${count}/${totalSelected})
+          <span class="remove-selection-tag" data-type="subject" data-val="${sId}" style="cursor:pointer; opacity:0.8;">✖</span>
+        </span>`;
+    });
+
+    tagCounts.forEach((count, tag) => {
+      html += `
+        <span class="tag-chip-bubble" style="background:var(--accent-blue)22; border:1px solid var(--accent-blue); padding:2px 8px; border-radius:12px; font-size:0.8rem; display:inline-flex; align-items:center; gap:6px;">
+          🏷️ ${tag} (${count}/${totalSelected})
+          <span class="remove-selection-tag" data-type="normal" data-val="${tag}" style="cursor:pointer; opacity:0.8;">✖</span>
+        </span>`;
+    });
+
+    sldCounts.forEach((count, dateTag) => {
+      html += `
+        <span class="tag-chip-bubble" style="background:rgba(56,189,248,0.2); border:1px solid #38bdf8; padding:2px 8px; border-radius:12px; font-size:0.8rem; display:inline-flex; align-items:center; gap:6px;">
+          💦 ${dateTag} (${count}/${totalSelected})
+          <span class="remove-selection-tag" data-type="sld" data-val="${dateTag}" style="cursor:pointer; opacity:0.8;">✖</span>
+        </span>`;
+    });
+
+    alikeCounts.forEach((count, key) => {
+      const [sId, str] = key.split('::');
+      const sub = currentSubjectsList.find(s => s.id === sId);
+      html += `
+        <span class="tag-chip-bubble" style="background:rgba(168,85,247,0.2); border:1px solid #a855f7; padding:2px 8px; border-radius:12px; font-size:0.8rem; display:inline-flex; align-items:center; gap:6px;">
+          🪞 ${getSubjectDisplayName(sub)} (${str}) (${count}/${totalSelected})
+          <span class="remove-selection-tag" data-type="alike" data-val="${key}" style="cursor:pointer; opacity:0.8;">✖</span>
+        </span>`;
+    });
+
+    chipsContainer.innerHTML = html;
+
+    chipsContainer.querySelectorAll('.remove-selection-tag').forEach(btn => {
+      btn.onclick = async () => {
+        const type = btn.getAttribute('data-type');
+        const val = btn.getAttribute('data-val');
+
+        for (const m of selectedFiles) {
+          if (type === 'subject') {
+            m.subjectTags = (m.subjectTags || []).filter(id => id !== val);
+          } else if (type === 'normal') {
+            m.normalTags = (m.normalTags || []).filter(t => t !== val);
+          } else if (type === 'sld') {
+            m.blueBookEvents = (m.blueBookEvents || []).filter(be => be.dateTag !== val);
+          } else if (type === 'alike') {
+            const [sId, str] = val.split('::');
+            m.alikeTags = (m.alikeTags || []).filter(al => !(al.targetSubjectId === sId && al.strength === str));
+          }
+          await db.put('media', m);
+        }
+
+        await loadAppState();
+        updateSelectionStateUI();
+      };
+    });
   }
 
   const tagSectionExpandedMap = { sld: false, subject: false, normal: false };
@@ -3711,18 +3912,23 @@
     const container = document.getElementById('groupsListContainer');
     if (!container) return;
 
-    container.innerHTML = currentSubjectGroupsList.map((g, idx) => `
-      <div class="group-drag-item" data-idx="${idx}" draggable="true">
-        <div style="display:flex; align-items:center; gap:10px;">
-          <span style="font-size:1.2rem;">≡</span>
-          <span style="font-size:1.1rem;">${g.emoji || '📁'}</span>
-          <strong>${g.name}</strong>
-        </div>
-        <div style="display:flex; align-items:center; gap:6px;">
-          <button class="btn btn-secondary btn-sm rename-group-btn" data-id="${g.id}">✏️ Rename</button>
-          ${!g.isBuiltIn ? `<button class="btn btn-danger btn-sm delete-group-btn" data-id="${g.id}">🗑️</button>` : '<span class="text-muted" style="font-size:0.75rem;">Built-in</span>'}
-        </div>
-      </div>`).join('');
+    container.innerHTML = currentSubjectGroupsList.map((g, idx) => {
+      const isDisabled = disabledGroupIds.has(g.id);
+      return `
+        <div class="group-drag-item ${isDisabled ? 'disabled-group' : ''}" data-idx="${idx}" draggable="true" style="display:flex; align-items:center; justify-content:space-between; padding:8px 12px; border:1px solid var(--border-color); border-radius:var(--radius-md); margin-bottom:6px; opacity:${isDisabled ? 0.5 : 1};">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span style="font-size:1.2rem;">≡</span>
+            <span style="font-size:1.1rem;">${g.emoji || '📁'}</span>
+            <strong>${g.name} ${isDisabled ? '(Disabled)' : ''}</strong>
+          </div>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <button class="btn btn-secondary btn-sm rename-group-btn" data-id="${g.id}">✏️ Rename</button>
+            <button class="btn ${isDisabled ? 'btn-secondary' : 'btn-danger'} btn-sm delete-group-btn" data-id="${g.id}">
+              ${isDisabled ? '🔄 Enable' : '🗑️ Delete'}
+            </button>
+          </div>
+        </div>`;
+    }).join('');
 
     let dragSrcIdx = null;
 
@@ -3771,17 +3977,19 @@
     container.querySelectorAll('.delete-group-btn').forEach(btn => {
       btn.onclick = async () => {
         const gId = btn.getAttribute('data-id');
-        if (confirm('Delete this custom group? Subjects in this group will be moved to Green.')) {
-          currentSubjectGroupsList = currentSubjectGroupsList.filter(g => g.id !== gId);
-          await db.setSetting('subjectGroups', currentSubjectGroupsList);
+        const group = currentSubjectGroupsList.find(g => g.id === gId);
+        if (!group) return;
 
-          for (const sub of currentSubjectsList) {
-            if (sub.groupId === gId) { sub.groupId = 'green'; await db.put('subjects', sub); }
-          }
-          await loadAppState();
-          renderGroupsList();
-          renderCurrentView();
+        if (disabledGroupIds.has(gId)) {
+          disabledGroupIds.delete(gId);
+        } else {
+          disabledGroupIds.add(gId);
         }
+        await db.setSetting('disabledGroupIds', Array.from(disabledGroupIds));
+        await loadAppState();
+        renderGroupsList();
+        renderHeaderGroupFilters();
+        renderCurrentView();
       };
     });
   }
@@ -3972,16 +4180,43 @@
       normalContainer.innerHTML = `<p class="text-muted">No normal tags added yet. Add tags in Media Browser or Lightbox.</p>`;
     } else {
       normalContainer.innerHTML = sortedNormalTags.map(([tag, count]) => `
-        <span class="tag-chip-bubble nav-normal-chip" data-tag="${tag}">
-          🏷️ ${tag} (${count})
-          <span class="tag-chip-remove delete-normal-tag-btn" data-tag="${tag}">` + '✖' + `</span>
+        <span class="tag-chip-bubble nav-normal-chip" data-tag="${tag}" style="display:inline-flex; align-items:center; gap:6px;">
+          <span class="nav-normal-chip-name" data-tag="${tag}" style="cursor:pointer;">🏷️ ${tag} (${count})</span>
+          <button class="btn btn-secondary btn-sm rename-normal-tag-btn" data-tag="${tag}" title="Rename / Merge tag" style="padding:1px 5px; font-size:0.75rem;">✏️</button>
+          <span class="tag-chip-remove delete-normal-tag-btn" data-tag="${tag}">✖</span>
         </span>`).join('');
 
-      normalContainer.querySelectorAll('.nav-normal-chip').forEach(chip => {
-        chip.onclick = (e) => {
-          if (e.target.classList.contains('delete-normal-tag-btn')) return;
+      normalContainer.querySelectorAll('.nav-normal-chip-name').forEach(chip => {
+        chip.onclick = () => {
           activeDetailTagName = chip.getAttribute('data-tag');
           switchView('tagDetailsView');
+        };
+      });
+
+      normalContainer.querySelectorAll('.rename-normal-tag-btn').forEach(btn => {
+        btn.onclick = async (e) => {
+          e.stopPropagation();
+          const oldTag = btn.getAttribute('data-tag');
+          const newTagRaw = prompt(`Rename / Merge normal tag "${oldTag}":`, oldTag);
+          if (!newTagRaw) return;
+          const newTag = newTagRaw.trim();
+          if (!newTag || newTag === oldTag) return;
+
+          const exists = currentMediaList.some(m => (m.normalTags || []).includes(newTag));
+          if (exists) {
+            if (!confirm(`Tag "${newTag}" already exists. Do you want to merge "${oldTag}" into "${newTag}"?`)) return;
+          }
+
+          for (const m of currentMediaList) {
+            if ((m.normalTags || []).includes(oldTag)) {
+              m.normalTags = m.normalTags.filter(t => t !== oldTag);
+              if (!m.normalTags.includes(newTag)) m.normalTags.push(newTag);
+              await db.put('media', m);
+            }
+          }
+
+          await loadAppState();
+          renderTagsPage();
         };
       });
 
@@ -5539,6 +5774,31 @@
       alert('Medal rules & limits saved!');
     });
 
+    document.getElementById('saveAlikeSettingsBtn')?.addEventListener('click', async () => {
+      alikeSettings = {
+        faint: parseFloat(document.getElementById('alikeFaintPctInput')?.value) || 15,
+        medium: parseFloat(document.getElementById('alikeMediumPctInput')?.value) || 30,
+        strong: parseFloat(document.getElementById('alikeStrongPctInput')?.value) || 45
+      };
+      globalPointsDisplayMode = document.getElementById('globalPointsDisplayModeSelect')?.value || 'points';
+      await db.setSetting('alikeSettings', alikeSettings);
+      await db.setSetting('globalPointsDisplayMode', globalPointsDisplayMode);
+      alert('🪞 Alike settings saved successfully!');
+      renderCurrentView();
+    });
+
+    document.getElementById('saveTagPrefixSettingsBtn')?.addEventListener('click', async () => {
+      tagPrefixSettings = {
+        subject: document.getElementById('prefixSubjectInput')?.value || '🔴,🟠,🟡,🟢,🔵,🟣,🟤,🖤,⚪',
+        normal: document.getElementById('prefixNormalTagInput')?.value || '🧿',
+        action: document.getElementById('prefixActionTagInput')?.value || '🧿',
+        heart: document.getElementById('prefixHeartInput')?.value || '🩷,🩵,🩶',
+        sld: document.getElementById('prefixSldInput')?.value || '🪾'
+      };
+      await db.setSetting('tagPrefixSettings', tagPrefixSettings);
+      alert('🏷️ Tag prefix metadata rules saved successfully!');
+    });
+
     document.getElementById('exportCollectionZipBtn')?.addEventListener('click', exportMediaCollectionZip);
     document.getElementById('importCollectionFileInput')?.addEventListener('change', (e) => {
       if (e.target.files[0]) importMediaCollectionZip(e.target.files[0]);
@@ -5549,66 +5809,141 @@
       if (e.target.files[0]) importDataAndSettingsZip(e.target.files[0]);
     });
 
-    const uploadInput = document.getElementById('mediaFileInput');
-    if (uploadInput) {
-      uploadInput.addEventListener('change', async (e) => {
-        const files = Array.from(e.target.files);
-        if (files.length === 0) return;
+    function parseTagPrefixes(filename) {
+      const subjectPrefixes = (tagPrefixSettings.subject || '🔴,🟠,🟡,🟢,🔵,🟣,🟤,🖤,⚪').split(',').map(s => s.trim()).filter(Boolean);
+      const normalPrefixes = (tagPrefixSettings.normal || '🧿').split(',').map(s => s.trim()).filter(Boolean);
+      const actionPrefixes = (tagPrefixSettings.action || '🧿').split(',').map(s => s.trim()).filter(Boolean);
+      const heartPrefixes = (tagPrefixSettings.heart || '🩷,🩵,🩶').split(',').map(s => s.trim()).filter(Boolean);
+      const sldPrefixes = (tagPrefixSettings.sld || '🪾').split(',').map(s => s.trim()).filter(Boolean);
 
-        const activeProfileId = await db.getActiveProfileId();
-        const existingMedia = await db.getActiveMedia();
-        const existingHashes = new Set(existingMedia.map(m => m.hash).filter(Boolean));
+      const parsedSubjects = [];
+      const parsedNormalTags = [];
+      let parsedSldDate = null;
+      let parsedActionCode = null;
+      let parsedHearts = { pink: 0, grey: 0, blue: 0 };
 
-        let addedCount = 0;
-        let duplicateCount = 0;
+      const segments = filename.replace(/\.[^/.]+$/, "").split(/[_\s,-]+/);
+      for (const seg of segments) {
+        if (!seg) continue;
 
-        const readPromises = files.map(file => {
-          return new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = async (evt) => {
-              const dataUrl = evt.target.result;
-              const fileHash = await calculateContentHash(dataUrl);
-
-              if (existingHashes.has(fileHash)) {
-                duplicateCount++;
-                resolve();
-                return;
-              }
-              existingHashes.add(fileHash);
-              addedCount++;
-
-              const compressedThumb = await createCompressedThumbnail(file.type, dataUrl);
-
-              const mediaItem = {
-                id: 'media-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
-                profileId: activeProfileId,
-                filename: file.name,
-                type: file.type,
-                dataUrl: dataUrl,
-                thumbnailUrl: compressedThumb,
-                hash: fileHash,
-                blueBookEvents: [],
-                subjectTags: [],
-                normalTags: [],
-                viewTransform: { rotate: 0, clipStart: 0, clipEnd: null }
-              };
-              await db.put('media', mediaItem);
-              resolve();
-            };
-            reader.readAsDataURL(file);
-          });
-        });
-
-        await Promise.all(readPromises);
-        uploadInput.value = '';
-        await loadAppState();
-        renderCurrentView();
-
-        if (duplicateCount > 0) {
-          alert(`Uploaded ${addedCount} new file(s). Skipped ${duplicateCount} duplicate file(s) already in collection.`);
+        let subMatched = false;
+        for (const pref of subjectPrefixes) {
+          if (seg.startsWith(pref)) {
+            const val = seg.substring(pref.length).trim();
+            if (val) {
+              const sub = currentSubjectsList.find(s => s.name.toLowerCase() === val.toLowerCase());
+              if (sub) parsedSubjects.push(sub.id);
+              subMatched = true;
+              break;
+            }
+          }
         }
-      });
+        if (subMatched) continue;
+
+        for (const pref of sldPrefixes) {
+          if (seg.startsWith(pref)) {
+            const val = seg.substring(pref.length).trim();
+            if (val) parsedSldDate = val;
+          }
+        }
+
+        for (const pref of normalPrefixes) {
+          if (seg.startsWith(pref)) {
+            const val = seg.substring(pref.length).trim();
+            const numMatch = val.match(/^(\d{1,2})$/);
+            if (numMatch) {
+              parsedActionCode = parseInt(numMatch[1], 10);
+            } else if (val) {
+              parsedNormalTags.push(val);
+            }
+          }
+        }
+
+        for (const pref of heartPrefixes) {
+          if (seg.startsWith(pref)) {
+            const val = seg.substring(pref.length).trim();
+            if (pref === '🩷') parsedHearts.pink = parseInt(val, 10) || 1;
+            if (pref === '🩵') parsedHearts.blue = parseInt(val, 10) || 1;
+            if (pref === '🩶') parsedHearts.grey = parseInt(val, 10) || 1;
+          }
+        }
+      }
+
+      return { parsedSubjects, parsedNormalTags, parsedSldDate, parsedActionCode, parsedHearts };
     }
+
+    const processFilesArray = async (filesList) => {
+      const files = Array.from(filesList).filter(f => f.type.startsWith('image/') || f.type.startsWith('video/') || f.name.match(/\.(jpg|jpeg|png|gif|webp|mp4|webm|mov)$/i));
+      if (files.length === 0) return;
+
+      const activeProfileId = await db.getActiveProfileId();
+      const existingMedia = await db.getActiveMedia();
+      const existingHashes = new Set(existingMedia.map(m => m.hash).filter(Boolean));
+
+      let addedCount = 0;
+      let duplicateCount = 0;
+
+      const readPromises = files.map(file => {
+        return new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = async (evt) => {
+            const dataUrl = evt.target.result;
+            const fileHash = await calculateContentHash(dataUrl);
+
+            if (existingHashes.has(fileHash)) {
+              duplicateCount++;
+              resolve();
+              return;
+            }
+            existingHashes.add(fileHash);
+            addedCount++;
+
+            const compressedThumb = await createCompressedThumbnail(file.type, dataUrl);
+            const { parsedSubjects, parsedNormalTags, parsedSldDate, parsedHearts } = parseTagPrefixes(file.name);
+
+            const blueBookEvents = [];
+            if (parsedSldDate) {
+              blueBookEvents.push({
+                id: 'be-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+                dateTag: parsedSldDate,
+                heartTags: parsedHearts
+              });
+            }
+
+            const mediaItem = {
+              id: 'media-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
+              profileId: activeProfileId,
+              filename: file.name,
+              type: file.type,
+              dataUrl: dataUrl,
+              thumbnailUrl: compressedThumb,
+              hash: fileHash,
+              blueBookEvents: blueBookEvents,
+              subjectTags: parsedSubjects,
+              normalTags: parsedNormalTags,
+              viewTransform: { rotate: 0, clipStart: 0, clipEnd: null }
+            };
+            await db.put('media', mediaItem);
+            resolve();
+          };
+          reader.readAsDataURL(file);
+        });
+      });
+
+      await Promise.all(readPromises);
+
+      await loadAppState();
+      renderCurrentView();
+      let msg = `Successfully uploaded ${addedCount} media file(s).`;
+      if (duplicateCount > 0) msg += ` Skipped ${duplicateCount} duplicate file(s).`;
+      alert(msg);
+    };
+
+    const uploadInput = document.getElementById('mediaFileInput');
+    if (uploadInput) uploadInput.addEventListener('change', (e) => processFilesArray(e.target.files));
+
+    const folderInput = document.getElementById('mediaFolderInput');
+    if (folderInput) folderInput.addEventListener('change', (e) => processFilesArray(e.target.files));
 
     const lbContentWrapper = document.getElementById('lightboxContentWrapper');
     if (lbContentWrapper) {
