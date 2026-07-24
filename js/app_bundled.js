@@ -245,12 +245,28 @@
 
   async function handleGroupSelectAction(selectedVal, subjectOrSubjectId) {
     if (selectedVal === '__rename_group__') {
-      let currentG = null;
+      let groupToRename = null;
       if (typeof subjectOrSubjectId === 'object' && subjectOrSubjectId && subjectOrSubjectId.groupId) {
-        currentG = getSubjectGroup(subjectOrSubjectId.groupId);
+        groupToRename = getSubjectGroup(subjectOrSubjectId.groupId);
       }
-      const groupToRename = currentG || currentSubjectGroupsList[0];
-      if (!groupToRename) return true;
+
+      if (!groupToRename) {
+        const groupListStr = currentSubjectGroupsList.map((g, idx) => `${idx + 1}. ${g.name}`).join('\n');
+        const choice = prompt(`Select a group number to rename:\n\n${groupListStr}`);
+        if (!choice) return true;
+        const selectedIdx = parseInt(choice.trim(), 10) - 1;
+        if (!isNaN(selectedIdx) && currentSubjectGroupsList[selectedIdx]) {
+          groupToRename = currentSubjectGroupsList[selectedIdx];
+        } else {
+          const found = currentSubjectGroupsList.find(g => g.name.toLowerCase().includes(choice.trim().toLowerCase()));
+          if (found) groupToRename = found;
+        }
+      }
+
+      if (!groupToRename) {
+        alert('Group not found.');
+        return true;
+      }
 
       const currentText = groupToRename.name.replace(/^[🟤🟣🟢🟡🟠🔴🔵⚪⚫⭐\s]+/g, '').trim();
       const newText = prompt(`Enter new text for group "${groupToRename.name}":\n(The emoji/icon "${groupToRename.emoji || '⚪'}" will stay fixed)`, currentText);
@@ -1269,6 +1285,7 @@
   let activeDetailTagName = null;
   let activeDetailEventId = null;
   let sldDefaultFullscreen = false;
+  let activeSubjectsTab = 'subjects';
 
   let selectedEventYear = 'all';
   let selectedEventMonth = 'all';
@@ -2732,174 +2749,288 @@
       };
     });
 
-    if (currentSubjectsList.length === 0) {
-      gridContainer.innerHTML = `
-        <div class="empty-state" style="grid-column: 1 / -1;">
-          <div class="empty-state-icon">👥</div>
-          <h3>No Subjects Added</h3>
-          <p>Click "+ Add Subject" to create subject profiles.</p>
-        </div>`;
-    } else {
-      // Sort subjects list
-      const sortedSubjects = currentSubjectsList.slice().sort((a, b) => {
-        const aStat = stats.allSubjectStats.find(s => s.subject.id === a.id) || { totalPoints: 0, heartPoints: 0, eventPoints: 0, pinkPoints: 0, greyPoints: 0, bluePoints: 0, latestEventDate: null };
-        const bStat = stats.allSubjectStats.find(s => s.subject.id === b.id) || { totalPoints: 0, heartPoints: 0, eventPoints: 0, pinkPoints: 0, greyPoints: 0, bluePoints: 0, latestEventDate: null };
+    // Tab Button Handlers (Subjects vs Combos)
+    const subLbSection = document.getElementById('subjectLeaderboardsSection');
+    const comboLbSection = document.getElementById('comboLeaderboardsSection');
 
-        let comp = 0;
-        if (subjectSortKey === 'name') {
-          comp = a.name.localeCompare(b.name);
-        } else if (subjectSortKey === 'totalPoints') {
-          comp = aStat.totalPoints - bStat.totalPoints;
-        } else if (subjectSortKey === 'eventPoints') {
-          comp = aStat.eventPoints - bStat.eventPoints;
-        } else if (subjectSortKey === 'eventDate') {
-          const aDate = aStat.latestEventDate || '';
-          const bDate = bStat.latestEventDate || '';
-          comp = aDate.localeCompare(bDate);
-        } else if (subjectSortKey === 'pink') {
-          comp = aStat.pinkPoints - bStat.pinkPoints;
-        } else if (subjectSortKey === 'grey') {
-          comp = aStat.greyPoints - bStat.greyPoints;
-        } else if (subjectSortKey === 'blue') {
-          comp = aStat.bluePoints - bStat.bluePoints;
-        }
-
-        return subjectSortDir === 'asc' ? comp : -comp;
-      });
-
-      // Media-Overlay Subject Card HTML Generator
-      const renderSubjectCardHTML = (sub) => {
-        const sStat = stats.allSubjectStats.find(s => s.subject.id === sub.id) || { totalPoints: 0, heartPoints: 0, eventPoints: 0 };
-        const taggedMedia = currentMediaList.filter(m => m.subjectTags?.includes(sub.id));
-        const group = getSubjectGroup(sub.groupId);
-        const borderClass = group?.cssClass || '';
-        const isSelected = selectedSubjectIds.has(sub.id);
-
-        let avatarHTML = sub.avatarUrl 
-          ? `<img src="${sub.avatarUrl}" class="media-thumbnail ${borderClass}" alt="${sub.name}">` 
-          : taggedMedia[0] 
-            ? renderMediaThumbnailHTML(taggedMedia[0], `media-thumbnail ${borderClass}`) 
-            : `<div class="media-thumbnail ${borderClass}" style="display:flex;align-items:center;justify-content:center;font-size:42px;background:var(--bg-secondary);">👤</div>`;
-
-        return `
-          <div class="subject-card ${borderClass} ${isSelected ? 'selected' : ''}" data-id="${sub.id}">
-            ${avatarHTML}
-            <div class="subject-card-overlay">
-              <div class="subject-card-name">${getSubjectDisplayName(sub)}</div>
-              <div class="subject-card-stats">
-                <span class="subject-stat-badge" style="color:var(--accent-pink);">SLD: ${sStat.heartPoints} pts</span>
-                <span class="subject-stat-badge" style="color:var(--accent-blue);">Events: ${sStat.eventPoints} pts</span>
-              </div>
-            </div>
-          </div>`;
-      };
-
-      // Group the sorted subjects list
-      const subjectsGroupMap = new Map();
-      currentSubjectGroupsList.forEach(g => subjectsGroupMap.set(g.id, []));
-      const unassignedSubjects = [];
-
-      for (const sub of sortedSubjects) {
-        if (!sub.groupId) {
-          unassignedSubjects.push(sub);
-        } else {
-          const group = getSubjectGroup(sub.groupId);
-          if (group && subjectsGroupMap.has(group.id)) {
-            subjectsGroupMap.get(group.id).push(sub);
-          } else {
-            unassignedSubjects.push(sub);
-          }
-        }
+    document.querySelectorAll('.subject-tab-btn').forEach(btn => {
+      const tab = btn.getAttribute('data-tab');
+      if (tab === activeSubjectsTab) {
+        btn.classList.add('active');
+        btn.style.background = 'var(--accent-pink)';
+        btn.style.color = '#fff';
+      } else {
+        btn.classList.remove('active');
+        btn.style.background = '';
+        btn.style.color = '';
       }
 
-      let groupsHTML = '';
-      currentSubjectGroupsList.forEach(g => {
-        if (disabledGroupIds.has(g.id)) return;
-        const groupSubs = subjectsGroupMap.get(g.id) || [];
-        if (groupSubs.length > 0) {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        activeSubjectsTab = tab;
+        renderSubjectsPage(stats);
+      };
+    });
+
+    // Deselect selection on empty space click
+    const subjectsViewContainer = document.getElementById('subjectsView');
+    if (subjectsViewContainer) {
+      subjectsViewContainer.onclick = (e) => {
+        if (!e.target.closest('.subject-card') && !e.target.closest('.combination-element-card') && !e.target.closest('.btn') && !e.target.closest('select') && !e.target.closest('input')) {
+          if (selectedSubjectIds.size > 0) {
+            selectedSubjectIds.clear();
+            renderSubjectsPage(stats);
+          }
+        }
+      };
+    }
+
+    if (activeSubjectsTab === 'combos') {
+      if (subLbSection) subLbSection.style.display = 'none';
+      if (comboLbSection) comboLbSection.style.display = 'block';
+
+      const allCombos = stats.allCombinations || [];
+      if (allCombos.length === 0) {
+        gridContainer.innerHTML = `<div class="empty-state" style="grid-column: 1 / -1;">No Subject Combinations Recorded.</div>`;
+      } else {
+        const sortedCombos = allCombos.slice().sort((a, b) => {
+          let comp = 0;
+          if (subjectSortKey === 'name') comp = a.name.localeCompare(b.name);
+          else if (subjectSortKey === 'totalPoints') comp = a.totalPoints - b.totalPoints;
+          else if (subjectSortKey === 'eventPoints') comp = a.eventPoints - b.eventPoints;
+          else if (subjectSortKey === 'pink') comp = a.pinkPoints - b.pinkPoints;
+          else if (subjectSortKey === 'grey') comp = a.greyPoints - b.greyPoints;
+          else if (subjectSortKey === 'blue') comp = a.bluePoints - b.bluePoints;
+          else comp = a.totalPoints - b.totalPoints;
+          return subjectSortDir === 'asc' ? comp : -comp;
+        });
+
+        const ACTION_HEX_MAP = {
+          1: '#a855f7', 2: '#3b82f6', 3: '#10b981', 4: '#eab308',
+          5: '#f97316', 6: '#ef4444', 7: '#ec4899', 8: '#d946ef',
+          9: '#0ea5e9', 10: '#6366f1', 11: '#8b5cf6', 12: '#f43f5e'
+        };
+
+        gridContainer.innerHTML = sortedCombos.map(c => {
+          const subs = c.subs || [];
+          const primarySub = subs[0];
+          const secondarySub = subs[1] || primarySub;
+          const comboKey = (c.subjectIds || [c.subjectId1, c.subjectId2]).join('::');
+
+          const actColor = ACTION_HEX_MAP[c.maxActionCode] || '';
+          const cardStyle = c.maxActionCode ? `border:2px solid ${actColor};` : `border:1px solid var(--border-color);`;
+
+          const companionTagged = currentMediaList.filter(m => m.subjectTags?.includes(primarySub?.id));
+          const g = primarySub ? getSubjectGroup(primarySub.groupId) : null;
+          const bClass = g?.cssClass || '';
+          const mainThumbHTML = primarySub?.avatarUrl 
+            ? `<img src="${primarySub.avatarUrl}" class="combination-main-thumb ${bClass}" alt="${primarySub.name}">`
+            : companionTagged[0]
+              ? renderMediaThumbnailHTML(companionTagged[0], `combination-main-thumb ${bClass}`)
+              : `<div class="combination-main-thumb ${bClass}" style="display:flex;align-items:center;justify-content:center;font-size:54px;background:var(--bg-secondary);">👤</div>`;
+
+          const secondaryAvatar = secondarySub?.avatarUrl || (companionTagged[0] ? (companionTagged[0].customThumbnail || companionTagged[0].dataUrl) : null);
+          const secondaryOverlayHTML = secondaryAvatar
+            ? `<img src="${secondaryAvatar}" class="combination-active-overlay-thumb" title="${secondarySub ? getSubjectDisplayName(secondarySub) : ''}">`
+            : `<div class="combination-active-overlay-thumb" style="display:flex;align-items:center;justify-content:center;font-size:18px;background:var(--accent-pink);color:#fff;">👤</div>`;
+
+          return `
+            <div class="combination-element-card combo-tab-card" data-combokey="${comboKey}" style="${cardStyle}">
+              ${secondaryOverlayHTML}
+              ${mainThumbHTML}
+              <div class="combination-card-overlay">
+                <div style="font-weight:800; font-size:1.05rem; color:#fff; text-shadow:0 2px 4px rgba(0,0,0,0.9); margin-bottom:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                  ${c.name}
+                </div>
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; flex-wrap:wrap;">
+                  <span style="font-size:0.75rem; color:rgba(255,255,255,0.85); text-shadow:0 1px 3px #000;">${c.mediaCount} shared media</span>
+                  <span style="font-size:0.8rem; font-weight:800; color:var(--accent-pink); text-shadow:0 1px 3px #000;">${c.totalPoints} pts</span>
+                </div>
+              </div>
+            </div>`;
+        }).join('');
+
+        gridContainer.querySelectorAll('.combo-tab-card').forEach(card => {
+          card.onclick = (e) => {
+            e.stopPropagation();
+            activeDetailComboKey = card.getAttribute('data-combokey');
+            switchView('combinationDetailsView');
+          };
+        });
+      }
+    } else {
+      if (subLbSection) subLbSection.style.display = 'block';
+      if (comboLbSection) comboLbSection.style.display = 'none';
+
+      if (currentSubjectsList.length === 0) {
+        gridContainer.innerHTML = `
+          <div class="empty-state" style="grid-column: 1 / -1;">
+            <div class="empty-state-icon">👥</div>
+            <h3>No Subjects Added</h3>
+            <p>Click "+ Add Subject" to create subject profiles.</p>
+          </div>`;
+      } else {
+        // Sort subjects list
+        const sortedSubjects = currentSubjectsList.slice().sort((a, b) => {
+          const aStat = stats.allSubjectStats.find(s => s.subject.id === a.id) || { totalPoints: 0, heartPoints: 0, eventPoints: 0, pinkPoints: 0, greyPoints: 0, bluePoints: 0, latestEventDate: null };
+          const bStat = stats.allSubjectStats.find(s => s.subject.id === b.id) || { totalPoints: 0, heartPoints: 0, eventPoints: 0, pinkPoints: 0, greyPoints: 0, bluePoints: 0, latestEventDate: null };
+
+          let comp = 0;
+          if (subjectSortKey === 'name') {
+            comp = a.name.localeCompare(b.name);
+          } else if (subjectSortKey === 'totalPoints') {
+            comp = aStat.totalPoints - bStat.totalPoints;
+          } else if (subjectSortKey === 'eventPoints') {
+            comp = aStat.eventPoints - bStat.eventPoints;
+          } else if (subjectSortKey === 'eventDate') {
+            const aDate = aStat.latestEventDate || '';
+            const bDate = bStat.latestEventDate || '';
+            comp = aDate.localeCompare(bDate);
+          } else if (subjectSortKey === 'pink') {
+            comp = aStat.pinkPoints - bStat.pinkPoints;
+          } else if (subjectSortKey === 'grey') {
+            comp = aStat.greyPoints - bStat.greyPoints;
+          } else if (subjectSortKey === 'blue') {
+            comp = aStat.bluePoints - bStat.bluePoints;
+          }
+
+          return subjectSortDir === 'asc' ? comp : -comp;
+        });
+
+        // Media-Overlay Subject Card HTML Generator
+        const renderSubjectCardHTML = (sub) => {
+          const sStat = stats.allSubjectStats.find(s => s.subject.id === sub.id) || { totalPoints: 0, heartPoints: 0, eventPoints: 0 };
+          const taggedMedia = currentMediaList.filter(m => m.subjectTags?.includes(sub.id));
+          const group = getSubjectGroup(sub.groupId);
+          const borderClass = group?.cssClass || '';
+          const isSelected = selectedSubjectIds.has(sub.id);
+
+          let avatarHTML = sub.avatarUrl 
+            ? `<img src="${sub.avatarUrl}" class="media-thumbnail ${borderClass}" alt="${sub.name}">` 
+            : taggedMedia[0] 
+              ? renderMediaThumbnailHTML(taggedMedia[0], `media-thumbnail ${borderClass}`) 
+              : `<div class="media-thumbnail ${borderClass}" style="display:flex;align-items:center;justify-content:center;font-size:42px;background:var(--bg-secondary);">👤</div>`;
+
+          return `
+            <div class="subject-card ${borderClass} ${isSelected ? 'selected' : ''}" data-id="${sub.id}">
+              ${avatarHTML}
+              <div class="subject-card-overlay">
+                <div class="subject-card-name">${getSubjectDisplayName(sub)}</div>
+                <div class="subject-card-stats">
+                  <span class="subject-stat-badge" style="color:var(--accent-pink);">SLD: ${sStat.heartPoints} pts</span>
+                  <span class="subject-stat-badge" style="color:var(--accent-blue);">Events: ${sStat.eventPoints} pts</span>
+                </div>
+              </div>
+            </div>`;
+        };
+
+        // Group the sorted subjects list
+        const subjectsGroupMap = new Map();
+        currentSubjectGroupsList.forEach(g => subjectsGroupMap.set(g.id, []));
+        const unassignedSubjects = [];
+
+        for (const sub of sortedSubjects) {
+          if (!sub.groupId) {
+            unassignedSubjects.push(sub);
+          } else {
+            const group = getSubjectGroup(sub.groupId);
+            if (group && subjectsGroupMap.has(group.id)) {
+              subjectsGroupMap.get(group.id).push(sub);
+            } else {
+              unassignedSubjects.push(sub);
+            }
+          }
+        }
+
+        let groupsHTML = '';
+        currentSubjectGroupsList.forEach(g => {
+          if (disabledGroupIds.has(g.id)) return;
+          const groupSubs = subjectsGroupMap.get(g.id) || [];
+          if (groupSubs.length > 0) {
+            groupsHTML += `
+              <div class="media-group-section" style="display:block; width:100%; margin-bottom:32px;">
+                <div class="media-group-title" style="color:${g.color || 'var(--text-primary)'}; font-weight:800; font-size:1.15rem; margin-bottom:16px; padding-bottom:8px; border-bottom:1px solid var(--border-color);">
+                  ${getGroupDisplayTitle(g)} (${groupSubs.length} subjects)
+                </div>
+                <div class="media-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap:16px;">
+                  ${groupSubs.map(renderSubjectCardHTML).join('')}
+                </div>
+              </div>`;
+          }
+        });
+
+        if (unassignedSubjects.length > 0 && !disabledGroupIds.has('__none__')) {
           groupsHTML += `
             <div class="media-group-section" style="display:block; width:100%; margin-bottom:32px;">
-              <div class="media-group-title" style="color:${g.color || 'var(--text-primary)'}; font-weight:800; font-size:1.15rem; margin-bottom:16px; padding-bottom:8px; border-bottom:1px solid var(--border-color);">
-                ${getGroupDisplayTitle(g)} (${groupSubs.length} subjects)
+              <div class="media-group-title" style="color:var(--text-secondary); font-weight:800; font-size:1.15rem; margin-bottom:16px; padding-bottom:8px; border-bottom:1px solid var(--border-color);">
+                ⚪ Unassigned / No Subject Group (${unassignedSubjects.length} subjects)
               </div>
               <div class="media-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap:16px;">
-                ${groupSubs.map(renderSubjectCardHTML).join('')}
+                ${unassignedSubjects.map(renderSubjectCardHTML).join('')}
               </div>
             </div>`;
         }
-      });
 
-      if (unassignedSubjects.length > 0 && !disabledGroupIds.has('__none__')) {
-        groupsHTML += `
-          <div class="media-group-section" style="display:block; width:100%; margin-bottom:32px;">
-            <div class="media-group-title" style="color:var(--text-secondary); font-weight:800; font-size:1.15rem; margin-bottom:16px; padding-bottom:8px; border-bottom:1px solid var(--border-color);">
-              ⚪ Unassigned / No Subject Group (${unassignedSubjects.length} subjects)
-            </div>
-            <div class="media-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap:16px;">
-              ${unassignedSubjects.map(renderSubjectCardHTML).join('')}
-            </div>
-          </div>`;
-      }
+        gridContainer.innerHTML = groupsHTML || `<div class="empty-state" style="grid-column: 1 / -1;">No subjects match active group filters.</div>`;
 
-      gridContainer.innerHTML = groupsHTML || `<div class="empty-state" style="grid-column: 1 / -1;">No subjects match active group filters.</div>`;
+        // Subject card selection / drilldown event listener with Long Press support
+        gridContainer.querySelectorAll('.subject-card').forEach(card => {
+          const subId = card.getAttribute('data-id');
+          let isLongPressTriggered = false;
+          let pressTimer = null;
 
-      // Subject card selection / drilldown event listener with Long Press support
-      gridContainer.querySelectorAll('.subject-card').forEach(card => {
-        const subId = card.getAttribute('data-id');
-        let isLongPressTriggered = false;
-        let pressTimer = null;
-
-        const startPress = () => {
-          isLongPressTriggered = false;
-          pressTimer = setTimeout(() => {
-            isLongPressTriggered = true;
-            if (selectedSubjectIds.has(subId)) {
-              selectedSubjectIds.delete(subId);
-            } else {
-              selectedSubjectIds.add(subId);
-            }
-            renderSubjectsPage(stats);
-          }, 300);
-        };
-
-        const cancelPress = () => { if (pressTimer) clearTimeout(pressTimer); };
-
-        card.addEventListener('mousedown', startPress);
-        card.addEventListener('touchstart', startPress);
-        card.addEventListener('mouseup', cancelPress);
-        card.addEventListener('mouseleave', cancelPress);
-        card.addEventListener('touchend', cancelPress);
-
-        card.oncontextmenu = (e) => {
-          e.preventDefault();
-          if (selectedSubjectIds.has(subId)) {
-            selectedSubjectIds.delete(subId);
-          } else {
-            selectedSubjectIds.add(subId);
-          }
-          renderSubjectsPage(stats);
-        };
-
-        card.onclick = (e) => {
-          if (isLongPressTriggered) {
+          const startPress = () => {
             isLongPressTriggered = false;
-            return;
-          }
-          if (e.shiftKey || e.ctrlKey || e.metaKey || selectedSubjectIds.size > 0) {
+            pressTimer = setTimeout(() => {
+              isLongPressTriggered = true;
+              if (selectedSubjectIds.has(subId)) {
+                selectedSubjectIds.delete(subId);
+              } else {
+                selectedSubjectIds.add(subId);
+              }
+              renderSubjectsPage(stats);
+            }, 300);
+          };
+
+          const cancelPress = () => { if (pressTimer) clearTimeout(pressTimer); };
+
+          card.addEventListener('mousedown', startPress);
+          card.addEventListener('touchstart', startPress);
+          card.addEventListener('mouseup', cancelPress);
+          card.addEventListener('mouseleave', cancelPress);
+          card.addEventListener('touchend', cancelPress);
+
+          card.oncontextmenu = (e) => {
             e.preventDefault();
-            e.stopPropagation();
             if (selectedSubjectIds.has(subId)) {
               selectedSubjectIds.delete(subId);
             } else {
               selectedSubjectIds.add(subId);
             }
             renderSubjectsPage(stats);
-          } else {
-            activeDetailSubjectId = subId;
-            switchView('subjectDetailsView');
-          }
-        };
-      });
+          };
+
+          card.onclick = (e) => {
+            if (isLongPressTriggered) {
+              isLongPressTriggered = false;
+              return;
+            }
+            if (e.shiftKey || e.ctrlKey || e.metaKey || selectedSubjectIds.size > 0) {
+              e.preventDefault();
+              e.stopPropagation();
+              if (selectedSubjectIds.has(subId)) {
+                selectedSubjectIds.delete(subId);
+              } else {
+                selectedSubjectIds.add(subId);
+              }
+              renderSubjectsPage(stats);
+            } else {
+              activeDetailSubjectId = subId;
+              switchView('subjectDetailsView');
+            }
+          };
+        });
+      }
     }
 
     // Helper for Leaderboard Rows
@@ -3980,7 +4111,7 @@
     });
 
     if (sldList.length === 0) {
-      tableBody.innerHTML = `<tr><td colspan="12" class="empty-state">No SLD events recorded yet. Upload media or batch add SLD dates.</td></tr>`;
+      tableBody.innerHTML = `<tr><td colspan="4" class="empty-state">No SLD events recorded yet. Upload media or batch add SLD dates.</td></tr>`;
       return;
     }
 
@@ -3995,16 +4126,39 @@
     tableBody.innerHTML = sldList.map(item => `
       <tr class="sld-table-row" data-tag="${item.dateTag}">
         <td><strong style="color:var(--accent-blue); cursor:pointer;">${item.dateTag}</strong></td>
-        <td>${item.mediaSet.size} file(s)</td>
-        <td>${renderCellThumbs(item.p1)}</td>
-        <td>${renderCellThumbs(item.p2)}</td>
-        <td>${renderCellThumbs(item.p3)}</td>
-        <td>${renderCellThumbs(item.b1)}</td>
-        <td>${renderCellThumbs(item.b2)}</td>
-        <td>${renderCellThumbs(item.b3)}</td>
-        <td>${renderCellThumbs(item.g1)}</td>
-        <td>${renderCellThumbs(item.g2)}</td>
-        <td>${renderCellThumbs(item.g3)}</td>
+        <td>
+          <table class="sld-matrix-table" style="border-collapse:collapse; width:100%; text-align:center; font-size:0.85rem;">
+            <thead>
+              <tr style="border-bottom:1px solid var(--border-color);">
+                <th style="padding:4px; width:28px;"></th>
+                <th style="padding:4px;">🥇</th>
+                <th style="padding:4px;">🥈</th>
+                <th style="padding:4px;">🥉</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style="border-bottom:1px solid var(--border-color);">
+                <th style="padding:4px; font-weight:800;">🩷</th>
+                <td style="padding:4px;">${renderCellThumbs(item.p3)}</td>
+                <td style="padding:4px;">${renderCellThumbs(item.p2)}</td>
+                <td style="padding:4px;">${renderCellThumbs(item.p1)}</td>
+              </tr>
+              <tr style="border-bottom:1px solid var(--border-color);">
+                <th style="padding:4px; font-weight:800;">🩵</th>
+                <td style="padding:4px;">${renderCellThumbs(item.b3)}</td>
+                <td style="padding:4px;">${renderCellThumbs(item.b2)}</td>
+                <td style="padding:4px;">${renderCellThumbs(item.b1)}</td>
+              </tr>
+              <tr>
+                <th style="padding:4px; font-weight:800;">🩶</th>
+                <td style="padding:4px;">${renderCellThumbs(item.g3)}</td>
+                <td style="padding:4px;">${renderCellThumbs(item.g2)}</td>
+                <td style="padding:4px;">${renderCellThumbs(item.g1)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </td>
+        <td><strong style="font-size:1.1rem; color:var(--text-primary);">${item.mediaSet.size}</strong></td>
         <td><button class="btn btn-danger btn-sm delete-sld-btn" data-tag="${item.dateTag}">🗑️ Delete</button></td>
       </tr>`).join('');
 
