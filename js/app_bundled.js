@@ -2905,34 +2905,43 @@
       return detailComboSortDir === 'asc' ? comp : -comp;
     });
 
-    const heroMediaBg = subject.avatarUrl || (taggedMedia[0] ? (taggedMedia[0].customThumbnail || taggedMedia[0].filename) : null);
+    const heroMediaBg = subject.avatarUrl || (taggedMedia[0] ? (taggedMedia[0].customThumbnail || taggedMedia[0].dataUrl || taggedMedia[0].filename) : null);
     const heroCardBgStyle = heroMediaBg 
-      ? `position:relative; overflow:hidden; background: linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(2, 6, 23, 0.95) 100%), url('${heroMediaBg}') center/cover no-repeat; border:1px solid var(--border-color); border-radius:var(--radius-lg); padding:28px 20px; text-align:center; margin-bottom:24px; box-shadow:var(--shadow-md);`
-      : `background: linear-gradient(135deg, ${groupColor}22 0%, var(--bg-card) 65%); border:1px solid var(--border-color); border-radius:var(--radius-lg); padding:28px 20px; text-align:center; margin-bottom:24px;`;
+      ? `position:relative; overflow:hidden; background: linear-gradient(135deg, rgba(15, 23, 42, 0.88) 0%, rgba(2, 6, 23, 0.95) 100%), url('${heroMediaBg}') center/cover no-repeat; border:1px solid var(--border-color); border-radius:var(--radius-lg); padding:24px; text-align:left; margin-bottom:24px; box-shadow:var(--shadow-md); backdrop-filter:blur(10px);`
+      : `background: linear-gradient(135deg, ${groupColor}22 0%, var(--bg-card) 65%); border:1px solid var(--border-color); border-radius:var(--radius-lg); padding:24px; text-align:left; margin-bottom:24px;`;
 
     container.innerHTML = `
       <button class="btn btn-secondary btn-sm" id="backToSubjectsBtn" style="margin-bottom:16px;">← Back to Subjects</button>
 
-      <!-- Hero Header Card with Avatar 200x200 and Name/Stats BELOW -->
+      <!-- Hero Header Card with Avatar 200x200 on LEFT, Info on RIGHT, Blurred Background -->
       <div style="${heroCardBgStyle}">
-        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:16px; width:100%; z-index:2; position:relative;">
-          ${subject.avatarUrl 
-            ? `<img src="${subject.avatarUrl}" class="subject-avatar-lg sub-avatar-clickable ${borderClass}" data-id="${subject.id}" alt="${subject.name}">` 
-            : taggedMedia[0] 
-              ? renderMediaThumbnailHTML(taggedMedia[0], `subject-avatar-lg sub-avatar-clickable ${borderClass}`) 
-              : `<div class="subject-avatar-lg sub-avatar-clickable ${borderClass}" data-id="${subject.id}" style="display:flex;align-items:center;justify-content:center;font-size:48px;background:var(--bg-secondary);">👤</div>`}
-          
-          <div>
-            <h2 style="font-size:2rem; font-weight:900; margin-bottom:6px; color:#fff; text-shadow:0 2px 4px rgba(0,0,0,0.8);">${getSubjectDisplayName(subject)}</h2>
-            <p class="text-muted" style="font-size:1rem;">Total Score: <strong style="color:var(--accent-pink);">${sStat.totalPoints} pts</strong> (📘 ${sStat.heartPoints} SLD + 📙 ${sStat.eventPoints} Events)</p>
+        <div style="display:flex; align-items:center; gap:24px; text-align:left; width:100%; z-index:2; position:relative; flex-wrap:wrap;">
+          <div style="flex-shrink:0;">
+            ${subject.avatarUrl 
+              ? `<img src="${subject.avatarUrl}" class="subject-avatar-lg sub-avatar-clickable ${borderClass}" data-id="${subject.id}" alt="${subject.name}">` 
+              : taggedMedia[0] 
+                ? renderMediaThumbnailHTML(taggedMedia[0], `subject-avatar-lg sub-avatar-clickable ${borderClass}`) 
+                : `<div class="subject-avatar-lg sub-avatar-clickable ${borderClass}" data-id="${subject.id}" style="display:flex;align-items:center;justify-content:center;font-size:48px;background:var(--bg-secondary);">👤</div>`}
           </div>
 
-          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:center; margin-top:4px;">
-            <select id="detailSubGroupSelect" class="select-input btn-sm" style="font-size:0.85rem;">
-              ${getSubjectGroupOptionsHTML(subject.groupId)}
-            </select>
-            <button class="btn btn-secondary btn-sm" id="renameDetailSubjectBtn">✏️ Rename</button>
-            <button class="btn btn-danger btn-sm" id="deleteDetailSubjectBtn">🗑️ Delete</button>
+          <div style="flex:1; min-width:240px; display:flex; flex-direction:column; gap:8px;">
+            <h2 style="font-size:2rem; font-weight:900; color:#fff; text-shadow:0 2px 4px rgba(0,0,0,0.8); margin:0;">${getSubjectDisplayName(subject)}</h2>
+            <p class="text-muted" style="font-size:1rem; margin:0;">Total Score: <strong style="color:var(--accent-pink);">${sStat.totalPoints} pts</strong> (📘 ${sStat.heartPoints} SLD + 📙 ${sStat.eventPoints} Events)</p>
+
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:6px;">
+              <select id="detailSubGroupSelect" class="select-input btn-sm" style="font-size:0.85rem;">
+                ${getSubjectGroupOptionsHTML(subject.groupId)}
+              </select>
+              <button class="btn btn-secondary btn-sm" id="renameDetailSubjectBtn">✏️ Rename</button>
+              
+              <!-- 3-Dot Submenu for Delete Subject -->
+              <div class="dropdown-container" id="subDetailMenuContainer" style="position:relative; display:inline-block;">
+                <button class="btn btn-secondary btn-sm" id="subDetailMenuBtn">•••</button>
+                <div class="dropdown-menu" id="subDetailDropdown" style="display:none; position:absolute; left:0; top:100%; z-index:10; background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:6px; min-width:160px; box-shadow:var(--shadow-md);">
+                  <button class="btn btn-danger btn-sm" id="deleteDetailSubjectBtn" style="width:100%; text-align:left;">🗑️ Delete Subject</button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -2959,18 +2968,14 @@
         </div>
       </div>
 
-      <!-- Subject Combinations Elements Section -->
+      <!-- Friends (Combinations) Section -->
       <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:16px;">
-        <h3 style="font-size:1.3rem; font-weight:800; margin:0;">⚡ Subject Combinations (${subjectCombos.length})</h3>
+        <h3 style="font-size:1.3rem; font-weight:800; margin:0;">🫂 ${getSubjectDisplayName(subject)}'s Friends (${subjectCombos.length})</h3>
         <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-left:12px;">
           <span class="text-muted" style="font-size:0.8rem; font-weight:700;">Sort:</span>
           <button class="btn btn-secondary btn-sm combo-sort-btn ${detailComboSortKey === 'eventPoints' ? 'active' : ''}" data-sort="eventPoints">📙 Events</button>
-          <button class="btn btn-secondary btn-sm combo-sort-btn ${detailComboSortKey === 'action' ? 'active' : ''}" data-sort="action">⚡ Action</button>
-          <button class="btn btn-secondary btn-sm combo-sort-btn ${detailComboSortKey === 'totalPoints' ? 'active' : ''}" data-sort="totalPoints">🏆 Total</button>
+          <button class="btn btn-secondary btn-sm combo-sort-btn ${detailComboSortKey === 'action' ? 'active' : ''}" data-sort="action">💋 Action</button>
           <button class="btn btn-secondary btn-sm combo-sort-btn ${detailComboSortKey === 'heartPoints' ? 'active' : ''}" data-sort="heartPoints">📘 SLD</button>
-          <button class="btn btn-secondary btn-sm combo-sort-btn ${detailComboSortKey === 'pink' ? 'active' : ''}" data-sort="pink">🩷 Pink</button>
-          <button class="btn btn-secondary btn-sm combo-sort-btn ${detailComboSortKey === 'grey' ? 'active' : ''}" data-sort="grey">🩶 Grey</button>
-          <button class="btn btn-secondary btn-sm combo-sort-btn ${detailComboSortKey === 'blue' ? 'active' : ''}" data-sort="blue">🩵 Blue</button>
         </div>
       </div>
 
@@ -2980,8 +2985,9 @@
           const displaySubs = otherSubs.length > 0 ? otherSubs : c.subs;
           const companion = displaySubs[0] || (c.subs || []).find(s => s.id !== subject.id) || subject;
 
-          const activeOverlayHTML = subject.avatarUrl 
-            ? `<img src="${subject.avatarUrl}" class="combination-active-overlay-thumb" title="Active: ${getSubjectDisplayName(subject)}">`
+          const activeAvatarSrc = subject.avatarUrl || (taggedMedia[0] ? (taggedMedia[0].customThumbnail || taggedMedia[0].dataUrl) : null);
+          const activeOverlayHTML = activeAvatarSrc
+            ? `<img src="${activeAvatarSrc}" class="combination-active-overlay-thumb" title="Active: ${getSubjectDisplayName(subject)}">`
             : `<div class="combination-active-overlay-thumb" style="display:flex;align-items:center;justify-content:center;font-size:18px;background:var(--accent-pink);color:#fff;">👤</div>`;
 
           const companionTagged = currentMediaList.filter(m => m.subjectTags?.includes(companion.id));
@@ -3025,10 +3031,10 @@
 
       <!-- Tagged Photos & Videos Section -->
       <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:16px;">
-        <h3 style="font-size:1.3rem; font-weight:800; margin:0;">🖼️ Tagged Photos & Videos (${taggedMedia.length})</h3>
+        <h3 style="font-size:1.3rem; font-weight:800; margin:0;">🖼️ ${getSubjectDisplayName(subject)}'s Media (${taggedMedia.length})</h3>
         <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-left:12px;">
           <span class="text-muted" style="font-size:0.8rem; font-weight:700;">Sort:</span>
-          <button class="btn btn-secondary btn-sm media-sort-btn ${detailMediaSortKey === 'totalPoints' ? 'active' : ''}" data-sort="totalPoints">🏆 Total Pts</button>
+          <button class="btn btn-secondary btn-sm media-sort-btn ${detailMediaSortKey === 'totalPoints' ? 'active' : ''}" data-sort="totalPoints">📘 SLD</button>
           <button class="btn btn-secondary btn-sm media-sort-btn ${detailMediaSortKey === 'pink' ? 'active' : ''}" data-sort="pink">🩷 Pink</button>
           <button class="btn btn-secondary btn-sm media-sort-btn ${detailMediaSortKey === 'grey' ? 'active' : ''}" data-sort="grey">🩶 Grey</button>
           <button class="btn btn-secondary btn-sm media-sort-btn ${detailMediaSortKey === 'blue' ? 'active' : ''}" data-sort="blue">🩵 Blue</button>
@@ -3037,7 +3043,7 @@
 
       <div class="media-grid">
         ${taggedMedia.map(m => `
-          <div class="media-card sub-detail-media ${getMediaHighestPriorityGroupBorderClass(m)}" data-id="${m.id}">
+          <div class="media-card sub-detail-media ${getMediaHighestPriorityGroupBorderClass(m)}" data-id="${m.id}" style="cursor:pointer;">
             ${renderMediaThumbnailHTML(m)}
           </div>`).join('')}
       </div>`;
@@ -3061,6 +3067,20 @@
 
     document.getElementById('renameDetailSubjectBtn').onclick = () => promptRenameSubject(subject);
     document.getElementById('deleteDetailSubjectBtn').onclick = () => deleteSubjectWithConfirmation(subject);
+
+    const subDetailMenuBtn = document.getElementById('subDetailMenuBtn');
+    const subDetailDropdown = document.getElementById('subDetailDropdown');
+    if (subDetailMenuBtn && subDetailDropdown) {
+      subDetailMenuBtn.onclick = (e) => {
+        e.stopPropagation();
+        subDetailDropdown.style.display = subDetailDropdown.style.display === 'none' ? 'block' : 'none';
+      };
+      document.addEventListener('click', (e) => {
+        if (!subDetailMenuBtn.contains(e.target) && !subDetailDropdown.contains(e.target)) {
+          subDetailDropdown.style.display = 'none';
+        }
+      });
+    }
 
     const avatarEl = container.querySelector('.sub-avatar-clickable');
     if (avatarEl) avatarEl.onclick = () => openAvatarPhotoPicker(subject.id);
