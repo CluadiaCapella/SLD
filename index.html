@@ -98,7 +98,12 @@
         <span id="selectedCount">0 file(s) selected</span>
         <div class="selection-actions" style="display:flex; align-items:center; gap:8px;">
           <button class="btn btn-secondary btn-sm" id="openMultiSelectTagsBtn">🏷️ Tags</button>
-          <button class="btn btn-danger btn-sm" id="deleteSelectedMediaBtn">🗑️ Delete Selected</button>
+          <div class="dropdown-container" id="mediaBatchMenuContainer" style="position:relative;">
+            <button class="btn btn-secondary btn-sm" id="mediaBatchMenuBtn">•••</button>
+            <div class="dropdown-menu" id="mediaBatchDropdown" style="display:none; position:absolute; right:0; top:100%; z-index:10; background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:6px; min-width:150px; box-shadow:var(--shadow-md);">
+              <button class="btn btn-danger btn-sm" id="deleteSelectedMediaBtn" style="width:100%; text-align:left;">🗑️ Delete Selected</button>
+            </div>
+          </div>
           <button class="btn btn-secondary btn-sm" id="clearSelectionBtn">✖ Clear Selection</button>
         </div>
       </div>

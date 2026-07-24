@@ -503,17 +503,26 @@
         const val = input.value.trim();
         if (!val) return;
 
-        let existingSub = currentSubjectsList.find(s => s.name.toLowerCase() === val.toLowerCase());
-        if (!existingSub) {
+        const tagCounts = new Map();
+        for (const m of currentMediaList) {
+          for (const sId of (m.subjectTags || [])) tagCounts.set(sId, (tagCounts.get(sId) || 0) + 1);
+        }
+
+        const sortedSubs = currentSubjectsList.slice().sort((a, b) => (tagCounts.get(b.id) || 0) - (tagCounts.get(a.id) || 0));
+        const matches = sortedSubs.filter(s => getSubjectDisplayName(s).toLowerCase().includes(val.toLowerCase()) || s.name.toLowerCase().includes(val.toLowerCase()));
+
+        let targetSub = matches.length > 0 ? matches[0] : null;
+        if (!targetSub) {
           const pId = await db.getActiveProfileId();
-          existingSub = { id: 'sub-' + Date.now(), profileId: pId, name: val, groupId: 'green', avatarUrl: null };
-          await db.put('subjects', existingSub);
+          targetSub = { id: 'sub-' + Date.now(), profileId: pId, name: val, groupId: 'green', avatarUrl: null };
+          await db.put('subjects', targetSub);
           await loadAppState();
         }
 
         input.value = '';
         dropdown.classList.remove('active');
-        if (onSelectSubject) onSelectSubject(existingSub.id);
+        if (onSelectSubject) onSelectSubject(targetSub.id);
+        setTimeout(() => input.focus(), 50);
       }
     });
 
@@ -1484,7 +1493,14 @@
     });
   }
 
-  function switchView(viewId) {
+  function getGroupDisplayTitle(g) {
+    if (!g) return '';
+    const emoji = g.emoji || '📁';
+    const cleanName = (g.name || '').replace(/^[\p{Emoji}\s]+/u, '').trim();
+    return `${emoji} ${cleanName || g.name}`;
+  }
+
+  function switchView(viewId, skipPushState = false) {
     currentActiveView = viewId;
     document.querySelectorAll('.nav-item').forEach(el => {
       el.classList.toggle('active', el.getAttribute('data-view') === viewId);
@@ -1493,6 +1509,19 @@
       el.classList.toggle('active', el.id === viewId);
     });
     renderCurrentView();
+
+    if (!skipPushState) {
+      const stateObj = {
+        viewId,
+        activeDetailSubjectId,
+        activeDetailComboKey,
+        activeDetailSldDateTag,
+        activeDetailEventId,
+        activeDetailTagName,
+        isLightbox: false
+      };
+      window.history.pushState(stateObj, '', '#' + viewId);
+    }
   }
 
   function renderCurrentView() {
@@ -1696,7 +1725,7 @@
           groupsHTML += `
             <div class="media-group-section" style="display:block; width:100%; margin-bottom:32px;">
               <div class="media-group-title" style="color:${g.color || 'var(--text-primary)'}; font-weight:800; font-size:1.15rem; margin-bottom:16px; padding-bottom:8px; border-bottom:1px solid var(--border-color);">
-                ${g.emoji || '📁'} ${g.name} (${groupFiles.length} files)
+                ${getGroupDisplayTitle(g)} (${groupFiles.length} files)
               </div>
               <div class="media-grid">
                 ${groupFiles.map(renderCardHTML).join('')}
@@ -1781,6 +1810,15 @@
         }
       };
     });
+  }
+
+  function openMultiSelectTagsModal(subjectIds = null) {
+    const modal = document.getElementById('multiSelectTagsModal');
+    if (!modal) return;
+
+    renderSelectionTagsPanel();
+    modal.classList.add('active');
+    modal.style.display = 'flex';
   }
 
   function updateSelectionStateUI() {
@@ -1958,12 +1996,12 @@
   /* ==========================================================================
      9. LIGHTBOX MEDIA VIEWER (PRESERVES VIDEO CROPPING Status)
      ========================================================================== */
-  function openLightboxById(mediaId) {
+  function openLightboxById(mediaId, skipPushState = false) {
     const idx = currentMediaList.findIndex(m => m.id === mediaId);
-    if (idx >= 0) openLightbox(idx);
+    if (idx >= 0) openLightbox(idx, skipPushState);
   }
 
-  function openLightbox(index) {
+  function openLightbox(index, skipPushState = false) {
     if (index < 0 || index >= currentMediaList.length) return;
     lightboxIndex = index;
     const modal = document.getElementById('lightboxModal');
@@ -1978,13 +2016,34 @@
 
     modal.classList.add('active');
     renderLightboxContent();
+
+    if (!skipPushState) {
+      window.history.pushState({
+        viewId: currentActiveView,
+        activeDetailSubjectId,
+        activeDetailComboKey,
+        activeDetailSldDateTag,
+        activeDetailEventId,
+        activeDetailTagName,
+        lightboxIndex: index,
+        isLightbox: true
+      }, '', '#lightbox');
+    }
   }
 
-  function closeLightbox() {
+  function closeLightbox(isPopState = false) {
     const modal = document.getElementById('lightboxModal');
-    modal.classList.remove('active', 'fullscreen-mode');
+    const isAlreadyOpen = modal && (modal.classList.contains('active') || modal.style.display === 'flex');
+    if (modal) {
+      modal.classList.remove('active', 'fullscreen-mode');
+      modal.style.display = 'none';
+    }
     document.getElementById('floatingHeartOverlay').style.display = 'none';
     lightboxIndex = -1;
+
+    if (isAlreadyOpen && !isPopState) {
+      window.history.back();
+    }
   }
 
   function renderLightboxContent() {
@@ -2004,7 +2063,9 @@
 
     if (isVideo) {
       const posterAttr = croppedUrl ? `poster="${croppedUrl}"` : '';
-      container.innerHTML = `<video id="lbMediaVideo" src="${media.dataUrl}" ${posterAttr} controls autoplay style="max-height:75vh; max-width:100%; object-fit:contain;"></video>`;
+      container.innerHTML = `<video id="lbMediaVideo" src="${media.dataUrl}" ${posterAttr} controls autoplay muted style="max-height:75vh; max-width:100%; object-fit:contain;"></video>`;
+      const lbVid = document.getElementById('lbMediaVideo');
+      if (lbVid) lbVid.muted = true;
     } else if (croppedUrl) {
       container.innerHTML = `<img id="lbMediaImg" src="${croppedUrl}" alt="${media.filename}" style="max-height:75vh; max-width:100%; object-fit:contain;">`;
     } else {
@@ -2562,7 +2623,7 @@
           groupsHTML += `
             <div class="media-group-section" style="display:block; width:100%; margin-bottom:32px;">
               <div class="media-group-title" style="color:${g.color || 'var(--text-primary)'}; font-weight:800; font-size:1.15rem; margin-bottom:16px; padding-bottom:8px; border-bottom:1px solid var(--border-color);">
-                ${g.emoji || '📁'} ${g.name} (${groupSubs.length} subjects)
+                ${getGroupDisplayTitle(g)} (${groupSubs.length} subjects)
               </div>
               <div class="media-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap:16px;">
                 ${groupSubs.map(renderSubjectCardHTML).join('')}
@@ -2585,12 +2646,51 @@
 
       gridContainer.innerHTML = groupsHTML || `<div class="empty-state" style="grid-column: 1 / -1;">No subjects match active group filters.</div>`;
 
-      // Subject card selection / drilldown event listener
+      // Subject card selection / drilldown event listener with Long Press support
       gridContainer.querySelectorAll('.subject-card').forEach(card => {
+        const subId = card.getAttribute('data-id');
+        let isLongPressTriggered = false;
+        let pressTimer = null;
+
+        const startPress = () => {
+          isLongPressTriggered = false;
+          pressTimer = setTimeout(() => {
+            isLongPressTriggered = true;
+            if (selectedSubjectIds.has(subId)) {
+              selectedSubjectIds.delete(subId);
+            } else {
+              selectedSubjectIds.add(subId);
+            }
+            renderSubjectsPage(stats);
+          }, 300);
+        };
+
+        const cancelPress = () => { if (pressTimer) clearTimeout(pressTimer); };
+
+        card.addEventListener('mousedown', startPress);
+        card.addEventListener('touchstart', startPress);
+        card.addEventListener('mouseup', cancelPress);
+        card.addEventListener('mouseleave', cancelPress);
+        card.addEventListener('touchend', cancelPress);
+
+        card.oncontextmenu = (e) => {
+          e.preventDefault();
+          if (selectedSubjectIds.has(subId)) {
+            selectedSubjectIds.delete(subId);
+          } else {
+            selectedSubjectIds.add(subId);
+          }
+          renderSubjectsPage(stats);
+        };
+
         card.onclick = (e) => {
-          const subId = card.getAttribute('data-id');
+          if (isLongPressTriggered) {
+            isLongPressTriggered = false;
+            return;
+          }
           if (e.shiftKey || e.ctrlKey || e.metaKey || selectedSubjectIds.size > 0) {
-            // Toggle multi-selection
+            e.preventDefault();
+            e.stopPropagation();
             if (selectedSubjectIds.has(subId)) {
               selectedSubjectIds.delete(subId);
             } else {
@@ -2601,18 +2701,6 @@
             activeDetailSubjectId = subId;
             switchView('subjectDetailsView');
           }
-        };
-
-        // Long press / right click context to trigger selection
-        card.oncontextmenu = (e) => {
-          e.preventDefault();
-          const subId = card.getAttribute('data-id');
-          if (selectedSubjectIds.has(subId)) {
-            selectedSubjectIds.delete(subId);
-          } else {
-            selectedSubjectIds.add(subId);
-          }
-          renderSubjectsPage(stats);
         };
       });
     }
@@ -2886,56 +2974,50 @@
         </div>
       </div>
 
-      <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:12px; margin-bottom:32px;">
+      <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap:16px; margin-bottom:32px;">
         ${subjectCombos.length > 0 ? subjectCombos.map(c => {
           const otherSubs = (c.subs || []).filter(s => s.id !== subject.id);
           const displaySubs = otherSubs.length > 0 ? otherSubs : c.subs;
+          const companion = displaySubs[0] || (c.subs || []).find(s => s.id !== subject.id) || subject;
 
-          const activeSubOverlay = subject.avatarUrl 
-            ? `<img src="${subject.avatarUrl}" style="position:absolute; top:-4px; left:-4px; width:16px; height:16px; border-radius:50%; border:2px solid #ffffff; object-fit:cover; z-index:3; box-shadow:0 2px 4px rgba(0,0,0,0.6);" title="Active: ${getSubjectDisplayName(subject)}">`
-            : `<div style="position:absolute; top:-4px; left:-4px; width:16px; height:16px; border-radius:50%; border:2px solid #ffffff; background:var(--accent-pink); color:#fff; font-size:10px; display:flex; align-items:center; justify-content:center; z-index:3;">👤</div>`;
+          const activeOverlayHTML = subject.avatarUrl 
+            ? `<img src="${subject.avatarUrl}" class="combination-active-overlay-thumb" title="Active: ${getSubjectDisplayName(subject)}">`
+            : `<div class="combination-active-overlay-thumb" style="display:flex;align-items:center;justify-content:center;font-size:18px;background:var(--accent-pink);color:#fff;">👤</div>`;
 
-          const avatarsHTML = displaySubs.map(s => {
-            const tagged = currentMediaList.filter(m => m.subjectTags?.includes(s.id));
-            const g = getSubjectGroup(s.groupId);
-            const bClass = g?.cssClass || '';
-            const thumb = s.avatarUrl 
-              ? `<img src="${s.avatarUrl}" class="${bClass}" style="width:52px; height:52px; border-radius:50%; object-fit:cover; border:2px solid var(--border-color);" title="${getSubjectDisplayName(s)}">`
-              : tagged[0]
-                ? renderMediaThumbnailHTML(tagged[0], `subject-avatar ${bClass}`)
-                : `<div class="${bClass}" style="width:52px; height:52px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:var(--bg-secondary); font-size:22px; border:2px solid var(--border-color);">👤</div>`;
-
-            return `
-              <div style="position:relative; display:inline-block; margin-right:6px;">
-                ${activeSubOverlay}
-                ${thumb}
-              </div>`;
-          }).join('');
-
-          const comboName = displaySubs.map(s => getSubjectDisplayName(s)).join(' & ');
+          const companionTagged = currentMediaList.filter(m => m.subjectTags?.includes(companion.id));
+          const g = getSubjectGroup(companion.groupId);
+          const bClass = g?.cssClass || '';
+          const mainThumbHTML = companion.avatarUrl 
+            ? `<img src="${companion.avatarUrl}" class="combination-main-thumb ${bClass}" alt="${companion.name}">`
+            : companionTagged[0]
+              ? renderMediaThumbnailHTML(companionTagged[0], `combination-main-thumb ${bClass}`)
+              : `<div class="combination-main-thumb ${bClass}" style="display:flex;align-items:center;justify-content:center;font-size:54px;background:var(--bg-secondary);">👤</div>`;
 
           const ACTION_HEX_MAP = {
             1: '#a855f7', 2: '#3b82f6', 3: '#10b981', 4: '#eab308',
             5: '#f97316', 6: '#ef4444', 7: '#ec4899', 8: '#d946ef',
             9: '#0ea5e9', 10: '#6366f1', 11: '#8b5cf6', 12: '#f43f5e'
           };
-          const actColor = ACTION_HEX_MAP[c.maxActionCode] || 'var(--bg-card)';
+          const actColor = ACTION_HEX_MAP[c.maxActionCode] || '';
           const cardBgStyle = c.maxActionCode 
-            ? `background: linear-gradient(135deg, ${actColor}22 0%, var(--bg-card) 75%); border: 1px solid ${actColor}55;`
-            : `background: var(--bg-card); border: 1px solid var(--border-color);`;
+            ? `border: 2px solid ${actColor};`
+            : `border: 1px solid var(--border-color);`;
 
           return `
-            <div class="combination-element-card" data-combokey="${(c.subjectIds || [c.subjectId1, c.subjectId2]).join('::')}" style="${cardBgStyle} border-radius:var(--radius-lg); padding:12px; display:flex; align-items:center; justify-content:space-between; gap:12px; cursor:pointer;">
-              <div style="display:flex; align-items:center; gap:10px; overflow:hidden;">
-                <div style="display:flex; flex-shrink:0;">${avatarsHTML}</div>
-                <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                  <div style="font-weight:800; font-size:0.95rem; overflow:hidden; text-overflow:ellipsis;">${comboName}</div>
-                  <div style="font-size:0.75rem; color:var(--text-muted);">${c.mediaCount} shared media ${c.maxActionCode ? `• Action ${c.maxActionCode}` : ''}</div>
+            <div class="combination-element-card" data-combokey="${(c.subjectIds || [c.subjectId1, c.subjectId2]).join('::')}" style="${cardBgStyle}">
+              ${activeOverlayHTML}
+              ${mainThumbHTML}
+              <div class="combination-card-overlay">
+                <div style="font-weight:800; font-size:1.05rem; color:#fff; text-shadow:0 2px 4px rgba(0,0,0,0.9); margin-bottom:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                  ${getSubjectDisplayName(companion)}
                 </div>
-              </div>
-              <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-end; flex-shrink:0;">
-                <span class="subject-stat-badge" style="color:var(--accent-pink);">📘 ${c.heartPoints}</span>
-                <span class="subject-stat-badge" style="color:var(--accent-blue);">📙 ${c.eventPoints}</span>
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; flex-wrap:wrap;">
+                  <span style="font-size:0.75rem; color:rgba(255,255,255,0.85); text-shadow:0 1px 3px #000;">${c.mediaCount} shared media</span>
+                  <div style="display:flex; gap:6px;">
+                    <span class="subject-stat-badge" style="color:#ff69b4; background:rgba(0,0,0,0.65); backdrop-filter:blur(4px); padding:2px 6px; border-radius:4px;">📘 ${c.heartPoints}</span>
+                    <span class="subject-stat-badge" style="color:#38bdf8; background:rgba(0,0,0,0.65); backdrop-filter:blur(4px); padding:2px 6px; border-radius:4px;">📙 ${c.eventPoints}</span>
+                  </div>
+                </div>
               </div>
             </div>`;
         }).join('') : '<p class="text-muted" style="grid-column: 1 / -1;">No subject combinations found.</p>'}
@@ -4747,6 +4829,29 @@
       document.documentElement.setAttribute('data-theme', val);
       await db.setSetting('theme', val);
     });
+
+    window.addEventListener('popstate', (e) => {
+      if (e.state) {
+        const st = e.state;
+        if (st.activeDetailSubjectId !== undefined) activeDetailSubjectId = st.activeDetailSubjectId;
+        if (st.activeDetailComboKey !== undefined) activeDetailComboKey = st.activeDetailComboKey;
+        if (st.activeDetailSldDateTag !== undefined) activeDetailSldDateTag = st.activeDetailSldDateTag;
+        if (st.activeDetailEventId !== undefined) activeDetailEventId = st.activeDetailEventId;
+        if (st.activeDetailTagName !== undefined) activeDetailTagName = st.activeDetailTagName;
+
+        if (st.isLightbox && st.lightboxIndex >= 0) {
+          openLightbox(st.lightboxIndex, true);
+        } else {
+          closeLightbox(true);
+          switchView(st.viewId || 'mediaBrowserView', true);
+        }
+      } else {
+        closeLightbox(true);
+        switchView('mediaBrowserView', true);
+      }
+    });
+
+    window.history.replaceState({ viewId: 'mediaBrowserView', isLightbox: false }, '', '#mediaBrowserView');
   }
 
   if (document.readyState === 'loading') {
