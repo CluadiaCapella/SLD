@@ -3084,6 +3084,84 @@
       return detailComboSortDir === 'asc' ? comp : -comp;
     });
 
+    // Actions Summary Section using official 12 Zodiac Actions
+    const ACTION_HEX_MAP = {
+      1: '#a855f7', 2: '#3b82f6', 3: '#10b981', 4: '#eab308',
+      5: '#f97316', 6: '#ef4444', 7: '#ec4899', 8: '#d946ef',
+      9: '#0ea5e9', 10: '#6366f1', 11: '#8b5cf6', 12: '#f43f5e'
+    };
+
+    const actionCodesList = Array.from({ length: 12 }, (_, i) => i + 1);
+    const actionsGridHTML = actionCodesList.map(code => {
+      const actColor = ACTION_HEX_MAP[code] || 'var(--accent-blue)';
+      const displayName = getActionDisplayName(code);
+      const comboCount = subjectCombos.filter(c => c.maxActionCode === code).length;
+      return `
+        <div style="background:var(--bg-card); border:1px solid ${actColor}55; border-radius:var(--radius-md); padding:12px; display:flex; align-items:center; justify-content:space-between; gap:10px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <div style="font-weight:800; font-size:0.9rem; color:var(--text-primary);">${displayName}</div>
+          </div>
+          <span class="subject-stat-badge" style="background:${actColor}22; color:${actColor}; font-weight:800; font-size:0.85rem; padding:4px 8px; border-radius:12px; border:1px solid ${actColor}55;">
+            ${comboCount} combo(s)
+          </span>
+        </div>`;
+    }).join('');
+
+    // Events Gallery Computation
+    const subEvents = (currentEventsList || []).filter(e => e.subjectCounts && e.subjectCounts[subject.id]);
+    const eventYears = Array.from(new Set(subEvents.map(e => {
+      const d = e.dateTag || e.date || '';
+      return d.length >= 4 ? d.substr(0, 4) : null;
+    }).filter(Boolean))).sort().reverse();
+
+    let filteredEvents = subEvents.slice().sort((a, b) => (b.dateTag || b.date || '').localeCompare(a.dateTag || a.date || ''));
+
+    if (selectedEventYear !== 'all') {
+      filteredEvents = filteredEvents.filter(e => (e.dateTag || e.date || '').startsWith(selectedEventYear));
+    }
+    if (selectedEventMonth !== 'all') {
+      filteredEvents = filteredEvents.filter(e => {
+        const d = e.dateTag || e.date || '';
+        return d.includes(`-${selectedEventMonth}-`) || d.substr(4, 2) === selectedEventMonth;
+      });
+    }
+
+    const filteredEventsHTML = filteredEvents.length > 0 ? filteredEvents.map(evt => {
+      const companionIds = Object.keys(evt.subjectCounts || {}).filter(id => id !== subject.id);
+      const companionSub = currentSubjectsList.find(s => s.id === companionIds[0]) || subject;
+
+      const activeAvatarSrc = subject.avatarUrl || (taggedMedia[0] ? (taggedMedia[0].customThumbnail || taggedMedia[0].dataUrl) : null);
+      const activeOverlayHTML = activeAvatarSrc
+        ? `<img src="${activeAvatarSrc}" class="combination-active-overlay-thumb" title="Active: ${getSubjectDisplayName(subject)}">`
+        : `<div class="combination-active-overlay-thumb" style="display:flex;align-items:center;justify-content:center;font-size:18px;background:var(--accent-pink);color:#fff;">👤</div>`;
+
+      const companionTagged = currentMediaList.filter(m => m.subjectTags?.includes(companionSub.id));
+      const g = getSubjectGroup(companionSub.groupId);
+      const bClass = g?.cssClass || '';
+      const mainThumbHTML = companionSub.avatarUrl 
+        ? `<img src="${companionSub.avatarUrl}" class="combination-main-thumb ${bClass}" alt="${companionSub.name}">`
+        : companionTagged[0]
+          ? renderMediaThumbnailHTML(companionTagged[0], `combination-main-thumb ${bClass}`)
+          : `<div class="combination-main-thumb ${bClass}" style="display:flex;align-items:center;justify-content:center;font-size:54px;background:var(--bg-secondary);">👤</div>`;
+
+      const actColor = ACTION_HEX_MAP[evt.eventCode] || 'var(--accent-blue)';
+      const actionName = getActionDisplayName(evt.eventCode);
+
+      return `
+        <div class="combination-element-card sub-event-element" data-eventid="${evt.id}" style="border: 2px solid ${actColor}; min-width: 180px; width: 180px; flex-shrink: 0; cursor: pointer;">
+          ${activeOverlayHTML}
+          ${mainThumbHTML}
+          <div class="combination-card-overlay" style="background: linear-gradient(to top, rgba(2, 6, 23, 0.95) 0%, ${actColor}44 60%, transparent 100%);">
+            <div style="font-weight:800; font-size:0.9rem; color:#fff; text-shadow:0 2px 4px rgba(0,0,0,0.9); margin-bottom:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+              ${actionName}
+            </div>
+            <div style="font-size:0.75rem; color:rgba(255,255,255,0.85); text-shadow:0 1px 3px #000; font-weight:700;">
+              🗓️ ${evt.dateTag || evt.date}
+            </div>
+          </div>
+        </div>`;
+    }).join('') : '<p class="text-muted" style="padding:12px 0;">No matching events found.</p>';
+
     const heroMediaBg = subject.avatarUrl || (taggedMedia[0] ? (taggedMedia[0].customThumbnail || taggedMedia[0].dataUrl || taggedMedia[0].filename) : null);
     const heroCardBgStyle = heroMediaBg 
       ? `position:relative; overflow:hidden; background: linear-gradient(135deg, rgba(15, 23, 42, 0.88) 0%, rgba(2, 6, 23, 0.95) 100%), url('${heroMediaBg}') center/cover no-repeat; border:1px solid var(--border-color); border-radius:var(--radius-lg); padding:24px; text-align:left; margin-bottom:24px; box-shadow:var(--shadow-md); backdrop-filter:blur(10px);`
