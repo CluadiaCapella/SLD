@@ -2870,7 +2870,21 @@
     lightboxIndex = -1;
 
     if (isAlreadyOpen && !isPopState) {
-      window.history.back();
+      if (window.history.state && window.history.state.isLightbox) {
+        try {
+          window.history.replaceState({
+            viewId: currentActiveView || 'mediaBrowserView',
+            activeDetailSubjectId,
+            activeDetailComboKey,
+            activeDetailSldDateTag,
+            activeDetailEventId,
+            activeDetailTagName,
+            isLightbox: false
+          }, '', '#' + (currentActiveView || 'mediaBrowserView'));
+        } catch (e) {
+          console.warn('Error updating history replaceState on Lightbox exit:', e);
+        }
+      }
     }
   }
 
