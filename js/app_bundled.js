@@ -1634,10 +1634,23 @@
       checkBtn.onclick = () => checkForAppUpdates(true);
     }
 
+    const isApkMode = window.isNativeApk || window.location.protocol === 'file:' || window.navigator.userAgent.includes('SLDAndroidAPK');
+    const badgeEl = document.getElementById('appEnvironmentBadge');
+    if (badgeEl) {
+      if (isApkMode) {
+        badgeEl.textContent = '🤖 Native Android APK V1.2.0';
+        badgeEl.style.background = 'rgba(16, 185, 129, 0.2)';
+        badgeEl.style.color = '#34d399';
+        badgeEl.style.borderColor = '#10b981';
+      } else {
+        badgeEl.textContent = '🌐 Web PWA & APK Available';
+      }
+    }
+
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       deferredPrompt = e;
-      if (installBtn) {
+      if (installBtn && !isApkMode) {
         installBtn.style.display = 'inline-block';
         installBtn.onclick = () => {
           deferredPrompt.prompt();
