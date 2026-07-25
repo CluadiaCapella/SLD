@@ -2937,7 +2937,7 @@
 
     if (isVideo) {
       const posterAttr = croppedUrl ? `poster="${croppedUrl}"` : '';
-      container.innerHTML = `<video id="lbMediaVideo" src="${media.dataUrl}" ${posterAttr} controls autoplay muted style="max-height:75vh; max-width:100%; object-fit:contain;"></video>`;
+      container.innerHTML = `<video id="lbMediaVideo" src="${media.dataUrl}" ${posterAttr} autoplay muted loop playsinline webkit-playsinline moz-playsinline style="max-height:75vh; max-width:100%; object-fit:contain; pointer-events:none;"></video>`;
       const lbVid = document.getElementById('lbMediaVideo');
       if (lbVid) lbVid.muted = true;
     } else if (croppedUrl) {
@@ -7285,13 +7285,22 @@
         modal.classList.toggle('fullscreen-mode');
         const isFS = modal.classList.contains('fullscreen-mode');
 
+        const docEl = document.documentElement;
         if (isFS) {
-          if (document.documentElement.requestFullscreen) {
-            document.documentElement.requestFullscreen().catch(() => {});
+          if (docEl.requestFullscreen) {
+            docEl.requestFullscreen().catch(() => {});
+          } else if (docEl.mozRequestFullScreen) {
+            docEl.mozRequestFullScreen();
+          } else if (docEl.webkitRequestFullscreen) {
+            docEl.webkitRequestFullscreen();
           }
         } else {
-          if (document.fullscreenElement && document.exitFullscreen) {
+          if (document.exitFullscreen) {
             document.exitFullscreen().catch(() => {});
+          } else if (document.mozCancelFullScreen) {
+            document.mozCancelFullScreen();
+          } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
           }
         }
 
@@ -7303,15 +7312,20 @@
       };
     }
 
-    document.addEventListener('fullscreenchange', () => {
+    const handleFSChange = () => {
       const modal = document.getElementById('lightboxModal');
-      if (!document.fullscreenElement && modal.classList.contains('fullscreen-mode')) {
+      const activeFS = document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement;
+      if (!activeFS && modal && modal.classList.contains('fullscreen-mode')) {
         modal.classList.remove('fullscreen-mode');
         if (!sldDefaultFullscreen) {
           document.getElementById('floatingHeartOverlay').style.display = 'none';
         }
       }
-    });
+    };
+
+    document.addEventListener('fullscreenchange', handleFSChange);
+    document.addEventListener('mozfullscreenchange', handleFSChange);
+    document.addEventListener('webkitfullscreenchange', handleFSChange);
 
     document.getElementById('closeLightboxBtn')?.addEventListener('click', closeLightbox);
     document.getElementById('lbPrevBtn')?.addEventListener('click', () => openLightbox(lightboxIndex - 1));
