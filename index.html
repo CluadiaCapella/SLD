@@ -622,6 +622,29 @@
           </div>
         </div>
 
+        <!-- 📜 System Error Logs & Diagnostics Card -->
+        <div class="chart-card">
+          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <h3 style="margin:0;">📜 System Error Logs & Diagnostics</h3>
+              <span id="errorLogCountBadge" class="badge" style="background:rgba(239,68,68,0.2); color:#f87171; border:1px solid #ef4444; font-size:0.75rem;">0 errors</span>
+            </div>
+            <span class="subject-stat-badge" style="background:rgba(56,189,248,0.15); color:#38bdf8; border:1px solid #38bdf8; font-size:0.75rem;">📱 Device Specific</span>
+          </div>
+          <p class="text-muted" style="font-size:0.85rem; margin-top:4px;">Automatically captures runtime JavaScript errors, failed promises, and stack tracebacks for easy copy-pasting & debugging.</p>
+
+          <div style="margin-top:12px;">
+            <div id="systemErrorLogsContainer" style="max-height:220px; overflow-y:auto; background:rgba(0,0,0,0.5); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:12px; font-family:monospace; font-size:0.78rem; color:#fca5a5; white-space:pre-wrap; word-break:break-word;">
+              No runtime errors recorded on this device.
+            </div>
+
+            <div style="display:flex; gap:10px; margin-top:10px; flex-wrap:wrap;">
+              <button class="btn btn-secondary btn-sm" id="copyErrorLogsBtn">📋 Copy Error Log</button>
+              <button class="btn btn-danger btn-sm" id="clearErrorLogsBtn">🗑️ Clear Error Log</button>
+            </div>
+          </div>
+        </div>
+
         <div class="chart-card">
           <h3>🖼️ Collections Manager</h3>
           <p class="text-muted" style="font-size:0.85rem; margin-top:4px;">Manage, export, import, duplicate, or drag-and-merge media collections.</p>

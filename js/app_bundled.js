@@ -1479,6 +1479,99 @@
   }
 
   /* ==========================================================================
+     GLOBAL SYSTEM ERROR LOGGER & DIAGNOSTICS
+     ========================================================================== */
+  const systemErrorLogs = [];
+
+  function logSystemError(type, message, file = '', line = 0, col = 0, stack = '') {
+    const errorEntry = {
+      timestamp: new Date().toISOString(),
+      type: type || 'Error',
+      message: message || 'Unknown error occurred',
+      location: file ? `${file.split('/').pop()}:${line}:${col}` : '',
+      stack: stack || (new Error().stack || '')
+    };
+
+    systemErrorLogs.unshift(errorEntry);
+    if (systemErrorLogs.length > 50) systemErrorLogs.pop();
+
+    try {
+      localStorage.setItem('sld_system_error_logs', JSON.stringify(systemErrorLogs));
+    } catch (e) {}
+
+    renderSystemErrorLogsUI();
+  }
+
+  function loadSystemErrorLogs() {
+    try {
+      const saved = localStorage.getItem('sld_system_error_logs');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          systemErrorLogs.length = 0;
+          systemErrorLogs.push(...parsed);
+        }
+      }
+    } catch (e) {}
+    renderSystemErrorLogsUI();
+  }
+
+  function renderSystemErrorLogsUI() {
+    const container = document.getElementById('systemErrorLogsContainer');
+    const countBadge = document.getElementById('errorLogCountBadge');
+
+    if (countBadge) {
+      countBadge.textContent = `${systemErrorLogs.length} error${systemErrorLogs.length === 1 ? '' : 's'}`;
+      countBadge.style.background = systemErrorLogs.length > 0 ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.2)';
+      countBadge.style.color = systemErrorLogs.length > 0 ? '#f87171' : '#10b981';
+      countBadge.style.borderColor = systemErrorLogs.length > 0 ? '#ef4444' : '#10b981';
+    }
+
+    if (!container) return;
+
+    if (systemErrorLogs.length === 0) {
+      container.textContent = 'No runtime errors recorded on this device.';
+      return;
+    }
+
+    container.textContent = systemErrorLogs.map((e, idx) => {
+      const timeStr = new Date(e.timestamp).toLocaleTimeString();
+      return `[#${systemErrorLogs.length - idx}] ${timeStr} - ${e.type}\nMsg: ${e.message}\nLoc: ${e.location}\nStack:\n${e.stack}\n----------------------------------------`;
+    }).join('\n\n');
+  }
+
+  window.addEventListener('error', (event) => {
+    logSystemError('JS Error', event.message, event.filename, event.lineno, event.colno, event.error?.stack);
+  });
+
+  window.addEventListener('unhandledrejection', (event) => {
+    const msg = event.reason?.message || String(event.reason || 'Unhandled Promise Rejection');
+    const stack = event.reason?.stack || '';
+    logSystemError('Unhandled Promise Rejection', msg, '', 0, 0, stack);
+  });
+
+  function initSystemErrorLoggerUI() {
+    loadSystemErrorLogs();
+
+    document.getElementById('copyErrorLogsBtn')?.addEventListener('click', () => {
+      const text = systemErrorLogs.length > 0
+        ? document.getElementById('systemErrorLogsContainer')?.textContent
+        : 'No runtime errors recorded on this device.';
+      navigator.clipboard.writeText(text).then(() => {
+        alert('📜 Error log copied to clipboard! You can paste it into the chat.');
+      }).catch(() => {
+        alert('Failed to copy to clipboard automatically. Please select the text in the error box and copy manually.');
+      });
+    });
+
+    document.getElementById('clearErrorLogsBtn')?.addEventListener('click', () => {
+      systemErrorLogs.length = 0;
+      localStorage.removeItem('sld_system_error_logs');
+      renderSystemErrorLogsUI();
+    });
+  }
+
+  /* ==========================================================================
      PWA & AUTO-UPDATE MANAGER
      ========================================================================== */
   let deferredPrompt = null;
@@ -1612,6 +1705,7 @@
     setupEventListeners();
     setupNavbarAutoHide();
     initPWAandUpdates();
+    initSystemErrorLoggerUI();
 
     document.getElementById('headerBrandLogo')?.addEventListener('click', () => {
       triggerSplashScreen(() => {
@@ -1632,6 +1726,9 @@
       const lbModal = document.getElementById('lightboxModal');
       const isLbActive = lbModal && lbModal.classList.contains('active');
 
+      const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+      const isInputFocused = activeTag === 'input' || activeTag === 'textarea';
+
       if (e.key === 'Escape') {
         if (isLbActive) {
           closeLightbox();
@@ -1639,7 +1736,7 @@
           selectedMediaIds.clear();
           updateSelectionStateUI();
         }
-      } else if (isLbActive) {
+      } else if (isLbActive && !isInputFocused) {
         if (e.key === 'ArrowLeft') {
           if (lightboxIndex > 0) openLightbox(lightboxIndex - 1);
         } else if (e.key === 'ArrowRight') {
