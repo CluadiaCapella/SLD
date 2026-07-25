@@ -87,6 +87,11 @@
             <option value="hasSubjects">Has Subject Tags</option>
             <option value="noSubjects">Does not have Subject Tags</option>
           </select>
+          <div style="display:inline-flex; align-items:center; gap:6px; background:var(--bg-secondary); border:1px solid var(--border-color); padding:4px 10px; border-radius:var(--radius-md);">
+            <span style="font-size:0.8rem; font-weight:700;">🔍 Size:</span>
+            <input type="range" id="globalThumbSizeSlider" min="50" max="200" step="5" value="200" style="width:90px; cursor:pointer;">
+            <span id="globalThumbSizeVal" style="font-size:0.75rem; font-weight:800; min-width:38px; color:var(--accent-blue);">200px</span>
+          </div>
         </div>
         <!-- 3-Deep Cascade Sort Toggle Buttons -->
         <div id="mediaSortButtonsToolbar" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:10px;">

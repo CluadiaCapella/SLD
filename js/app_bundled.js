@@ -1541,6 +1541,7 @@
   }
 
   window.addEventListener('error', (event) => {
+    if (event.message === 'Script error.' && !event.filename && !event.lineno) return;
     logSystemError('JS Error', event.message, event.filename, event.lineno, event.colno, event.error?.stack);
   });
 
@@ -1549,6 +1550,41 @@
     const stack = event.reason?.stack || '';
     logSystemError('Unhandled Promise Rejection', msg, '', 0, 0, stack);
   });
+
+  /* ==========================================================================
+     GLOBAL THUMBNAIL SIZE SLIDER SUBSYSTEM (50px to 200px)
+     ========================================================================== */
+  async function initGlobalThumbSizeSlider() {
+    const slider = document.getElementById('globalThumbSizeSlider');
+
+    const savedSize = await db.getSetting('globalThumbSize');
+    const thumbSize = savedSize ? parseInt(savedSize, 10) : 200;
+
+    applyGlobalThumbSize(thumbSize);
+
+    if (slider) {
+      slider.value = thumbSize;
+      slider.oninput = async (e) => {
+        const val = parseInt(e.target.value, 10);
+        applyGlobalThumbSize(val);
+        await db.setSetting('globalThumbSize', val);
+      };
+    }
+  }
+
+  function applyGlobalThumbSize(sizePx) {
+    const valText = document.getElementById('globalThumbSizeVal');
+    if (valText) valText.textContent = `${sizePx}px`;
+
+    document.documentElement.style.setProperty('--thumb-size', `${sizePx}px`);
+
+    document.querySelectorAll('.media-card, .sld-mini-thumb-wrap, .subject-mini-thumb').forEach(el => {
+      if (!el.classList.contains('winner-thumb') && el.style.width !== '400px') {
+        el.style.width = `${sizePx}px`;
+        el.style.height = `${sizePx}px`;
+      }
+    });
+  }
 
   function initSystemErrorLoggerUI() {
     loadSystemErrorLogs();
@@ -1706,6 +1742,7 @@
     setupNavbarAutoHide();
     initPWAandUpdates();
     initSystemErrorLoggerUI();
+    initGlobalThumbSizeSlider();
 
     document.getElementById('headerBrandLogo')?.addEventListener('click', () => {
       triggerSplashScreen(() => {
@@ -2810,6 +2847,20 @@
   function closeLightbox(isPopState = false) {
     const modal = document.getElementById('lightboxModal');
     const isAlreadyOpen = modal && (modal.classList.contains('active') || modal.style.display === 'flex');
+
+    const container = document.getElementById('lightboxMediaContainer');
+    if (container) {
+      const vids = container.querySelectorAll('video');
+      vids.forEach(v => {
+        try {
+          v.pause();
+          v.removeAttribute('src');
+          v.load();
+        } catch (e) {}
+      });
+      container.innerHTML = '';
+    }
+
     if (modal) {
       modal.classList.remove('active', 'fullscreen-mode');
       modal.style.display = 'none';
