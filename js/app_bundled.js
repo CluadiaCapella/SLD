@@ -1647,12 +1647,9 @@
       }
     }
 
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      deferredPrompt = e;
-      if (installBtn && !isApkMode) {
-        installBtn.style.display = 'inline-block';
-        installBtn.onclick = () => {
+    if (installBtn) {
+      installBtn.onclick = () => {
+        if (deferredPrompt) {
           deferredPrompt.prompt();
           deferredPrompt.userChoice.then((choice) => {
             if (choice.outcome === 'accepted') {
@@ -1660,7 +1657,17 @@
             }
             deferredPrompt = null;
           });
-        };
+        } else {
+          alert('📲 How to Install SLD App on your phone:\n\n• Android (Chrome/Firefox): Tap browser menu ⋮ → "Add to Home screen" or "Install app".\n\n• iPhone (Safari): Tap Share ⎋ → "Add to Home Screen".');
+        }
+      };
+    }
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      if (installBtn) {
+        installBtn.style.display = 'inline-block';
       }
     });
 
