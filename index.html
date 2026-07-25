@@ -62,12 +62,12 @@
           <h1>🖼️ Media Collection</h1>
           <p>Browse, batch tag, and organize media files.</p>
         </div>
-        <div class="page-actions" style="display:flex; gap:8px;">
-          <label class="btn btn-primary" style="cursor:pointer;">
-            📤 Upload Files
+        <div class="page-actions" style="display:flex; gap:8px; flex-wrap:wrap;">
+          <label class="btn btn-accent-blue" style="cursor:pointer;" title="Upload individual photos and videos (Works on Mobile & Desktop)">
+            📷 Add Files / Photos
             <input type="file" id="mediaFileInput" multiple accept="image/*,video/*" style="display:none;">
           </label>
-          <label class="btn btn-secondary" style="cursor:pointer;">
+          <label class="btn btn-secondary" style="cursor:pointer;" title="Upload an entire directory folder (Desktop browsers only)">
             📁 Add Folder
             <input type="file" id="mediaFolderInput" webkitdirectory directory multiple style="display:none;">
           </label>

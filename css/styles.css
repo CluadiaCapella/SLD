@@ -824,3 +824,15 @@ body {
 }
 .action-btn-choice.inactive { opacity: 0.45; filter: grayscale(0.5); }
 .action-btn-choice.active { opacity: 1; transform: scale(1.04); box-shadow: 0 0 10px rgba(255, 105, 180, 0.4); border-color: #fff !important; }
+
+/* Mobile Touch & Small Screen Responsiveness (<768px) */
+@media (max-width: 768px) {
+  .page-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .page-actions { width: 100%; flex-wrap: wrap; }
+  .page-actions label, .page-actions button { flex: 1; min-width: 130px; text-align: center; justify-content: center; min-height: 44px; display: inline-flex; align-items: center; }
+  .media-toolbar { flex-direction: column; gap: 10px; }
+  .search-filter-group { width: 100%; flex-direction: column; align-items: stretch; }
+  .selection-banner-sticky { bottom: 75px !important; width: 96% !important; left: 2% !important; transform: none !important; }
+  .floating-heart-overlay { bottom: 25px !important; padding: 8px 14px !important; gap: 8px !important; }
+  .lightbox-nav-btn { width: 44px; height: 44px; font-size: 1.5rem; }
+}
