@@ -2071,27 +2071,18 @@
   }
 
   function setupNavbarAutoHide() {
-    let lastScrollY = window.scrollY;
+    const nav = document.getElementById('bottomNavBar');
+    if (nav) {
+      nav.classList.remove('nav-hidden');
+    }
 
+    // Ensure bottom navbar stays visible on all scroll events
     window.addEventListener('scroll', () => {
-      const nav = document.getElementById('bottomNavBar');
-      if (!nav) return;
-      const currentScrollY = window.scrollY;
-      if (currentScrollY > lastScrollY && currentScrollY > 40) {
-        nav.classList.remove('nav-hidden');
-      } else if (currentScrollY < lastScrollY) {
-        nav.classList.add('nav-hidden');
+      const navEl = document.getElementById('bottomNavBar');
+      if (navEl && navEl.classList.contains('nav-hidden')) {
+        navEl.classList.remove('nav-hidden');
       }
-      lastScrollY = currentScrollY;
-    });
-
-    window.addEventListener('mousemove', (e) => {
-      const nav = document.getElementById('bottomNavBar');
-      if (!nav) return;
-      if (window.innerHeight - e.clientY <= 60) {
-        nav.classList.remove('nav-hidden');
-      }
-    });
+    }, { passive: true });
   }
 
   async function loadAppState() {
