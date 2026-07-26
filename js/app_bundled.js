@@ -2732,7 +2732,7 @@
     container.innerHTML = `
       <div class="tag-category-card">
         <div class="tag-category-header" data-cat="sld">
-          <span>💦 SLD Events (${sldCounts.size})</span>
+          <span>📘 SLD Events (${sldCounts.size})</span>
           <button class="btn btn-secondary btn-sm toggle-cat-btn" data-cat="sld">${isSldExpanded ? '▲ Collapse' : '▼ Show All'}</button>
         </div>
         <div class="${isSldExpanded ? 'tag-chip-container-expanded' : 'tag-chip-container-collapsed'}">
@@ -3860,11 +3860,11 @@
     const blueList = stats.allSubjectStats.slice().sort((a, b) => b.bluePoints - a.bluePoints);
     const eventList = stats.allSubjectStats.slice().sort((a, b) => b.eventPoints - a.eventPoints);
 
-    renderLeaderboardRows(sldLbContainer, sldList, 'heartPoints', 'var(--accent-pink)', false, '📘 SLD Points Rankings');
-    renderLeaderboardRows(pinkLbContainer, pinkList, 'pinkPoints', '#ff69b4', false, '🩷 Pink Hearts Rankings');
-    renderLeaderboardRows(greyLbContainer, greyList, 'greyPoints', '#94a3b8', false, '🩶 Grey Hearts Rankings');
-    renderLeaderboardRows(blueLbContainer, blueList, 'bluePoints', '#38bdf8', false, '🩵 Blue Hearts Rankings');
-    renderLeaderboardRows(eventLbContainer, eventList, 'eventPoints', '#3b82f6', false, '📙 Event Points Rankings');
+    renderLeaderboardRows(eventLbContainer, eventList, 'eventPoints', '#3b82f6', false, '📙 Events Rankings');
+    renderLeaderboardRows(sldLbContainer, sldList, 'heartPoints', 'var(--accent-pink)', false, '📘 Total Rankings');
+    renderLeaderboardRows(pinkLbContainer, pinkList, 'pinkPoints', '#ff69b4', false, '🩷 Rankings');
+    renderLeaderboardRows(blueLbContainer, blueList, 'bluePoints', '#38bdf8', false, '🩵 Rankings');
+    renderLeaderboardRows(greyLbContainer, greyList, 'greyPoints', '#94a3b8', false, '🩶 Rankings');
 
     // 2. Render 5 Distinct Companion Leaderboard Sets
     const comboSldLbContainer = document.getElementById('comboSldLb');
@@ -3879,11 +3879,11 @@
     const cBlueList = stats.allCombinations.slice().sort((a, b) => b.bluePoints - a.bluePoints);
     const cEventList = stats.allCombinations.slice().sort((a, b) => b.eventPoints - a.eventPoints);
 
-    renderLeaderboardRows(comboSldLbContainer, cSldList, 'heartPoints', 'var(--accent-pink)', true, '⚡ Companion SLD Points Rankings');
-    renderLeaderboardRows(comboPinkLbContainer, cPinkList, 'pinkPoints', '#ff69b4', true, '⚡ Companion Pink Hearts Rankings');
-    renderLeaderboardRows(comboGreyLbContainer, cGreyList, 'greyPoints', '#94a3b8', true, '⚡ Companion Grey Hearts Rankings');
-    renderLeaderboardRows(comboBlueLbContainer, cBlueList, 'bluePoints', '#38bdf8', true, '⚡ Companion Blue Hearts Rankings');
-    renderLeaderboardRows(comboEventLbContainer, cEventList, 'eventPoints', '#3b82f6', true, '⚡ Companion Event Points Rankings');
+    renderLeaderboardRows(comboEventLbContainer, cEventList, 'eventPoints', '#3b82f6', true, '⚡ Companion Events Rankings');
+    renderLeaderboardRows(comboSldLbContainer, cSldList, 'heartPoints', 'var(--accent-pink)', true, '⚡ Companion Total Rankings');
+    renderLeaderboardRows(comboPinkLbContainer, cPinkList, 'pinkPoints', '#ff69b4', true, '⚡ Companion 🩷 Rankings');
+    renderLeaderboardRows(comboBlueLbContainer, cBlueList, 'bluePoints', '#38bdf8', true, '⚡ Companion 🩵 Rankings');
+    renderLeaderboardRows(comboGreyLbContainer, cGreyList, 'greyPoints', '#94a3b8', true, '⚡ Companion 🩶 Rankings');
   }
 
   function openFullLeaderboardModal(title, list, scoreKey, badgeColor, isCombo) {

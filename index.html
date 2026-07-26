@@ -82,7 +82,7 @@
           <button class="btn btn-secondary btn-sm" id="aiFilterToggleBtn">🖼️ All Media</button>
           <select id="mediaFilterTagSelect" class="select-input">
             <option value="all">All Media</option>
-            <option value="hasBlueEvents">💦 SLD Events</option>
+            <option value="hasBlueEvents">📘 SLD Events</option>
             <option value="pink3">🩷🥇 (3 Pink Hearts)</option>
             <option value="hasSubjects">Has Subject Tags</option>
             <option value="noSubjects">Does not have Subject Tags</option>
@@ -199,8 +199,8 @@
     <section id="subjectsView" class="view-page">
       <div class="page-header">
         <div class="page-title-group">
-          <h1>👥 Subjects & Profiles</h1>
-          <p>Manage individual subject profiles, groups, and rankings.</p>
+          <h1>👥 Subjects</h1>
+          <p>Subject profiles, groups, and rankings.</p>
         </div>
         <div class="page-actions" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
           <button class="btn btn-primary" id="openAddSubjectBtn">+ Add Subject</button>
@@ -241,54 +241,54 @@
 
         <!-- 1. Subject Leaderboards Section -->
         <div id="subjectLeaderboardsSection">
-          <h2 style="margin-top:40px; margin-bottom:16px; font-size:1.4rem; font-weight:800; border-bottom:1px solid var(--border-color); padding-bottom:8px;">🏆 Subject Leaderboards</h2>
+          <h2 style="margin-top:40px; margin-bottom:16px; font-size:1.4rem; font-weight:800; border-bottom:1px solid var(--border-color); padding-bottom:8px;">🏆 Subject Points Leaderboards</h2>
           <div class="leaderboard-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:20px;">
             <div class="leaderboard-card">
-              <h3>📘 SLD Points</h3>
+              <h3>📙 Events</h3>
+              <div id="eventPointsLeaderboard" style="display:flex; flex-direction:column; gap:8px;"></div>
+            </div>
+            <div class="leaderboard-card">
+              <h3>📘 Total</h3>
               <div id="sldLeaderboard" style="display:flex; flex-direction:column; gap:8px;"></div>
             </div>
             <div class="leaderboard-card">
-              <h3>🩷 Pink Hearts</h3>
+              <h3>🩷</h3>
               <div id="pinkHeartLeaderboard" style="display:flex; flex-direction:column; gap:8px;"></div>
             </div>
             <div class="leaderboard-card">
-              <h3>🩶 Grey Hearts</h3>
-              <div id="greyHeartLeaderboard" style="display:flex; flex-direction:column; gap:8px;"></div>
-            </div>
-            <div class="leaderboard-card">
-              <h3>🩵 Blue Hearts</h3>
+              <h3>🩵</h3>
               <div id="blueHeartLeaderboard" style="display:flex; flex-direction:column; gap:8px;"></div>
             </div>
             <div class="leaderboard-card">
-              <h3>📙 Event Points</h3>
-              <div id="eventPointsLeaderboard" style="display:flex; flex-direction:column; gap:8px;"></div>
+              <h3>🩶</h3>
+              <div id="greyHeartLeaderboard" style="display:flex; flex-direction:column; gap:8px;"></div>
             </div>
           </div>
         </div>
 
         <!-- 2. Companion Leaderboards Section -->
         <div id="comboLeaderboardsSection" style="display:none;">
-          <h2 style="margin-top:40px; margin-bottom:16px; font-size:1.4rem; font-weight:800; border-bottom:1px solid var(--border-color); padding-bottom:8px;">⚡ Companion Leaderboards</h2>
+          <h2 style="margin-top:40px; margin-bottom:16px; font-size:1.4rem; font-weight:800; border-bottom:1px solid var(--border-color); padding-bottom:8px;">⚡ Companion Points Leaderboards</h2>
           <div class="leaderboard-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:20px;">
             <div class="leaderboard-card">
-              <h3>📘 SLD Points</h3>
+              <h3>📙 Events</h3>
+              <div id="comboEventLb" style="display:flex; flex-direction:column; gap:8px;"></div>
+            </div>
+            <div class="leaderboard-card">
+              <h3>📘 Total</h3>
               <div id="comboSldLb" style="display:flex; flex-direction:column; gap:8px;"></div>
             </div>
             <div class="leaderboard-card">
-              <h3>🩷 Pink Hearts</h3>
+              <h3>🩷</h3>
               <div id="comboPinkLb" style="display:flex; flex-direction:column; gap:8px;"></div>
             </div>
             <div class="leaderboard-card">
-              <h3>🩶 Grey Hearts</h3>
-              <div id="comboGreyLb" style="display:flex; flex-direction:column; gap:8px;"></div>
-            </div>
-            <div class="leaderboard-card">
-              <h3>🩵 Blue Hearts</h3>
+              <h3>🩵</h3>
               <div id="comboBlueLb" style="display:flex; flex-direction:column; gap:8px;"></div>
             </div>
             <div class="leaderboard-card">
-              <h3>📙 Event Points</h3>
-              <div id="comboEventLb" style="display:flex; flex-direction:column; gap:8px;"></div>
+              <h3>🩶</h3>
+              <div id="comboGreyLb" style="display:flex; flex-direction:column; gap:8px;"></div>
             </div>
           </div>
         </div>
@@ -309,7 +309,7 @@
     <section id="sldView" class="view-page">
       <div class="page-header">
         <div class="page-title-group">
-          <h1>💦 SLD Events</h1>
+          <h1>📘 SLD Events</h1>
           <p>Recorded SLD dates, file counts, and heart medal distributions.</p>
         </div>
       </div>
@@ -354,7 +354,7 @@
             <tr>
               <th>Event Date</th>
               <th>Actions</th>
-              <th>Participants & 💦 Counts</th>
+              <th>Participants</th>
               <th>Media</th>
               <th style="text-align:right;"></th>
             </tr>
