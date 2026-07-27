@@ -1748,7 +1748,12 @@
     }
   }
 
+  let hasCheckedUpdatesThisSession = false;
+
   async function checkForAppUpdates(userTriggered = false) {
+    if (!userTriggered && hasCheckedUpdatesThisSession) return;
+    hasCheckedUpdatesThisSession = true;
+
     let data = null;
 
     if (window.location.protocol !== 'file:') {
@@ -1774,13 +1779,15 @@
     }
 
     if (data && data.version) {
-      const currentLocalVersion = (await db.getSetting('appVersion')) || '1.3.0';
+      const currentLocalVersion = await db.getSetting('appVersion');
 
-      if (currentLocalVersion !== data.version) {
-        handleNewVersionDetected(data.version);
+      // Save version to DB immediately to avoid reload loops
+      await db.setSetting('appVersion', data.version);
+
+      if (currentLocalVersion && currentLocalVersion !== data.version) {
+        showUpdateAvailableBanner(data.version);
       } else {
-        await db.setSetting('appVersion', data.version);
-        if (userTriggered) alert(`Your app is already up to date! (V${data.version})`);
+        if (userTriggered) alert(`Your app is up to date! (V${data.version})`);
       }
     } else {
       if (userTriggered) alert('Unable to check for updates. Please check your internet connection.');
