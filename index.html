@@ -67,7 +67,7 @@
             📷 Add Files / Photos
             <input type="file" id="mediaFileInput" multiple accept="image/*,video/*" style="display:none;">
           </label>
-          <label class="btn btn-secondary" style="cursor:pointer;" title="Upload an entire directory folder (Desktop browsers only)">
+          <label class="btn btn-secondary" id="mediaFolderInputLabel" style="cursor:pointer;" title="Upload an entire directory folder (Desktop browsers only)">
             📁 Add Folder
             <input type="file" id="mediaFolderInput" webkitdirectory directory multiple style="display:none;">
           </label>
@@ -78,11 +78,19 @@
       <div class="media-toolbar">
         <div class="search-filter-group" style="flex-wrap:wrap;">
           <input type="text" id="mediaSearchInput" class="input-text" placeholder="Search filenames, tags, subjects..." style="flex:1; min-width:200px;">
+          <button class="btn btn-secondary" id="toggleMediaRatingsBtn" title="⭐ Star Ratings">⭐ Ratings: ON</button>
           <button class="btn btn-secondary" id="toggleMediaGroupBtn" title="Toggle grouping by Subject Group">📁 Grouping: ON</button>
           <button class="btn btn-secondary btn-sm" id="aiFilterToggleBtn">🖼️ All Media</button>
           <select id="mediaFilterTagSelect" class="select-input">
             <option value="all">All Media</option>
             <option value="hasBlueEvents">📘 SLD Events</option>
+            <option value="star5">⭐⭐⭐⭐⭐ 5 Stars</option>
+            <option value="star4">⭐⭐⭐⭐ 4 Stars</option>
+            <option value="star3">⭐⭐⭐ 3 Stars</option>
+            <option value="star2">⭐⭐ 2 Stars</option>
+            <option value="star1">⭐ 1 Star</option>
+            <option value="star0">☆ 0 Stars (Unrated)</option>
+            <option value="rejected">🚫 Rejected</option>
             <option value="pink3">🩷🥇 (3 Pink Hearts)</option>
             <option value="hasSubjects">Has Subject Tags</option>
             <option value="noSubjects">Does not have Subject Tags</option>
@@ -869,6 +877,21 @@
             <div id="lbNormalTagAutocomplete" class="tag-autocomplete-dropdown"></div>
           </div>
           <div id="lbNormalTagsContainer"></div>
+        </div>
+
+        <!-- Star Rating Override Section -->
+        <div>
+          <div style="font-weight:700; font-size:0.85rem; margin-bottom:6px;">⭐ Star Rating & Overrides</div>
+          <div id="lbRatingControls" style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-bottom:8px;">
+            <button class="btn btn-secondary btn-sm rating-override-btn" data-rating="-1" title="Mark as Rejected">🚫 Rejected</button>
+            <button class="btn btn-secondary btn-sm rating-override-btn" data-rating="1" title="1 Star">⭐ 1</button>
+            <button class="btn btn-secondary btn-sm rating-override-btn" data-rating="2" title="2 Stars">⭐ 2</button>
+            <button class="btn btn-secondary btn-sm rating-override-btn" data-rating="3" title="3 Stars">⭐ 3</button>
+            <button class="btn btn-secondary btn-sm rating-override-btn" data-rating="4" title="4 Stars">⭐ 4</button>
+            <button class="btn btn-secondary btn-sm rating-override-btn" data-rating="5" title="5 Stars">⭐ 5</button>
+            <button class="btn btn-secondary btn-sm rating-override-btn" data-rating="auto" title="Reset to Auto Calculation">🔄 Auto</button>
+          </div>
+          <div id="lbRatingBadgeInfo" style="font-size:0.8rem; font-weight:700; color:var(--text-secondary);"></div>
         </div>
       </div>
     </div>

@@ -708,6 +708,41 @@ body {
 .nav-item.active { color: var(--accent-pink); font-weight: 700; }
 .nav-icon { font-size: 1.15rem !important; line-height: 1; }
 
+/* Star Rating Sections & Accordion Layout */
+.media-rating-section {
+  width: 100%;
+  margin-bottom: 32px;
+}
+.media-rating-header {
+  font-weight: 800;
+  font-size: 1.25rem;
+  color: #facc15;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid rgba(250, 204, 21, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.rejected-accordion-card {
+  width: 100%;
+  margin-top: 40px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+}
+.rating-override-btn {
+  font-size: 0.8rem;
+  padding: 4px 10px;
+  border-radius: 14px;
+  transition: all 0.2s ease;
+}
+.rating-override-btn.active {
+  box-shadow: 0 0 10px rgba(255, 105, 180, 0.5);
+  border-color: #fff !important;
+}
+
 /* Modal Backdrops & Cards */
 .modal-backdrop {
   position: fixed; inset: 0; background: rgba(0, 0, 0, 0.75);

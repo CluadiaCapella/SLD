@@ -9,6 +9,24 @@ export function getHeartPointsForCount(count, weights) {
   return 0;
 }
 
+export function calculateMediaStarRating(media) {
+  if (!media) return 0;
+  if (media.userRating !== undefined && media.userRating !== null) {
+    return Number(media.userRating);
+  }
+  const pink = media.heartTags?.pink || 0;
+  const grey = media.heartTags?.grey || 0;
+  const blue = media.heartTags?.blue || 0;
+  const maxHeart = Math.max(pink, grey, blue);
+
+  if (maxHeart >= 3) return 5;
+  if (maxHeart === 2) return 4;
+  if (maxHeart === 1) return 3;
+  if ((media.bronzeMedalHistoryCount || 0) >= 3) return 2;
+  if (media.subjects && media.subjects.length > 0) return 1;
+  return 0;
+}
+
 export function calculateMediaHeartPoints(media, weights) {
   if (!media || !media.heartTags) return { pinkPts: 0, greyPts: 0, bluePts: 0, totalHeartPts: 0 };
   const pinkPts = getHeartPointsForCount(media.heartTags.pink || 0, weights);

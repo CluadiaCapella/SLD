@@ -42,6 +42,7 @@
 
   let currentSubjectGroupsList = DEFAULT_SUBJECT_GROUPS;
   let isMediaGroupingEnabled = true;
+  let isMediaRatingsEnabled = true;
   let disabledGroupIds = new Set();
   let subjectSortKey = 'name';
   let subjectSortDir = 'asc';
@@ -336,6 +337,40 @@
       }
     }
     return '';
+  }
+
+  function calculateMediaStarRating(m) {
+    if (!m) return 0;
+    if (m.userRating !== undefined && m.userRating !== null && m.userRating !== '') {
+      return Number(m.userRating);
+    }
+    let maxHeart = 0;
+    const blueEvents = m.blueBookEvents || [];
+    blueEvents.forEach(be => {
+      const p = be.heartTags?.pink || 0;
+      const g = be.heartTags?.grey || 0;
+      const b = be.heartTags?.blue || 0;
+      maxHeart = Math.max(maxHeart, p, g, b);
+    });
+
+    if (maxHeart >= 3) return 5;
+    if (maxHeart === 2) return 4;
+    if (maxHeart === 1) return 3;
+    if ((m.bronzeMedalHistoryCount || 0) >= 3) return 2;
+    if (m.exifRating && Number(m.exifRating) >= 1 && Number(m.exifRating) <= 5) return Number(m.exifRating);
+    if (m.subjectTags && m.subjectTags.length > 0) return 1;
+    return 0;
+  }
+
+  function getStarRatingLabel(rating) {
+    if (rating === 5) return '⭐⭐⭐⭐⭐ 5 Stars (Gold)';
+    if (rating === 4) return '⭐⭐⭐⭐ 4 Stars (Silver)';
+    if (rating === 3) return '⭐⭐⭐ 3 Stars (Bronze)';
+    if (rating === 2) return '⭐⭐ 2 Stars';
+    if (rating === 1) return '⭐ 1 Star';
+    if (rating === 0) return '☆ 0 Stars (Unrated)';
+    if (rating === -1) return '🚫 Rejected';
+    return 'Unrated';
   }
 
   async function calculateContentHash(dataUrl) {
@@ -1870,6 +1905,13 @@
       });
     }
 
+    document.getElementById('toggleMediaRatingsBtn')?.addEventListener('click', () => {
+      isMediaRatingsEnabled = !isMediaRatingsEnabled;
+      const btn = document.getElementById('toggleMediaRatingsBtn');
+      if (btn) btn.textContent = `⭐ Ratings: ${isMediaRatingsEnabled ? 'ON' : 'OFF'}`;
+      renderMediaBrowser();
+    });
+
     document.getElementById('toggleMediaGroupBtn')?.addEventListener('click', () => {
       isMediaGroupingEnabled = !isMediaGroupingEnabled;
       const btn = document.getElementById('toggleMediaGroupBtn');
@@ -2304,24 +2346,43 @@
       if (filterTag === 'pink3' && !(m.blueBookEvents || []).some(be => be.heartTags?.pink === 3)) return false;
       if (filterTag === 'hasSubjects' && (!m.subjectTags || m.subjectTags.length === 0)) return false;
       if (filterTag === 'noSubjects' && (m.subjectTags && m.subjectTags.length > 0)) return false;
+      if (filterTag === 'star5' && calculateMediaStarRating(m) !== 5) return false;
+      if (filterTag === 'star4' && calculateMediaStarRating(m) !== 4) return false;
+      if (filterTag === 'star3' && calculateMediaStarRating(m) !== 3) return false;
+      if (filterTag === 'star2' && calculateMediaStarRating(m) !== 2) return false;
+      if (filterTag === 'star1' && calculateMediaStarRating(m) !== 1) return false;
+      if (filterTag === 'star0' && calculateMediaStarRating(m) !== 0) return false;
+      if (filterTag === 'rejected' && calculateMediaStarRating(m) !== -1) return false;
       return true;
     });
 
     // 3-Deep Cascade Sort Execution
     filtered.sort(compareMediaCascade);
 
-    const totalItems = filtered.length;
+    // Separate Active (Non-Rejected) vs Rejected Files
+    const activeFiltered = [];
+    const rejectedFiltered = [];
+
+    for (const m of filtered) {
+      if (calculateMediaStarRating(m) === -1) {
+        rejectedFiltered.push(m);
+      } else {
+        activeFiltered.push(m);
+      }
+    }
+
+    const totalItems = activeFiltered.length;
     const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE) || 1;
     if (currentMediaPage > totalPages) currentMediaPage = totalPages;
 
     const startIndex = (currentMediaPage - 1) * ITEMS_PER_PAGE;
     const endIndex = Math.min(startIndex + ITEMS_PER_PAGE, totalItems);
-    const pagedItems = filtered.slice(startIndex, endIndex);
+    const pagedItems = activeFiltered.slice(startIndex, endIndex);
 
     if (totalItems > ITEMS_PER_PAGE) {
       if (paginationContainer) {
         paginationContainer.style.display = 'flex';
-        paginationInfo.textContent = `Showing ${startIndex + 1}-${endIndex} of ${totalItems} files (Page ${currentMediaPage} of ${totalPages})`;
+        paginationInfo.textContent = `Showing ${startIndex + 1}-${endIndex} of ${totalItems} active files (Page ${currentMediaPage} of ${totalPages})`;
         prevBtn.disabled = currentMediaPage <= 1;
         nextBtn.disabled = currentMediaPage >= totalPages;
 
@@ -2336,6 +2397,7 @@
       const isSelected = selectedMediaIds.has(m.id);
       const blueEvents = m.blueBookEvents || [];
       const borderClass = getMediaHighestPriorityGroupBorderClass(m);
+      const starRating = calculateMediaStarRating(m);
 
       let pinkTotal = 0, greyTotal = 0, blueTotal = 0;
       blueEvents.forEach(be => {
@@ -2357,6 +2419,7 @@
           <div class="media-card-overlay">
             <div class="media-card-badges">
               ${isAi ? `<span class="badge" style="background:linear-gradient(135deg, #a855f7, #6366f1); color:#fff; font-weight:800; border-radius:4px; padding:2px 6px;">🤖 AI</span>` : ''}
+              ${starRating === -1 ? `<span class="heart-badge" style="background:#ef4444; color:#fff; font-weight:800;">🚫 Rejected</span>` : `<span class="heart-badge" style="background:rgba(234,179,8,0.25); color:#facc15; border:1px solid #eab308; font-weight:800;">⭐ ${starRating}</span>`}
               ${blueEvents.length > 0 ? `<span class="heart-badge blue">📘 ${blueEvents.length}</span>` : ''}
               ${pinkTotal > 0 ? `<span class="heart-badge pink">🩷 ${pinkTotal}</span>` : ''}
               ${greyTotal > 0 ? `<span class="heart-badge grey">🩶 ${greyTotal}</span>` : ''}
@@ -2368,12 +2431,12 @@
         </div>`;
     };
 
-    if (isMediaGroupingEnabled) {
+    const renderSubjectGroupsHTML = (filesSlice) => {
       const mediaGroupsMap = new Map();
       currentSubjectGroupsList.forEach(g => mediaGroupsMap.set(g.id, []));
       const unassignedMedia = [];
 
-      for (const m of pagedItems) {
+      for (const m of filesSlice) {
         if (!m.subjectTags || m.subjectTags.length === 0) {
           unassignedMedia.push(m);
         } else {
@@ -2396,8 +2459,8 @@
         const groupFiles = mediaGroupsMap.get(g.id) || [];
         if (groupFiles.length > 0) {
           groupsHTML += `
-            <div class="media-group-section" style="display:block; width:100%; margin-bottom:32px;">
-              <div class="media-group-title" style="color:${g.color || 'var(--text-primary)'}; font-weight:800; font-size:1.15rem; margin-bottom:16px; padding-bottom:8px; border-bottom:1px solid var(--border-color);">
+            <div class="media-group-section" style="display:block; width:100%; margin-bottom:20px;">
+              <div class="media-group-title" style="color:${g.color || 'var(--text-primary)'}; font-weight:800; font-size:1.05rem; margin-bottom:12px; padding-bottom:4px; border-bottom:1px dashed var(--border-color);">
                 ${getGroupDisplayTitle(g)} (${groupFiles.length} files)
               </div>
               <div class="media-grid">
@@ -2409,8 +2472,8 @@
 
       if (unassignedMedia.length > 0 && !disabledGroupIds.has('__none__')) {
         groupsHTML += `
-          <div class="media-group-section" style="display:block; width:100%; margin-bottom:32px;">
-            <div class="media-group-title" style="color:var(--text-secondary); font-weight:800; font-size:1.15rem; margin-bottom:16px; padding-bottom:8px; border-bottom:1px solid var(--border-color);">
+          <div class="media-group-section" style="display:block; width:100%; margin-bottom:20px;">
+            <div class="media-group-title" style="color:var(--text-secondary); font-weight:800; font-size:1.05rem; margin-bottom:12px; padding-bottom:4px; border-bottom:1px dashed var(--border-color);">
               ⚪ Unassigned / No Subject Group (${unassignedMedia.length} files)
             </div>
             <div class="media-grid">
@@ -2418,11 +2481,46 @@
             </div>
           </div>`;
       }
+      return groupsHTML;
+    };
 
-      gridContainer.innerHTML = groupsHTML || `<div class="empty-state" style="grid-column: 1 / -1;">No files match active group filters.</div>`;
+    let mainHTML = '';
+
+    if (isMediaRatingsEnabled) {
+      const starLevels = [5, 4, 3, 2, 1, 0];
+      starLevels.forEach(star => {
+        const ratingFiles = pagedItems.filter(m => calculateMediaStarRating(m) === star);
+        if (ratingFiles.length > 0) {
+          mainHTML += `
+            <div class="media-rating-section" style="width:100%; margin-bottom:32px;">
+              <div class="media-rating-header">
+                <span>${getStarRatingLabel(star)}</span>
+                <span class="text-muted" style="font-size:0.85rem; font-weight:700;">${ratingFiles.length} file(s)</span>
+              </div>
+              ${isMediaGroupingEnabled ? renderSubjectGroupsHTML(ratingFiles) : `<div class="media-grid">${ratingFiles.map(renderCardHTML).join('')}</div>`}
+            </div>`;
+        }
+      });
+    } else if (isMediaGroupingEnabled) {
+      mainHTML = renderSubjectGroupsHTML(pagedItems);
     } else {
-      gridContainer.innerHTML = pagedItems.map(renderCardHTML).join('');
+      mainHTML = `<div class="media-grid">${pagedItems.map(renderCardHTML).join('')}</div>`;
     }
+
+    if (rejectedFiltered.length > 0) {
+      mainHTML += `
+        <details class="rejected-accordion-card">
+          <summary style="font-weight:800; font-size:1.1rem; cursor:pointer; color:#ef4444; display:flex; align-items:center; justify-content:space-between; user-select:none;">
+            <span>🚫 Rejected Files (${rejectedFiltered.length})</span>
+            <span class="text-muted" style="font-size:0.85rem; font-weight:600;">Click to expand / collapse ▼</span>
+          </summary>
+          <div class="media-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap:16px; margin-top:16px;">
+            ${rejectedFiltered.map(renderCardHTML).join('')}
+          </div>
+        </details>`;
+    }
+
+    gridContainer.innerHTML = mainHTML || `<div class="empty-state" style="grid-column: 1 / -1;">No files match active filters.</div>`;
 
     gridContainer.querySelectorAll('.media-card').forEach(card => {
       const id = card.getAttribute('data-id');
@@ -2991,6 +3089,7 @@
     renderLightboxBlueEvents(media);
     renderLightboxEvents(media);
     renderLightboxNormalTags(media);
+    renderLightboxRatings(media);
     updateFloatingHeartOverlayUI(media);
 
     const toggleClipperBtn = document.getElementById('lbToggleVideoClipperBtn');
@@ -3373,6 +3472,52 @@
         renderCurrentView();
       };
     });
+  }
+
+  function renderLightboxRatings(media) {
+    const controls = document.getElementById('lbRatingControls');
+    const badgeInfo = document.getElementById('lbRatingBadgeInfo');
+    if (!controls || !media) return;
+
+    const currentRating = calculateMediaStarRating(media);
+    const hasOverride = media.userRating !== undefined && media.userRating !== null && media.userRating !== '';
+
+    controls.querySelectorAll('.rating-override-btn').forEach(btn => {
+      const rVal = btn.getAttribute('data-rating');
+      let isActive = false;
+      if (rVal === 'auto') {
+        isActive = !hasOverride;
+      } else {
+        isActive = hasOverride && Number(rVal) === Number(media.userRating);
+      }
+      if (isActive) {
+        btn.classList.add('active');
+        btn.style.background = rVal === '-1' ? '#ef4444' : 'var(--accent-pink)';
+        btn.style.color = '#fff';
+        btn.style.fontWeight = '800';
+      } else {
+        btn.classList.remove('active');
+        btn.style.background = '';
+        btn.style.color = '';
+        btn.style.fontWeight = '';
+      }
+
+      btn.onclick = async (e) => {
+        e.stopPropagation();
+        if (rVal === 'auto') {
+          delete media.userRating;
+        } else {
+          media.userRating = Number(rVal);
+        }
+        await db.put('media', media);
+        renderLightboxRatings(media);
+        renderCurrentView();
+      };
+    });
+
+    if (badgeInfo) {
+      badgeInfo.textContent = `Current Rating: ${getStarRatingLabel(currentRating)} ${hasOverride ? '(User Override)' : '(Auto Calculated)'}`;
+    }
   }
 
   function updateFloatingHeartOverlayUI(media) {
@@ -7315,6 +7460,19 @@
 
     const folderInput = document.getElementById('mediaFolderInput');
     if (folderInput) folderInput.addEventListener('change', (e) => processFilesArray(e.target.files));
+
+    const folderLabel = document.getElementById('mediaFolderInputLabel') || folderInput?.parentElement;
+    if (folderLabel) {
+      folderLabel.addEventListener('click', (e) => {
+        const isMobileFirefox = /Android|iPhone|iPad/i.test(navigator.userAgent) && /Firefox/i.test(navigator.userAgent);
+        const isDirSupported = 'webkitdirectory' in document.createElement('input');
+        if (isMobileFirefox || !isDirSupported) {
+          e.preventDefault();
+          e.stopPropagation();
+          document.getElementById('mediaFileInput')?.click();
+        }
+      });
+    }
 
     const lbContentWrapper = document.getElementById('lightboxContentWrapper');
     if (lbContentWrapper) {
