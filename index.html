@@ -63,12 +63,12 @@
           <p>Browse, batch tag, and organize media files.</p>
         </div>
         <div class="page-actions" style="display:flex; gap:8px; flex-wrap:wrap;">
-          <label class="btn btn-accent-blue" style="cursor:pointer;" title="Upload individual photos and videos (Works on Mobile & Desktop)">
-            📷 Add Files / Photos
+          <label class="btn btn-accent-blue" style="cursor:pointer;" title="📷 Add Files / Photos">
+            📷
             <input type="file" id="mediaFileInput" multiple accept="image/*,video/*" style="display:none;">
           </label>
-          <label class="btn btn-secondary" id="mediaFolderInputLabel" style="cursor:pointer;" title="Upload an entire directory folder (Desktop; on Android long-press & Select All)">
-            📁 Add Folder
+          <label class="btn btn-secondary" id="mediaFolderInputLabel" style="cursor:pointer;" title="📁 Add Folder (Desktop browsers only)">
+            📁
             <input type="file" id="mediaFolderInput" webkitdirectory directory multiple style="display:none;">
           </label>
         </div>
@@ -77,10 +77,10 @@
       <!-- Media Toolbar Search, Filter & Sort -->
       <div class="media-toolbar">
         <div class="search-filter-group" style="flex-wrap:wrap;">
-          <input type="text" id="mediaSearchInput" class="input-text" placeholder="Search filenames, tags, subjects..." style="flex:1; min-width:200px;">
-          <button class="btn btn-secondary" id="toggleMediaRatingsBtn" title="⭐ Star Ratings">⭐ Ratings: ON</button>
-          <button class="btn btn-secondary" id="toggleMediaGroupBtn" title="Toggle grouping by Subject Group">📁 Grouping: ON</button>
-          <button class="btn btn-secondary btn-sm" id="aiFilterToggleBtn">🖼️ All Media</button>
+          <input type="text" id="mediaSearchInput" class="input-text" placeholder="Search filenames, tags, subjects..." style="flex:1; min-width:140px;">
+          <button class="btn btn-secondary active-sort" id="toggleMediaRatingsBtn" title="⭐ Star Ratings: ON">⭐</button>
+          <button class="btn btn-secondary active-sort" id="toggleMediaGroupBtn" title="📁 Subject Grouping: ON">📁</button>
+          <button class="btn btn-secondary btn-sm" id="aiFilterToggleBtn" title="🖼️ Filter: All Media">🖼️</button>
           <select id="mediaFilterTagSelect" class="select-input">
             <option value="all">All Media</option>
             <option value="hasBlueEvents">📘 SLD Events</option>
@@ -97,18 +97,18 @@
           </select>
           <div style="display:inline-flex; align-items:center; gap:6px; background:var(--bg-secondary); border:1px solid var(--border-color); padding:4px 10px; border-radius:var(--radius-md);">
             <span style="font-size:0.8rem; font-weight:700;">🔍 Size:</span>
-            <input type="range" id="globalThumbSizeSlider" min="50" max="200" step="5" value="200" style="width:90px; cursor:pointer;">
+            <input type="range" id="globalThumbSizeSlider" min="50" max="200" step="5" value="200" style="width:70px; cursor:pointer;">
             <span id="globalThumbSizeVal" style="font-size:0.75rem; font-weight:800; min-width:38px; color:var(--accent-blue);">200px</span>
           </div>
         </div>
         <!-- 3-Deep Cascade Sort Toggle Buttons -->
         <div id="mediaSortButtonsToolbar" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:10px;">
-          <button type="button" class="btn btn-secondary btn-sm sort-toggle-btn" data-key="date">📅 Date</button>
-          <button type="button" class="btn btn-secondary btn-sm sort-toggle-btn" data-key="subject">👤 Subject</button>
-          <button type="button" class="btn btn-secondary btn-sm sort-toggle-btn" data-key="totalPts">⭐ Total Pts</button>
-          <button type="button" class="btn btn-secondary btn-sm sort-toggle-btn" data-key="pinkPts">🩷 Pink Pts</button>
-          <button type="button" class="btn btn-secondary btn-sm sort-toggle-btn" data-key="greyPts">🩶 Grey Pts</button>
-          <button type="button" class="btn btn-secondary btn-sm sort-toggle-btn" data-key="bluePts">🩵 Blue Pts</button>
+          <button type="button" class="btn btn-secondary btn-sm sort-toggle-btn" data-key="date" title="📅 Date Sort">📅</button>
+          <button type="button" class="btn btn-secondary btn-sm sort-toggle-btn" data-key="subject" title="👤 Subject Sort">👤</button>
+          <button type="button" class="btn btn-secondary btn-sm sort-toggle-btn" data-key="totalPts" title="⭐ Total Points Sort">⭐</button>
+          <button type="button" class="btn btn-secondary btn-sm sort-toggle-btn" data-key="pinkPts" title="🩷 Pink Heart Points Sort">🩷</button>
+          <button type="button" class="btn btn-secondary btn-sm sort-toggle-btn" data-key="greyPts" title="🩶 Grey Heart Points Sort">🩶</button>
+          <button type="button" class="btn btn-secondary btn-sm sort-toggle-btn" data-key="bluePts" title="🩵 Blue Heart Points Sort">🩵</button>
         </div>
       </div>
 

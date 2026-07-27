@@ -743,6 +743,30 @@ body {
   border-color: #fff !important;
 }
 
+/* Compact Emoji Toolbar Buttons & Mobile Rules */
+@media (max-width: 768px) {
+  #mediaFolderInputLabel {
+    display: none !important;
+  }
+}
+.sort-toggle-btn {
+  font-size: 1rem;
+  padding: 5px 10px;
+  min-width: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-weight: 800;
+  transition: all 0.2s ease;
+}
+.sort-toggle-btn.active-sort {
+  background: var(--accent-pink) !important;
+  color: #fff !important;
+  border-color: #fff !important;
+  box-shadow: 0 0 8px rgba(255, 105, 180, 0.4);
+}
+
 /* Modal Backdrops & Cards */
 .modal-backdrop {
   position: fixed; inset: 0; background: rgba(0, 0, 0, 0.75);

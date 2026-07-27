@@ -1936,14 +1936,22 @@
     document.getElementById('toggleMediaRatingsBtn')?.addEventListener('click', () => {
       isMediaRatingsEnabled = !isMediaRatingsEnabled;
       const btn = document.getElementById('toggleMediaRatingsBtn');
-      if (btn) btn.textContent = `⭐ Ratings: ${isMediaRatingsEnabled ? 'ON' : 'OFF'}`;
+      if (btn) {
+        btn.textContent = '⭐';
+        btn.setAttribute('title', `⭐ Star Ratings: ${isMediaRatingsEnabled ? 'ON' : 'OFF'}`);
+        btn.classList.toggle('active-sort', isMediaRatingsEnabled);
+      }
       renderMediaBrowser();
     });
 
     document.getElementById('toggleMediaGroupBtn')?.addEventListener('click', () => {
       isMediaGroupingEnabled = !isMediaGroupingEnabled;
       const btn = document.getElementById('toggleMediaGroupBtn');
-      if (btn) btn.textContent = `📁 Grouping: ${isMediaGroupingEnabled ? 'ON' : 'OFF'}`;
+      if (btn) {
+        btn.textContent = '📁';
+        btn.setAttribute('title', `📁 Subject Grouping: ${isMediaGroupingEnabled ? 'ON' : 'OFF'}`);
+        btn.classList.toggle('active-sort', isMediaGroupingEnabled);
+      }
       renderMediaBrowser();
     });
 
@@ -2101,14 +2109,14 @@
     const container = document.getElementById('mediaSortButtonsToolbar');
     if (!container) return;
 
-    const baseTitles = {
-      date: '📅 Date',
-      subject: '👤 Subject',
-      totalPts: '⭐ Total Pts',
-      pinkPts: '🩷 Pink Pts',
-      greyPts: '🩶 Grey Pts',
-      bluePts: '🩵 Blue Pts',
-      sldCount: '📘 SLD Count'
+    const baseInfo = {
+      date: { emoji: '📅', label: '📅 Date Sort' },
+      subject: { emoji: '👤', label: '👤 Subject Sort' },
+      totalPts: { emoji: '⭐', label: '⭐ Total Points Sort' },
+      pinkPts: { emoji: '🩷', label: '🩷 Pink Heart Points Sort' },
+      greyPts: { emoji: '🩶', label: '🩶 Grey Heart Points Sort' },
+      bluePts: { emoji: '🩵', label: '🩵 Blue Heart Points Sort' },
+      sldCount: { emoji: '📘', label: '📘 SLD Count Sort' }
     };
 
     const rankEmojis = ['1️⃣', '2️⃣', '3️⃣'];
@@ -2116,16 +2124,18 @@
     container.querySelectorAll('.sort-toggle-btn').forEach(btn => {
       const key = btn.getAttribute('data-key');
       const idx = sortCascadeStack.findIndex(s => s.key === key);
-      const title = baseTitles[key] || key;
+      const info = baseInfo[key] || { emoji: '❓', label: key };
 
       if (idx !== -1) {
         const item = sortCascadeStack[idx];
         const arrow = item.dir === 'desc' ? '▼' : '▲';
-        const rank = sortCascadeStack.length > 1 ? rankEmojis[idx] + ' ' : '';
-        btn.textContent = `${rank}${title} ${arrow}`;
+        const rank = sortCascadeStack.length > 1 ? rankEmojis[idx] : '';
+        btn.textContent = `${rank}${info.emoji}${arrow}`;
+        btn.setAttribute('title', `${info.label} (Rank ${idx + 1}: ${item.dir === 'desc' ? 'High to Low' : 'Low to High'})`);
         btn.classList.add('active-sort');
       } else {
-        btn.textContent = title;
+        btn.textContent = info.emoji;
+        btn.setAttribute('title', info.label);
         btn.classList.remove('active-sort');
       }
     });
@@ -7099,17 +7109,20 @@
         else aiFilterMode = 'all';
 
         if (aiFilterMode === 'all') {
-          aiFilterBtn.textContent = '🤖 All Media';
+          aiFilterBtn.textContent = '🖼️';
+          aiFilterBtn.setAttribute('title', '🖼️ Filter: All Media');
           aiFilterBtn.style.background = '';
           aiFilterBtn.style.color = '';
           aiFilterBtn.style.fontWeight = '600';
         } else if (aiFilterMode === 'ai_only') {
-          aiFilterBtn.textContent = '🤖 AI Only';
+          aiFilterBtn.textContent = '🤖';
+          aiFilterBtn.setAttribute('title', '🤖 Filter: AI Only');
           aiFilterBtn.style.background = 'linear-gradient(135deg, #a855f7, #6366f1)';
           aiFilterBtn.style.color = '#ffffff';
           aiFilterBtn.style.fontWeight = '800';
         } else if (aiFilterMode === 'human_only') {
-          aiFilterBtn.textContent = '👤 Non-AI';
+          aiFilterBtn.textContent = '👤';
+          aiFilterBtn.setAttribute('title', '👤 Filter: Non-AI Only');
           aiFilterBtn.style.background = 'var(--accent-blue)';
           aiFilterBtn.style.color = '#ffffff';
           aiFilterBtn.style.fontWeight = '800';
@@ -7201,7 +7214,10 @@
     if (msgEl) msgEl.textContent = message;
     if (barEl) barEl.style.width = '0%';
     if (pctEl) pctEl.textContent = '0%';
-    if (modal) modal.style.display = 'flex';
+    if (modal) {
+      modal.style.display = 'flex';
+      modal.classList.add('active');
+    }
   }
 
   function updateUploadProgress(percent, message) {
@@ -7217,7 +7233,10 @@
 
   function hideUploadProgressModal() {
     const modal = document.getElementById('uploadProgressModal');
-    if (modal) modal.style.display = 'none';
+    if (modal) {
+      modal.classList.remove('active');
+      modal.style.display = 'none';
+    }
   }
 
   /* Auto-save Settings Listeners */
