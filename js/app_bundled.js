@@ -1749,20 +1749,41 @@
   }
 
   async function checkForAppUpdates(userTriggered = false) {
-    try {
-      const res = await fetch('./version.json?t=' + Date.now());
-      if (!res.ok) return;
-      const data = await res.json();
-      const currentLocalVersion = await db.getSetting('appVersion');
+    let data = null;
 
-      if (currentLocalVersion && currentLocalVersion !== data.version) {
+    if (window.location.protocol !== 'file:') {
+      try {
+        const res = await fetch('./version.json?t=' + Date.now());
+        if (res.ok) {
+          data = await res.json();
+        }
+      } catch (err) {
+        console.warn('Local version check failed, attempting remote GitHub check...', err);
+      }
+    }
+
+    if (!data) {
+      try {
+        const remoteRes = await fetch('https://raw.githubusercontent.com/CluadiaCapella/SLD/main/version.json?t=' + Date.now());
+        if (remoteRes.ok) {
+          data = await remoteRes.json();
+        }
+      } catch (err) {
+        console.warn('Remote GitHub version check failed:', err);
+      }
+    }
+
+    if (data && data.version) {
+      const currentLocalVersion = (await db.getSetting('appVersion')) || '1.3.0';
+
+      if (currentLocalVersion !== data.version) {
         handleNewVersionDetected(data.version);
       } else {
         await db.setSetting('appVersion', data.version);
         if (userTriggered) alert(`Your app is already up to date! (V${data.version})`);
       }
-    } catch (err) {
-      if (userTriggered) alert('Unable to check for updates offline.');
+    } else {
+      if (userTriggered) alert('Unable to check for updates. Please check your internet connection.');
     }
   }
 
