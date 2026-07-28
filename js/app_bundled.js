@@ -1756,17 +1756,17 @@
 
     let data = null;
 
-    if (window.location.protocol !== 'file:') {
-      try {
-        const res = await fetch('./version.json?t=' + Date.now());
-        if (res.ok) {
-          data = await res.json();
-        }
-      } catch (err) {
-        console.warn('Local version check failed, attempting remote GitHub check...', err);
+    // 1. Try local version.json fetch
+    try {
+      const res = await fetch('./version.json?t=' + Date.now());
+      if (res.ok) {
+        data = await res.json();
       }
+    } catch (err) {
+      console.warn('Local version check failed, attempting remote GitHub check...', err);
     }
 
+    // 2. Fallback to remote raw GitHub version check
     if (!data) {
       try {
         const remoteRes = await fetch('https://raw.githubusercontent.com/CluadiaCapella/SLD/main/version.json?t=' + Date.now());
@@ -1778,14 +1778,45 @@
       }
     }
 
+    // 3. Fallback to GitHub API commit endpoint
+    if (!data) {
+      try {
+        const apiRes = await fetch('https://api.github.com/repos/CluadiaCapella/SLD/commits/main?t=' + Date.now());
+        if (apiRes.ok) {
+          const commitData = await apiRes.json();
+          if (commitData && commitData.sha) {
+            data = { version: commitData.sha.substring(0, 7) };
+          }
+        }
+      } catch (err) {
+        console.warn('GitHub API commit check failed:', err);
+      }
+    }
+
     if (data && data.version) {
       const currentLocalVersion = await db.getSetting('appVersion');
 
-      // Save version to DB immediately to avoid reload loops
-      await db.setSetting('appVersion', data.version);
+      if (!currentLocalVersion) {
+        await db.setSetting('appVersion', data.version);
+        if (userTriggered) alert(`App version initialized to V${data.version}`);
+        return;
+      }
 
-      if (currentLocalVersion && currentLocalVersion !== data.version) {
+      if (currentLocalVersion !== data.version) {
         showUpdateAvailableBanner(data.version);
+        if (userTriggered) {
+          const updateNow = confirm(`A new update (V${data.version}) is available! Would you like to update now?`);
+          if (updateNow) {
+            await db.setSetting('appVersion', data.version);
+            if ('serviceWorker' in navigator) {
+              const regs = await navigator.serviceWorker.getRegistrations();
+              for (const reg of regs) {
+                await reg.update();
+              }
+            }
+            window.location.reload();
+          }
+        }
       } else {
         if (userTriggered) alert(`Your app is up to date! (V${data.version})`);
       }
