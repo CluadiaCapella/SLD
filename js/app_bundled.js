@@ -1750,6 +1750,47 @@
 
   let hasCheckedUpdatesThisSession = false;
 
+  function fetchGithubVersionJsonp() {
+    return new Promise((resolve) => {
+      const callbackName = '__gh_ver_cb_' + Date.now();
+      const script = document.createElement('script');
+      let timeoutId = setTimeout(() => {
+        if (window[callbackName]) {
+          delete window[callbackName];
+          if (script.parentNode) script.parentNode.removeChild(script);
+          resolve(null);
+        }
+      }, 5000);
+
+      window[callbackName] = function(response) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script.parentNode) script.parentNode.removeChild(script);
+        try {
+          if (response && response.data && response.data.content) {
+            const jsonText = atob(response.data.content.replace(/\s/g, ''));
+            const parsed = JSON.parse(jsonText);
+            resolve(parsed);
+          } else {
+            resolve(null);
+          }
+        } catch (e) {
+          resolve(null);
+        }
+      };
+
+      script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script.parentNode) script.parentNode.removeChild(script);
+        resolve(null);
+      };
+
+      script.src = `https://api.github.com/repos/CluadiaCapella/SLD/contents/version.json?callback=${callbackName}&t=${Date.now()}`;
+      document.body.appendChild(script);
+    });
+  }
+
   function fetchRemoteJsonWithFallback(url) {
     return new Promise((resolve) => {
       fetch(url + '?t=' + Date.now(), { cache: 'no-store' })
@@ -1786,10 +1827,15 @@
 
     let data = null;
 
-    // 1. Fetch remote raw version.json from GitHub
-    data = await fetchRemoteJsonWithFallback('https://raw.githubusercontent.com/CluadiaCapella/SLD/main/version.json');
+    // 1. Try JSONP fetch from GitHub API (Bypasses file:// CORS in all browsers)
+    data = await fetchGithubVersionJsonp();
 
-    // 2. Fallback to GitHub API commit endpoint if raw fetch failed
+    // 2. Fallback to remote raw version.json from GitHub
+    if (!data) {
+      data = await fetchRemoteJsonWithFallback('https://raw.githubusercontent.com/CluadiaCapella/SLD/main/version.json');
+    }
+
+    // 3. Fallback to GitHub API commit endpoint
     if (!data) {
       const commitData = await fetchRemoteJsonWithFallback('https://api.github.com/repos/CluadiaCapella/SLD/commits/main');
       if (commitData && commitData.sha) {
@@ -1797,7 +1843,7 @@
       }
     }
 
-    // 3. Fallback to local version.json if offline
+    // 4. Fallback to local version.json if offline
     if (!data) {
       data = await fetchRemoteJsonWithFallback('./version.json');
     }
