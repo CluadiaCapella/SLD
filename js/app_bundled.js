@@ -6882,6 +6882,20 @@
     });
   }
 
+  function sortCandidatesPreferTailscale(candidatesList = []) {
+    return candidatesList.sort((a, b) => {
+      const strA = (typeof a === 'string' ? a : a?.candidate || '').toLowerCase();
+      const strB = (typeof b === 'string' ? b : b?.candidate || '').toLowerCase();
+
+      const isTsA = /\b100\.(6[4-9]|[7-9][0-9]|1[0-1][0-9]|12[0-7])\./.test(strA);
+      const isTsB = /\b100\.(6[4-9]|[7-9][0-9]|1[0-1][0-9]|12[0-7])\./.test(strB);
+
+      if (isTsA && !isTsB) return -1;
+      if (!isTsA && isTsB) return 1;
+      return 0;
+    });
+  }
+
   async function generatePairCode() {
     updateP2pStatusUI('connecting', 'Gathering Network Candidates (Step 1)...');
     rtcPeerConnection = new RTCPeerConnection(RTC_CONFIG);
@@ -6897,6 +6911,9 @@
     await rtcPeerConnection.setLocalDescription(offer);
 
     await waitForIceGatheringComplete(rtcPeerConnection, 2500);
+
+    // Prioritize Tailscale 100.x.y.z candidates at top of list
+    sortCandidatesPreferTailscale(candidates);
 
     const payload = {
       offer: rtcPeerConnection.localDescription,
@@ -6932,6 +6949,7 @@
 
         await rtcPeerConnection.setRemoteDescription(new RTCSessionDescription(payload.offer));
         if (payload.candidates && Array.isArray(payload.candidates)) {
+          sortCandidatesPreferTailscale(payload.candidates);
           for (const c of payload.candidates) {
             try {
               await rtcPeerConnection.addIceCandidate(new RTCIceCandidate(c));
@@ -6943,6 +6961,8 @@
         await rtcPeerConnection.setLocalDescription(answer);
 
         await waitForIceGatheringComplete(rtcPeerConnection, 2500);
+
+        sortCandidatesPreferTailscale(candidates);
 
         const answerPayload = {
           answer: rtcPeerConnection.localDescription,
@@ -6967,6 +6987,7 @@
         }
         await rtcPeerConnection.setRemoteDescription(new RTCSessionDescription(payload.answer));
         if (payload.candidates && Array.isArray(payload.candidates)) {
+          sortCandidatesPreferTailscale(payload.candidates);
           for (const c of payload.candidates) {
             try {
               await rtcPeerConnection.addIceCandidate(new RTCIceCandidate(c));
