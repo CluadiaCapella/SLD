@@ -6860,8 +6860,30 @@
     }
   }
 
+  function waitForIceGatheringComplete(pc, maxWaitMs = 2500) {
+    return new Promise((resolve) => {
+      if (pc.iceGatheringState === 'complete') {
+        resolve();
+        return;
+      }
+      let timeoutId = null;
+      const checkState = () => {
+        if (pc.iceGatheringState === 'complete') {
+          if (timeoutId) clearTimeout(timeoutId);
+          pc.removeEventListener('icegatheringstatechange', checkState);
+          resolve();
+        }
+      };
+      pc.addEventListener('icegatheringstatechange', checkState);
+      timeoutId = setTimeout(() => {
+        pc.removeEventListener('icegatheringstatechange', checkState);
+        resolve();
+      }, maxWaitMs);
+    });
+  }
+
   async function generatePairCode() {
-    updateP2pStatusUI('connecting', 'Generating Pairing SDP...');
+    updateP2pStatusUI('connecting', 'Gathering Network Candidates (Step 1)...');
     rtcPeerConnection = new RTCPeerConnection(RTC_CONFIG);
     const channel = rtcPeerConnection.createDataChannel('sld-sync-channel');
     setupDataChannelEvents(channel);
@@ -6874,7 +6896,7 @@
     const offer = await rtcPeerConnection.createOffer();
     await rtcPeerConnection.setLocalDescription(offer);
 
-    await new Promise(r => setTimeout(r, 1000));
+    await waitForIceGatheringComplete(rtcPeerConnection, 2500);
 
     const payload = {
       offer: rtcPeerConnection.localDescription,
@@ -6890,7 +6912,7 @@
       inputEl.value = encodedCode;
       codeArea.style.display = 'block';
     }
-    updateP2pStatusUI('connecting', 'Awaiting Peer Connection...');
+    updateP2pStatusUI('connecting', 'Step 1: Offer Code Generated. Paste on Device 2.');
   }
 
   async function connectToPeer(codeStr) {
@@ -6903,26 +6925,28 @@
         rtcPeerConnection = new RTCPeerConnection(RTC_CONFIG);
         rtcPeerConnection.ondatachannel = (e) => setupDataChannelEvents(e.channel);
 
+        const candidates = [];
         rtcPeerConnection.onicecandidate = (e) => {
-          if (e.candidate) {
-            sendP2pMessage({ type: 'candidate', candidate: e.candidate });
-          }
+          if (e.candidate) candidates.push(e.candidate);
         };
 
         await rtcPeerConnection.setRemoteDescription(new RTCSessionDescription(payload.offer));
-        if (payload.candidates) {
+        if (payload.candidates && Array.isArray(payload.candidates)) {
           for (const c of payload.candidates) {
-            await rtcPeerConnection.addIceCandidate(new RTCIceCandidate(c));
+            try {
+              await rtcPeerConnection.addIceCandidate(new RTCIceCandidate(c));
+            } catch (err) {}
           }
         }
 
         const answer = await rtcPeerConnection.createAnswer();
         await rtcPeerConnection.setLocalDescription(answer);
 
-        await new Promise(r => setTimeout(r, 1000));
+        await waitForIceGatheringComplete(rtcPeerConnection, 2500);
 
         const answerPayload = {
           answer: rtcPeerConnection.localDescription,
+          candidates,
           deviceName: document.getElementById('syncDeviceNameInput')?.value || 'Device 2'
         };
 
@@ -6933,14 +6957,23 @@
         if (codeArea && inputEl) {
           inputEl.value = answerCode;
           codeArea.style.display = 'block';
-          alert('Copy this Answer Code back to Device 1 to finalize pairing!');
+          alert('Step 2: Copy this Answer Code back to Device 1 (Phone) to complete pairing!');
         }
+        updateP2pStatusUI('connecting', 'Step 2: Answer Code Generated. Paste back on Device 1.');
       } else if (payload.answer) {
         if (!rtcPeerConnection) {
-          alert('Please click "Generate Pair Code" on this machine first before connecting the answer.');
+          alert('Please click "Generate Pair Code" on this device first before connecting the answer code.');
           return;
         }
         await rtcPeerConnection.setRemoteDescription(new RTCSessionDescription(payload.answer));
+        if (payload.candidates && Array.isArray(payload.candidates)) {
+          for (const c of payload.candidates) {
+            try {
+              await rtcPeerConnection.addIceCandidate(new RTCIceCandidate(c));
+            } catch (err) {}
+          }
+        }
+        updateP2pStatusUI('connecting', 'Finalizing Connection...');
       }
     } catch (err) {
       console.error('Peer connection error:', err);
