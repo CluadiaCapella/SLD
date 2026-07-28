@@ -1750,47 +1750,56 @@
 
   let hasCheckedUpdatesThisSession = false;
 
+  function fetchRemoteJsonWithFallback(url) {
+    return new Promise((resolve) => {
+      fetch(url + '?t=' + Date.now(), { cache: 'no-store' })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (data) resolve(data);
+          else xhrFallback();
+        })
+        .catch(() => xhrFallback());
+
+      function xhrFallback() {
+        try {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', url + '?t=' + Date.now(), true);
+          xhr.timeout = 6000;
+          xhr.onload = function() {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              try { resolve(JSON.parse(xhr.responseText)); } catch (e) { resolve(null); }
+            } else { resolve(null); }
+          };
+          xhr.onerror = function() { resolve(null); };
+          xhr.ontimeout = function() { resolve(null); };
+          xhr.send();
+        } catch (e) {
+          resolve(null);
+        }
+      }
+    });
+  }
+
   async function checkForAppUpdates(userTriggered = false) {
     if (!userTriggered && hasCheckedUpdatesThisSession) return;
     hasCheckedUpdatesThisSession = true;
 
     let data = null;
 
-    // 1. Try local version.json fetch
-    try {
-      const res = await fetch('./version.json?t=' + Date.now());
-      if (res.ok) {
-        data = await res.json();
-      }
-    } catch (err) {
-      console.warn('Local version check failed, attempting remote GitHub check...', err);
-    }
+    // 1. Fetch remote raw version.json from GitHub
+    data = await fetchRemoteJsonWithFallback('https://raw.githubusercontent.com/CluadiaCapella/SLD/main/version.json');
 
-    // 2. Fallback to remote raw GitHub version check
+    // 2. Fallback to GitHub API commit endpoint if raw fetch failed
     if (!data) {
-      try {
-        const remoteRes = await fetch('https://raw.githubusercontent.com/CluadiaCapella/SLD/main/version.json?t=' + Date.now());
-        if (remoteRes.ok) {
-          data = await remoteRes.json();
-        }
-      } catch (err) {
-        console.warn('Remote GitHub version check failed:', err);
+      const commitData = await fetchRemoteJsonWithFallback('https://api.github.com/repos/CluadiaCapella/SLD/commits/main');
+      if (commitData && commitData.sha) {
+        data = { version: commitData.sha.substring(0, 7) };
       }
     }
 
-    // 3. Fallback to GitHub API commit endpoint
+    // 3. Fallback to local version.json if offline
     if (!data) {
-      try {
-        const apiRes = await fetch('https://api.github.com/repos/CluadiaCapella/SLD/commits/main?t=' + Date.now());
-        if (apiRes.ok) {
-          const commitData = await apiRes.json();
-          if (commitData && commitData.sha) {
-            data = { version: commitData.sha.substring(0, 7) };
-          }
-        }
-      } catch (err) {
-        console.warn('GitHub API commit check failed:', err);
-      }
+      data = await fetchRemoteJsonWithFallback('./version.json');
     }
 
     if (data && data.version) {
@@ -1821,7 +1830,7 @@
         if (userTriggered) alert(`Your app is up to date! (V${data.version})`);
       }
     } else {
-      if (userTriggered) alert('Unable to check for updates. Please check your internet connection.');
+      if (userTriggered) alert('Unable to reach GitHub to check for updates. Please check your internet connection or Tailscale DNS settings.');
     }
   }
 
