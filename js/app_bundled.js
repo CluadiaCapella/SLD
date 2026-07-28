@@ -2566,13 +2566,25 @@
 
     let mainHTML = '';
 
+    if (isMediaRatingsEnabled || isMediaGroupingEnabled) {
+      gridContainer.style.display = 'flex';
+      gridContainer.style.flexDirection = 'column';
+      gridContainer.style.width = '100%';
+      gridContainer.style.gap = '0px';
+    } else {
+      gridContainer.style.display = 'grid';
+      gridContainer.style.flexDirection = '';
+      gridContainer.style.width = '';
+      gridContainer.style.gap = '';
+    }
+
     if (isMediaRatingsEnabled) {
       const starLevels = [5, 4, 3, 2, 1, 0];
       starLevels.forEach(star => {
         const ratingFiles = pagedItems.filter(m => calculateMediaStarRating(m) === star);
         if (ratingFiles.length > 0) {
           mainHTML += `
-            <div class="media-rating-section" style="width:100%; margin-bottom:32px;">
+            <div class="media-rating-section" style="display:block; width:100%; margin-bottom:32px;">
               <div class="media-rating-header">
                 <span>${getStarRatingLabel(star)}</span>
                 <span class="text-muted" style="font-size:0.85rem; font-weight:700;">${ratingFiles.length} file(s)</span>
@@ -2584,7 +2596,7 @@
     } else if (isMediaGroupingEnabled) {
       mainHTML = renderSubjectGroupsHTML(pagedItems);
     } else {
-      mainHTML = `<div class="media-grid">${pagedItems.map(renderCardHTML).join('')}</div>`;
+      mainHTML = pagedItems.map(renderCardHTML).join('');
     }
 
     if (rejectedFiltered.length > 0) {

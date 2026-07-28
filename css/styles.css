@@ -711,10 +711,14 @@ body {
 .nav-item.active { color: var(--accent-pink); font-weight: 700; }
 .nav-icon { font-size: 1.15rem !important; line-height: 1; }
 
-/* Star Rating Sections & Accordion Layout */
-.media-rating-section {
-  width: 100%;
-  margin-bottom: 32px;
+/* Star Rating & Subject Grouping Vertical Stack Containers */
+.media-rating-section,
+.media-group-section {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin-bottom: 32px !important;
+  box-sizing: border-box;
 }
 .media-rating-header {
   font-weight: 800;
