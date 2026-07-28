@@ -1827,25 +1827,37 @@
       modal = document.createElement('div');
       modal.id = 'diagLogModal';
       modal.className = 'modal-backdrop';
-      modal.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.75); z-index:10000; display:flex; align-items:center; justify-content:center; padding:16px; box-sizing:border-box;';
+      modal.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(15,23,42,0.85); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); z-index:10000; display:flex; align-items:center; justify-content:center; padding:16px; box-sizing:border-box; animation:fadeIn 0.2s ease;';
       document.body.appendChild(modal);
     }
 
     const logText = diagLogsList.join('\n');
+    let titleText = '🛠️ Update Diagnostics';
+    let statusMsg = '';
+
+    if (isUpdateAvailable) {
+      titleText = '🎉 New Update Available!';
+      statusMsg = `<span style="color:#38bdf8; font-weight:800;">A new version (V${targetVersion}) is available!</span>`;
+    } else if (targetVersion) {
+      titleText = '✅ Up To Date';
+      statusMsg = `<span style="color:#22c55e; font-weight:700;">Your app is running the latest version (V${targetVersion}).</span>`;
+    } else {
+      titleText = '⚠️ Network Check Failed';
+      statusMsg = `<span style="color:#ef4444; font-weight:700;">Unable to reach update servers. Check your internet connection or Tailscale DNS settings.</span>`;
+    }
 
     modal.innerHTML = `
-      <div style="background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:var(--radius-lg); width:100%; max-width:600px; padding:20px; box-shadow:var(--shadow-lg); color:var(--text-primary); font-family:sans-serif;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-          <h3 style="margin:0; font-weight:800; font-size:1.15rem;">🛠️ Update Network Diagnostics</h3>
-          <button id="closeDiagModalBtn" class="btn btn-secondary btn-sm" style="font-size:1.1rem; padding:2px 8px;">✕</button>
+      <div style="background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:var(--radius-lg); width:100%; max-width:560px; padding:24px; box-shadow:var(--shadow-lg); color:var(--text-primary); font-family:'Inter', sans-serif;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">
+          <h3 style="margin:0; font-weight:800; font-size:1.2rem; color:var(--text-primary);">${titleText}</h3>
+          <button id="closeDiagModalBtn" class="btn btn-secondary btn-sm" style="border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; padding:0; font-size:1rem;">✕</button>
         </div>
-        <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:12px;">
-          ${isUpdateAvailable ? `🎉 <b>New Update V${targetVersion} Available!</b>` : `Current Version: V${targetVersion || '1.4.10'}`}
-        </p>
-        <textarea id="diagLogTextarea" readonly style="width:100%; height:220px; background:var(--bg-primary); color:#38bdf8; border:1px solid var(--border-color); border-radius:var(--radius-md); padding:10px; font-family:monospace; font-size:0.8rem; resize:vertical; box-sizing:border-box; user-select:all; -webkit-user-select:all;"></textarea>
+        <p style="font-size:0.9rem; margin-bottom:14px; line-height:1.4;">${statusMsg}</p>
+        <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">Diagnostic Log (Select / Copy)</div>
+        <textarea id="diagLogTextarea" readonly style="width:100%; height:200px; background:var(--bg-primary); color:var(--accent-blue); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:10px; font-family:monospace; font-size:0.8rem; resize:vertical; box-sizing:border-box; user-select:all; -webkit-user-select:all;"></textarea>
         <div style="display:flex; gap:10px; margin-top:16px; justify-content:flex-end; flex-wrap:wrap;">
           <button id="copyDiagLogBtn" class="btn btn-secondary btn-sm" style="font-weight:700;">📋 Copy Log</button>
-          ${isUpdateAvailable ? `<button id="applyUpdateDiagBtn" class="btn btn-accent-blue btn-sm" style="font-weight:700;">🚀 Update Now (V${targetVersion})</button>` : ''}
+          ${isUpdateAvailable ? `<button id="applyUpdateDiagBtn" class="btn btn-accent-blue btn-sm" style="font-weight:700; background:linear-gradient(135deg, var(--accent-blue), #2563eb); color:#fff; border:none; padding:8px 16px; border-radius:var(--radius-md);">🚀 Update Now (V${targetVersion})</button>` : ''}
         </div>
       </div>
     `;
@@ -1863,7 +1875,7 @@
         navigator.clipboard.writeText(logText).then(() => {
           alert('Diagnostic log copied to clipboard!');
         }).catch(() => {
-          alert('Log selected in text box! You can copy it now.');
+          alert('Log highlighted in text box! You can copy it now.');
         });
       }
     };
