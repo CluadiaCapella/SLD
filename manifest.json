@@ -2,7 +2,7 @@
   "name": "SLD - Sex, Love Dreams",
   "short_name": "SLD",
   "description": "Turn thoughts, feelings, and memories into points.",
-  "start_url": "./sld.html",
+  "start_url": "./SLD.html",
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#0f172a",
