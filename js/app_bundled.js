@@ -1821,6 +1821,65 @@
     });
   }
 
+  function showDiagnosticLogModal(diagLogsList, targetVersion = null, isUpdateAvailable = false) {
+    let modal = document.getElementById('diagLogModal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'diagLogModal';
+      modal.className = 'modal-backdrop';
+      modal.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.75); z-index:10000; display:flex; align-items:center; justify-content:center; padding:16px; box-sizing:border-box;';
+      document.body.appendChild(modal);
+    }
+
+    const logText = diagLogsList.join('\n');
+
+    modal.innerHTML = `
+      <div style="background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:var(--radius-lg); width:100%; max-width:600px; padding:20px; box-shadow:var(--shadow-lg); color:var(--text-primary); font-family:sans-serif;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <h3 style="margin:0; font-weight:800; font-size:1.15rem;">🛠️ Update Network Diagnostics</h3>
+          <button id="closeDiagModalBtn" class="btn btn-secondary btn-sm" style="font-size:1.1rem; padding:2px 8px;">✕</button>
+        </div>
+        <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:12px;">
+          ${isUpdateAvailable ? `🎉 <b>New Update V${targetVersion} Available!</b>` : `Current Version: V${targetVersion || '1.4.10'}`}
+        </p>
+        <textarea id="diagLogTextarea" readonly style="width:100%; height:220px; background:var(--bg-primary); color:#38bdf8; border:1px solid var(--border-color); border-radius:var(--radius-md); padding:10px; font-family:monospace; font-size:0.8rem; resize:vertical; box-sizing:border-box; user-select:all; -webkit-user-select:all;"></textarea>
+        <div style="display:flex; gap:10px; margin-top:16px; justify-content:flex-end; flex-wrap:wrap;">
+          <button id="copyDiagLogBtn" class="btn btn-secondary btn-sm" style="font-weight:700;">📋 Copy Log</button>
+          ${isUpdateAvailable ? `<button id="applyUpdateDiagBtn" class="btn btn-accent-blue btn-sm" style="font-weight:700;">🚀 Update Now (V${targetVersion})</button>` : ''}
+        </div>
+      </div>
+    `;
+
+    const textarea = document.getElementById('diagLogTextarea');
+    if (textarea) textarea.value = logText;
+
+    modal.style.display = 'flex';
+
+    document.getElementById('closeDiagModalBtn').onclick = () => { modal.style.display = 'none'; };
+    document.getElementById('copyDiagLogBtn').onclick = () => {
+      if (textarea) {
+        textarea.select();
+        textarea.setSelectionRange(0, 99999);
+        navigator.clipboard.writeText(logText).then(() => {
+          alert('Diagnostic log copied to clipboard!');
+        }).catch(() => {
+          alert('Log selected in text box! You can copy it now.');
+        });
+      }
+    };
+
+    if (isUpdateAvailable) {
+      document.getElementById('applyUpdateDiagBtn').onclick = async () => {
+        if (targetVersion) await db.setSetting('appVersion', targetVersion);
+        if ('serviceWorker' in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          for (const reg of regs) await reg.update();
+        }
+        window.location.reload();
+      };
+    }
+  }
+
   async function checkForAppUpdates(userTriggered = false) {
     if (!userTriggered && hasCheckedUpdatesThisSession) return;
     hasCheckedUpdatesThisSession = true;
@@ -1893,30 +1952,20 @@
 
       if (!currentLocalVersion) {
         await db.setSetting('appVersion', data.version);
-        if (userTriggered) alert(`App version initialized to V${data.version}\n\nDiagnostics:\n${diagLogs.join('\n')}`);
+        if (userTriggered) showDiagnosticLogModal(diagLogs, data.version, false);
         return;
       }
 
       if (currentLocalVersion !== data.version) {
         showUpdateAvailableBanner(data.version);
         if (userTriggered) {
-          const updateNow = confirm(`A new update (V${data.version}) is available!\n(Your current version: V${currentLocalVersion})\n\nWould you like to update now?`);
-          if (updateNow) {
-            await db.setSetting('appVersion', data.version);
-            if ('serviceWorker' in navigator) {
-              const regs = await navigator.serviceWorker.getRegistrations();
-              for (const reg of regs) {
-                await reg.update();
-              }
-            }
-            window.location.reload();
-          }
+          showDiagnosticLogModal(diagLogs, data.version, true);
         }
       } else {
-        if (userTriggered) alert(`Your app is up to date! (V${data.version})\n\nNetwork Diagnostics:\n${diagLogs.join('\n')}`);
+        if (userTriggered) showDiagnosticLogModal(diagLogs, data.version, false);
       }
     } else {
-      if (userTriggered) alert(`Unable to reach update servers.\n\nDiagnostic Log:\n${diagLogs.join('\n')}`);
+      if (userTriggered) showDiagnosticLogModal(diagLogs, null, false);
     }
   }
 
