@@ -1826,26 +1826,66 @@
     hasCheckedUpdatesThisSession = true;
 
     let data = null;
+    const diagLogs = [];
+    const logDiag = (msg) => { console.log(msg); diagLogs.push(msg); };
 
-    // 1. Try JSONP fetch from GitHub API (Bypasses file:// CORS in all browsers)
-    data = await fetchGithubVersionJsonp();
+    logDiag(`[Check] Protocol: ${window.location.protocol}`);
 
-    // 2. Fallback to remote raw version.json from GitHub
-    if (!data) {
-      data = await fetchRemoteJsonWithFallback('https://raw.githubusercontent.com/CluadiaCapella/SLD/main/version.json');
+    // 1. Try jsDelivr Global Edge CDN (Super fast in South America / Brazil & full CORS support)
+    try {
+      logDiag('[Check 1] Querying jsDelivr Global CDN...');
+      const jsDelivrRes = await fetch('https://cdn.jsdelivr.net/gh/CluadiaCapella/SLD@main/version.json?t=' + Date.now(), { cache: 'no-store' });
+      if (jsDelivrRes.ok) {
+        data = await jsDelivrRes.json();
+        logDiag(`[Success 1] jsDelivr CDN returned Version V${data?.version}`);
+      } else {
+        logDiag(`[Fail 1] jsDelivr status: ${jsDelivrRes.status}`);
+      }
+    } catch (err) {
+      logDiag(`[Fail 1] jsDelivr error: ${err.message}`);
     }
 
-    // 3. Fallback to GitHub API commit endpoint
+    // 2. Try GitHub API JSONP (Bypasses file:// CORS in desktop browsers)
     if (!data) {
-      const commitData = await fetchRemoteJsonWithFallback('https://api.github.com/repos/CluadiaCapella/SLD/commits/main');
-      if (commitData && commitData.sha) {
-        data = { version: commitData.sha.substring(0, 7) };
+      logDiag('[Check 2] Querying GitHub API JSONP...');
+      try {
+        data = await fetchGithubVersionJsonp();
+        if (data) logDiag(`[Success 2] GitHub API JSONP returned Version V${data?.version}`);
+        else logDiag('[Fail 2] GitHub API JSONP returned null');
+      } catch (err) {
+        logDiag(`[Fail 2] GitHub API JSONP error: ${err.message}`);
       }
     }
 
-    // 4. Fallback to local version.json if offline
+    // 3. Try Statically Global CDN Fallback
     if (!data) {
+      logDiag('[Check 3] Querying Statically Global CDN...');
+      try {
+        const staticRes = await fetch('https://cdn.statically.io/gh/CluadiaCapella/SLD/main/version.json?t=' + Date.now());
+        if (staticRes.ok) {
+          data = await staticRes.json();
+          logDiag(`[Success 3] Statically CDN returned Version V${data?.version}`);
+        } else {
+          logDiag(`[Fail 3] Statically status: ${staticRes.status}`);
+        }
+      } catch (err) {
+        logDiag(`[Fail 3] Statically error: ${err.message}`);
+      }
+    }
+
+    // 4. Try Raw GitHub CDN Fallback
+    if (!data) {
+      logDiag('[Check 4] Querying Raw GitHub CDN...');
+      data = await fetchRemoteJsonWithFallback('https://raw.githubusercontent.com/CluadiaCapella/SLD/main/version.json');
+      if (data) logDiag(`[Success 4] Raw GitHub returned Version V${data?.version}`);
+      else logDiag('[Fail 4] Raw GitHub fetch failed');
+    }
+
+    // 5. Fallback to Local version.json
+    if (!data) {
+      logDiag('[Check 5] Reading local version.json...');
       data = await fetchRemoteJsonWithFallback('./version.json');
+      if (data) logDiag(`[Success 5] Local version file: V${data?.version}`);
     }
 
     if (data && data.version) {
@@ -1853,14 +1893,14 @@
 
       if (!currentLocalVersion) {
         await db.setSetting('appVersion', data.version);
-        if (userTriggered) alert(`App version initialized to V${data.version}`);
+        if (userTriggered) alert(`App version initialized to V${data.version}\n\nDiagnostics:\n${diagLogs.join('\n')}`);
         return;
       }
 
       if (currentLocalVersion !== data.version) {
         showUpdateAvailableBanner(data.version);
         if (userTriggered) {
-          const updateNow = confirm(`A new update (V${data.version}) is available! Would you like to update now?`);
+          const updateNow = confirm(`A new update (V${data.version}) is available!\n(Your current version: V${currentLocalVersion})\n\nWould you like to update now?`);
           if (updateNow) {
             await db.setSetting('appVersion', data.version);
             if ('serviceWorker' in navigator) {
@@ -1873,10 +1913,10 @@
           }
         }
       } else {
-        if (userTriggered) alert(`Your app is up to date! (V${data.version})`);
+        if (userTriggered) alert(`Your app is up to date! (V${data.version})\n\nNetwork Diagnostics:\n${diagLogs.join('\n')}`);
       }
     } else {
-      if (userTriggered) alert('Unable to reach GitHub to check for updates. Please check your internet connection or Tailscale DNS settings.');
+      if (userTriggered) alert(`Unable to reach update servers.\n\nDiagnostic Log:\n${diagLogs.join('\n')}`);
     }
   }
 
