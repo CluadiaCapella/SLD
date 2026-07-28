@@ -6898,8 +6898,8 @@
       const strA = (typeof a === 'string' ? a : a?.candidate || '').toLowerCase();
       const strB = (typeof b === 'string' ? b : b?.candidate || '').toLowerCase();
 
-      const isTsA = /\b100\.(6[4-9]|[7-9][0-9]|1[0-1][0-9]|12[0-7])\./.test(strA);
-      const isTsB = /\b100\.(6[4-9]|[7-9][0-9]|1[0-1][0-9]|12[0-7])\./.test(strB);
+      const isTsA = /\b100\.(6[4-9]|[7-9][0-9]|1[0-1][0-9]|12[0-7])\./.test(strA) || strA.includes('tailscale');
+      const isTsB = /\b100\.(6[4-9]|[7-9][0-9]|1[0-1][0-9]|12[0-7])\./.test(strB) || strB.includes('tailscale');
 
       if (isTsA && !isTsB) return -1;
       if (!isTsA && isTsB) return 1;
@@ -6907,9 +6907,30 @@
     });
   }
 
+  function bindPeerConnectionStateEvents(pc) {
+    pc.onconnectionstatechange = () => {
+      if (pc.connectionState === 'connected') {
+        isP2pConnected = true;
+        updateP2pStatusUI('connected', p2pDeviceName || 'Peer');
+      } else if (pc.connectionState === 'failed') {
+        isP2pConnected = false;
+        updateP2pStatusUI('disconnected', 'Connection Failed');
+      }
+    };
+
+    pc.oniceconnectionstatechange = () => {
+      if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
+        isP2pConnected = true;
+        updateP2pStatusUI('connected', p2pDeviceName || 'Peer');
+      }
+    };
+  }
+
   async function generatePairCode() {
     updateP2pStatusUI('connecting', 'Gathering Network Candidates (Step 1)...');
     rtcPeerConnection = new RTCPeerConnection(RTC_CONFIG);
+    bindPeerConnectionStateEvents(rtcPeerConnection);
+
     const channel = rtcPeerConnection.createDataChannel('sld-sync-channel');
     setupDataChannelEvents(channel);
 
@@ -6922,8 +6943,6 @@
     await rtcPeerConnection.setLocalDescription(offer);
 
     await waitForIceGatheringComplete(rtcPeerConnection, 2500);
-
-    // Prioritize Tailscale 100.x.y.z candidates at top of list
     sortCandidatesPreferTailscale(candidates);
 
     const payload = {
@@ -6951,6 +6970,7 @@
 
       if (payload.offer) {
         rtcPeerConnection = new RTCPeerConnection(RTC_CONFIG);
+        bindPeerConnectionStateEvents(rtcPeerConnection);
         rtcPeerConnection.ondatachannel = (e) => setupDataChannelEvents(e.channel);
 
         const candidates = [];
@@ -6959,6 +6979,10 @@
         };
 
         await rtcPeerConnection.setRemoteDescription(new RTCSessionDescription(payload.offer));
+        
+        const answer = await rtcPeerConnection.createAnswer();
+        await rtcPeerConnection.setLocalDescription(answer);
+
         if (payload.candidates && Array.isArray(payload.candidates)) {
           sortCandidatesPreferTailscale(payload.candidates);
           for (const c of payload.candidates) {
@@ -6968,11 +6992,7 @@
           }
         }
 
-        const answer = await rtcPeerConnection.createAnswer();
-        await rtcPeerConnection.setLocalDescription(answer);
-
         await waitForIceGatheringComplete(rtcPeerConnection, 2500);
-
         sortCandidatesPreferTailscale(candidates);
 
         const answerPayload = {
