@@ -1982,17 +1982,7 @@
   }
 
   async function handleNewVersionDetected(newVer = '') {
-    if (isAutoUpdateEnabled) {
-      if ('serviceWorker' in navigator) {
-        const regs = await navigator.serviceWorker.getRegistrations();
-        for (const reg of regs) {
-          if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-        }
-      }
-      setTimeout(() => window.location.reload(), 500);
-    } else {
-      showUpdateAvailableBanner(newVer);
-    }
+    showUpdateAvailableBanner(newVer);
   }
 
   function showUpdateAvailableBanner(newVer = '') {
@@ -2013,7 +2003,11 @@
       <button class="btn btn-secondary btn-sm" id="reloadUpdateBtn" style="background:#fff; color:#000; font-weight:800;">Update Now</button>
       <button style="background:none; border:none; color:#fff; cursor:pointer; font-weight:bold;" onclick="this.parentElement.remove()">✖</button>
     `;
-    document.getElementById('reloadUpdateBtn').onclick = () => window.location.reload();
+    document.getElementById('reloadUpdateBtn').onclick = async () => {
+      if (newVer) await db.setSetting('appVersion', newVer);
+      banner.remove();
+      window.location.reload();
+    };
   }
 
   async function initApp() {
