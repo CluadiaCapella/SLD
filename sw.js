@@ -1,7 +1,7 @@
-const CACHE_NAME = 'sld-app-cache-v1.3.7';
+const CACHE_NAME = 'sld-app-cache-v1.3.8';
 const ASSETS_TO_CACHE = [
   './',
-  './index.html',
+  './sld.html',
   './css/styles.css',
   './js/app_bundled.js',
   './manifest.json',
