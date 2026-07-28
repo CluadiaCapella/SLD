@@ -767,6 +767,17 @@ body {
   box-shadow: 0 0 8px rgba(255, 105, 180, 0.4);
 }
 
+/* Lightbox Mobile Touch Swipe Optimization */
+#lightboxModal,
+#lightboxContentWrapper,
+#lightboxMediaContainer,
+#lightboxMediaContainer img,
+#lightboxMediaContainer video {
+  touch-action: pan-y pinch-zoom;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 /* Modal Backdrops & Cards */
 .modal-backdrop {
   position: fixed; inset: 0; background: rgba(0, 0, 0, 0.75);

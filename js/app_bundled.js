@@ -1894,35 +1894,46 @@
       }
     });
 
-    // Touch swipe gestures for mobile Lightbox navigation
+    // Touch swipe gestures for mobile Lightbox navigation (Firefox Mobile & Chrome Compatible)
     let touchStartX = 0;
     let touchStartY = 0;
+    let touchStartTime = 0;
+
+    const handleTouchStart = (e) => {
+      if (e.touches && e.touches.length === 1) {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        touchStartTime = Date.now();
+      }
+    };
+
+    const handleTouchEnd = (e) => {
+      if (!e.changedTouches || e.changedTouches.length !== 1) return;
+      const deltaX = e.changedTouches[0].clientX - touchStartX;
+      const deltaY = e.changedTouches[0].clientY - touchStartY;
+      const elapsedTime = Date.now() - touchStartTime;
+
+      if (Math.abs(deltaX) > 30 && Math.abs(deltaX) > Math.abs(deltaY) && elapsedTime < 800) {
+        if (deltaX < 0 && lightboxIndex < currentMediaList.length - 1) {
+          openLightbox(lightboxIndex + 1);
+        } else if (deltaX > 0 && lightboxIndex > 0) {
+          openLightbox(lightboxIndex - 1);
+        }
+      } else if (deltaY > 90 && Math.abs(deltaY) > Math.abs(deltaX) * 1.5 && elapsedTime < 800) {
+        closeLightbox();
+      }
+    };
 
     const lbModalEl = document.getElementById('lightboxModal');
+    const lbWrapperEl = document.getElementById('lightboxContentWrapper');
+
     if (lbModalEl) {
-      lbModalEl.addEventListener('touchstart', (e) => {
-        if (e.touches.length === 1) {
-          touchStartX = e.touches[0].clientX;
-          touchStartY = e.touches[0].clientY;
-        }
-      }, { passive: true });
-
-      lbModalEl.addEventListener('touchend', (e) => {
-        if (e.changedTouches.length === 1) {
-          const deltaX = e.changedTouches[0].clientX - touchStartX;
-          const deltaY = e.changedTouches[0].clientY - touchStartY;
-
-          if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
-            if (deltaX < 0 && lightboxIndex < currentMediaList.length - 1) {
-              openLightbox(lightboxIndex + 1);
-            } else if (deltaX > 0 && lightboxIndex > 0) {
-              openLightbox(lightboxIndex - 1);
-            }
-          } else if (deltaY > 80 && Math.abs(deltaY) > Math.abs(deltaX) * 1.5) {
-            closeLightbox();
-          }
-        }
-      }, { passive: true });
+      lbModalEl.addEventListener('touchstart', handleTouchStart, { passive: true });
+      lbModalEl.addEventListener('touchend', handleTouchEnd, { passive: true });
+    }
+    if (lbWrapperEl) {
+      lbWrapperEl.addEventListener('touchstart', handleTouchStart, { passive: true });
+      lbWrapperEl.addEventListener('touchend', handleTouchEnd, { passive: true });
     }
 
     const searchInput = document.getElementById('mediaSearchInput');
