@@ -1440,6 +1440,7 @@
   let activeDetailSubjectId = null;
   let activeDetailComboKey = null;
   let activeDetailSldTag = null;
+  let activeDetailSldDateTag = null;
   let activeDetailTagName = null;
   let activeDetailEventId = null;
   let sldDefaultFullscreen = false;
@@ -1903,83 +1904,88 @@
     const diagLogs = [];
     const logDiag = (msg) => { console.log(msg); diagLogs.push(msg); };
 
-    logDiag(`[Check] Protocol: ${window.location.protocol}`);
-
-    // 1. Try jsDelivr Global Edge CDN (Super fast in South America / Brazil & full CORS support)
     try {
-      logDiag('[Check 1] Querying jsDelivr Global CDN...');
-      const jsDelivrRes = await fetch('https://cdn.jsdelivr.net/gh/CluadiaCapella/SLD@main/version.json?t=' + Date.now(), { cache: 'no-store' });
-      if (jsDelivrRes.ok) {
-        data = await jsDelivrRes.json();
-        logDiag(`[Success 1] jsDelivr CDN returned Version V${data?.version}`);
+      logDiag(`[Check] Protocol: ${window.location.protocol}`);
+
+      // 1. Try jsDelivr Global Edge CDN (Super fast in South America / Brazil & full CORS support)
+      try {
+        logDiag('[Check 1] Querying jsDelivr Global CDN...');
+        const jsDelivrRes = await fetch('https://cdn.jsdelivr.net/gh/CluadiaCapella/SLD@main/version.json?t=' + Date.now(), { cache: 'no-store' });
+        if (jsDelivrRes.ok) {
+          data = await jsDelivrRes.json();
+          logDiag(`[Success 1] jsDelivr CDN returned Version V${data?.version}`);
+        } else {
+          logDiag(`[Fail 1] jsDelivr status: ${jsDelivrRes.status}`);
+        }
+      } catch (err) {
+        logDiag(`[Fail 1] jsDelivr error: ${err.message}`);
+      }
+
+      // 2. Try GitHub API JSONP (Bypasses file:// CORS in desktop browsers)
+      if (!data) {
+        logDiag('[Check 2] Querying GitHub API JSONP...');
+        try {
+          data = await fetchGithubVersionJsonp();
+          if (data) logDiag(`[Success 2] GitHub API JSONP returned Version V${data?.version}`);
+          else logDiag('[Fail 2] GitHub API JSONP returned null');
+        } catch (err) {
+          logDiag(`[Fail 2] GitHub API JSONP error: ${err.message}`);
+        }
+      }
+
+      // 3. Try Statically Global CDN Fallback
+      if (!data) {
+        logDiag('[Check 3] Querying Statically Global CDN...');
+        try {
+          const staticRes = await fetch('https://cdn.statically.io/gh/CluadiaCapella/SLD/main/version.json?t=' + Date.now());
+          if (staticRes.ok) {
+            data = await staticRes.json();
+            logDiag(`[Success 3] Statically CDN returned Version V${data?.version}`);
+          } else {
+            logDiag(`[Fail 3] Statically status: ${staticRes.status}`);
+          }
+        } catch (err) {
+          logDiag(`[Fail 3] Statically error: ${err.message}`);
+        }
+      }
+
+      // 4. Try Raw GitHub CDN Fallback
+      if (!data) {
+        logDiag('[Check 4] Querying Raw GitHub CDN...');
+        data = await fetchRemoteJsonWithFallback('https://raw.githubusercontent.com/CluadiaCapella/SLD/main/version.json');
+        if (data) logDiag(`[Success 4] Raw GitHub returned Version V${data?.version}`);
+        else logDiag('[Fail 4] Raw GitHub fetch failed');
+      }
+
+      // 5. Fallback to Local version.json
+      if (!data) {
+        logDiag('[Check 5] Reading local version.json...');
+        data = await fetchRemoteJsonWithFallback('./version.json');
+        if (data) logDiag(`[Success 5] Local version file: V${data?.version}`);
+      }
+
+      if (data && data.version) {
+        const currentLocalVersion = await db.getSetting('appVersion');
+
+        if (!currentLocalVersion) {
+          await db.setSetting('appVersion', data.version);
+          if (userTriggered) showDiagnosticLogModal(diagLogs, data.version, false);
+          return;
+        }
+
+        if (currentLocalVersion !== data.version) {
+          showUpdateAvailableBanner(data.version);
+          if (userTriggered) {
+            showDiagnosticLogModal(diagLogs, data.version, true);
+          }
+        } else {
+          if (userTriggered) showDiagnosticLogModal(diagLogs, data.version, false);
+        }
       } else {
-        logDiag(`[Fail 1] jsDelivr status: ${jsDelivrRes.status}`);
+        if (userTriggered) showDiagnosticLogModal(diagLogs, null, false);
       }
     } catch (err) {
-      logDiag(`[Fail 1] jsDelivr error: ${err.message}`);
-    }
-
-    // 2. Try GitHub API JSONP (Bypasses file:// CORS in desktop browsers)
-    if (!data) {
-      logDiag('[Check 2] Querying GitHub API JSONP...');
-      try {
-        data = await fetchGithubVersionJsonp();
-        if (data) logDiag(`[Success 2] GitHub API JSONP returned Version V${data?.version}`);
-        else logDiag('[Fail 2] GitHub API JSONP returned null');
-      } catch (err) {
-        logDiag(`[Fail 2] GitHub API JSONP error: ${err.message}`);
-      }
-    }
-
-    // 3. Try Statically Global CDN Fallback
-    if (!data) {
-      logDiag('[Check 3] Querying Statically Global CDN...');
-      try {
-        const staticRes = await fetch('https://cdn.statically.io/gh/CluadiaCapella/SLD/main/version.json?t=' + Date.now());
-        if (staticRes.ok) {
-          data = await staticRes.json();
-          logDiag(`[Success 3] Statically CDN returned Version V${data?.version}`);
-        } else {
-          logDiag(`[Fail 3] Statically status: ${staticRes.status}`);
-        }
-      } catch (err) {
-        logDiag(`[Fail 3] Statically error: ${err.message}`);
-      }
-    }
-
-    // 4. Try Raw GitHub CDN Fallback
-    if (!data) {
-      logDiag('[Check 4] Querying Raw GitHub CDN...');
-      data = await fetchRemoteJsonWithFallback('https://raw.githubusercontent.com/CluadiaCapella/SLD/main/version.json');
-      if (data) logDiag(`[Success 4] Raw GitHub returned Version V${data?.version}`);
-      else logDiag('[Fail 4] Raw GitHub fetch failed');
-    }
-
-    // 5. Fallback to Local version.json
-    if (!data) {
-      logDiag('[Check 5] Reading local version.json...');
-      data = await fetchRemoteJsonWithFallback('./version.json');
-      if (data) logDiag(`[Success 5] Local version file: V${data?.version}`);
-    }
-
-    if (data && data.version) {
-      const currentLocalVersion = await db.getSetting('appVersion');
-
-      if (!currentLocalVersion) {
-        await db.setSetting('appVersion', data.version);
-        if (userTriggered) showDiagnosticLogModal(diagLogs, data.version, false);
-        return;
-      }
-
-      if (currentLocalVersion !== data.version) {
-        showUpdateAvailableBanner(data.version);
-        if (userTriggered) {
-          showDiagnosticLogModal(diagLogs, data.version, true);
-        }
-      } else {
-        if (userTriggered) showDiagnosticLogModal(diagLogs, data.version, false);
-      }
-    } else {
+      logDiag(`[Fatal Error] Update check exception: ${err.stack || err.message}`);
       if (userTriggered) showDiagnosticLogModal(diagLogs, null, false);
     }
   }
