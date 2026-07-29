@@ -1981,18 +1981,34 @@
     try {
       logDiag(`[Check] Protocol: ${window.location.protocol}`);
 
-      // 1. Try jsDelivr Global Edge CDN (Super fast in South America / Brazil & full CORS support)
+      // 0. Try GitHub Pages Global Edge Endpoint
       try {
-        logDiag('[Check 1] Querying jsDelivr Global CDN...');
-        const jsDelivrRes = await fetch('https://cdn.jsdelivr.net/gh/CluadiaCapella/SLD@main/version.json?t=' + Date.now(), { cache: 'no-store' });
-        if (jsDelivrRes.ok) {
-          data = await jsDelivrRes.json();
-          logDiag(`[Success 1] jsDelivr CDN returned Version V${data?.version}`);
+        logDiag('[Check 0] Querying GitHub Pages CDN...');
+        const pagesRes = await fetch('https://cluadiacapella.github.io/SLD/version.json?t=' + Date.now(), { cache: 'no-store' });
+        if (pagesRes.ok) {
+          data = await pagesRes.json();
+          logDiag(`[Success 0] GitHub Pages returned Version V${data?.version}`);
         } else {
-          logDiag(`[Fail 1] jsDelivr status: ${jsDelivrRes.status}`);
+          logDiag(`[Fail 0] GitHub Pages status: ${pagesRes.status}`);
         }
       } catch (err) {
-        logDiag(`[Fail 1] jsDelivr error: ${err.message}`);
+        logDiag(`[Fail 0] GitHub Pages error: ${err.message}`);
+      }
+
+      // 1. Try jsDelivr Global Edge CDN (Super fast in South America / Brazil & full CORS support)
+      if (!data) {
+        try {
+          logDiag('[Check 1] Querying jsDelivr Global CDN...');
+          const jsDelivrRes = await fetch('https://cdn.jsdelivr.net/gh/CluadiaCapella/SLD@main/version.json?t=' + Date.now(), { cache: 'no-store' });
+          if (jsDelivrRes.ok) {
+            data = await jsDelivrRes.json();
+            logDiag(`[Success 1] jsDelivr CDN returned Version V${data?.version}`);
+          } else {
+            logDiag(`[Fail 1] jsDelivr status: ${jsDelivrRes.status}`);
+          }
+        } catch (err) {
+          logDiag(`[Fail 1] jsDelivr error: ${err.message}`);
+        }
       }
 
       // 2. Try GitHub API JSONP (Bypasses file:// CORS in desktop browsers)
