@@ -1825,17 +1825,85 @@
     });
   }
 
-  function showDiagnosticLogModal(diagLogsList, targetVersion = null, isUpdateAvailable = false) {
+  window.__SLD_DIAG_LOGS__ = window.__SLD_DIAG_LOGS__ || [];
+
+  window.addEventListener('error', (evt) => {
+    const errStr = `[JS Error] ${evt.message} @ ${evt.filename}:${evt.lineno}:${evt.colno}\nStack: ${evt.error?.stack || 'N/A'}`;
+    window.__SLD_DIAG_LOGS__.push(errStr);
+  });
+
+  window.addEventListener('unhandledrejection', (evt) => {
+    const errStr = `[Unhandled Promise Rejection] Reason: ${evt.reason?.stack || evt.reason || 'N/A'}`;
+    window.__SLD_DIAG_LOGS__.push(errStr);
+  });
+
+  function showCustomAppModal(options = {}) {
+    const title = options.title || 'Notification';
+    const icon = options.icon || 'ℹ️';
+    const message = options.message || '';
+    const confirmText = options.confirmText || 'OK';
+    const cancelText = options.cancelText || null;
+    const onConfirm = options.onConfirm || null;
+
+    let modal = document.getElementById('customAppModalOverlay');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'customAppModalOverlay';
+      modal.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(15,23,42,0.85); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); z-index:25000; display:flex; align-items:center; justify-content:center; padding:16px; box-sizing:border-box;';
+      document.body.appendChild(modal);
+    }
+
+    modal.innerHTML = `
+      <div style="background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:var(--radius-lg); width:100%; max-width:440px; padding:24px; box-shadow:var(--shadow-lg); color:var(--text-primary); font-family:'Inter', sans-serif;">
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
+          <span style="font-size:1.5rem;">${icon}</span>
+          <h3 style="margin:0; font-weight:800; font-size:1.15rem; color:var(--text-primary);">${title}</h3>
+        </div>
+        <p style="font-size:0.9rem; line-height:1.5; color:var(--text-secondary); margin-bottom:20px;">${message}</p>
+        <div style="display:flex; gap:10px; justify-content:flex-end;">
+          ${cancelText ? `<button id="customModalCancelBtn" type="button" class="btn btn-secondary btn-sm" style="font-weight:700;">${cancelText}</button>` : ''}
+          <button id="customModalConfirmBtn" type="button" class="btn btn-accent-blue btn-sm" style="font-weight:700; background:linear-gradient(135deg, var(--accent-blue), #2563eb); color:#fff; border:none; padding:8px 18px; border-radius:var(--radius-md);">${confirmText}</button>
+        </div>
+      </div>
+    `;
+
+    modal.style.display = 'flex';
+
+    if (cancelText) {
+      document.getElementById('customModalCancelBtn').onclick = (e) => { e.stopPropagation(); modal.style.display = 'none'; };
+    }
+    document.getElementById('customModalConfirmBtn').onclick = (e) => {
+      e.stopPropagation();
+      modal.style.display = 'none';
+      if (onConfirm) onConfirm();
+    };
+  }
+
+  function showDiagnosticLogModal(diagLogsList = [], targetVersion = null, isUpdateAvailable = false) {
     let modal = document.getElementById('diagLogModal');
     if (!modal) {
       modal = document.createElement('div');
       modal.id = 'diagLogModal';
-      modal.className = 'modal-backdrop';
-      modal.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(15,23,42,0.85); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); z-index:10000; display:flex; align-items:center; justify-content:center; padding:16px; box-sizing:border-box; animation:fadeIn 0.2s ease;';
+      modal.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(15,23,42,0.9); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); z-index:25000; display:flex; align-items:center; justify-content:center; padding:16px; box-sizing:border-box;';
       document.body.appendChild(modal);
     }
 
-    const logText = diagLogsList.join('\n');
+    const envLogs = [
+      `=== SLD DIAGNOSTIC SYSTEM LOG ===`,
+      `Time: ${new Date().toISOString()}`,
+      `URL: ${window.location.href}`,
+      `Protocol: ${window.location.protocol}`,
+      `UserAgent: ${navigator.userAgent}`,
+      `Online: ${navigator.onLine}`,
+      `----------------------------------------`,
+      `--- FETCH & CDN LOGS ---`,
+      ...(Array.isArray(diagLogsList) ? diagLogsList : []),
+      `----------------------------------------`,
+      `--- CAPTURED RUNTIME JS ERRORS (${(window.__SLD_DIAG_LOGS__ || []).length}) ---`,
+      ...((window.__SLD_DIAG_LOGS__ || []).length > 0 ? window.__SLD_DIAG_LOGS__ : ['(No runtime JS errors captured yet)'])
+    ];
+
+    const logText = envLogs.join('\n');
     let titleText = '🛠️ Update Diagnostics';
     let statusMsg = '';
 
@@ -1847,21 +1915,21 @@
       statusMsg = `<span style="color:#22c55e; font-weight:700;">Your app is running the latest version (V${targetVersion}).</span>`;
     } else {
       titleText = '⚠️ Network Check Failed';
-      statusMsg = `<span style="color:#ef4444; font-weight:700;">Unable to reach update servers. Check your internet connection or Tailscale DNS settings.</span>`;
+      statusMsg = `<span style="color:#ef4444; font-weight:700;">Unable to reach update servers. Copy the log below for troubleshooting.</span>`;
     }
 
     modal.innerHTML = `
-      <div style="background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:var(--radius-lg); width:100%; max-width:560px; padding:24px; box-shadow:var(--shadow-lg); color:var(--text-primary); font-family:'Inter', sans-serif;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">
-          <h3 style="margin:0; font-weight:800; font-size:1.2rem; color:var(--text-primary);">${titleText}</h3>
-          <button id="closeDiagModalBtn" class="btn btn-secondary btn-sm" style="border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; padding:0; font-size:1rem;">✕</button>
+      <div style="background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:var(--radius-lg); width:100%; max-width:600px; padding:24px; box-shadow:var(--shadow-lg); color:var(--text-primary); font-family:'Inter', sans-serif;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">
+          <h3 style="margin:0; font-weight:800; font-size:1.15rem; color:var(--text-primary);">${titleText}</h3>
+          <button id="closeDiagModalBtn" type="button" class="btn btn-secondary btn-sm" style="border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; padding:0; font-size:1rem;">✕</button>
         </div>
-        <p style="font-size:0.9rem; margin-bottom:14px; line-height:1.4;">${statusMsg}</p>
-        <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">Diagnostic Log (Select / Copy)</div>
-        <textarea id="diagLogTextarea" readonly style="width:100%; height:200px; background:var(--bg-primary); color:var(--accent-blue); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:10px; font-family:monospace; font-size:0.8rem; resize:vertical; box-sizing:border-box; user-select:all; -webkit-user-select:all;"></textarea>
+        <p style="font-size:0.85rem; margin-bottom:12px; line-height:1.4;">${statusMsg}</p>
+        <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">Diagnostic Log (Select & Copy All)</div>
+        <textarea id="diagLogTextarea" readonly style="width:100%; height:240px; background:var(--bg-primary); color:var(--accent-blue); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:10px; font-family:monospace; font-size:0.78rem; resize:vertical; box-sizing:border-box; user-select:all; -webkit-user-select:all;"></textarea>
         <div style="display:flex; gap:10px; margin-top:16px; justify-content:flex-end; flex-wrap:wrap;">
-          <button id="copyDiagLogBtn" class="btn btn-secondary btn-sm" style="font-weight:700;">📋 Copy Log</button>
-          ${isUpdateAvailable ? `<button id="applyUpdateDiagBtn" class="btn btn-accent-blue btn-sm" style="font-weight:700; background:linear-gradient(135deg, var(--accent-blue), #2563eb); color:#fff; border:none; padding:8px 16px; border-radius:var(--radius-md);">🚀 Update Now (V${targetVersion})</button>` : ''}
+          <button id="copyDiagLogBtn" type="button" class="btn btn-secondary btn-sm" style="font-weight:700;">📋 Copy Log</button>
+          ${isUpdateAvailable ? `<button id="applyUpdateDiagBtn" type="button" class="btn btn-accent-blue btn-sm" style="font-weight:700; background:linear-gradient(135deg, var(--accent-blue), #2563eb); color:#fff; border:none; padding:8px 16px; border-radius:var(--radius-md);">🚀 Update Now (V${targetVersion})</button>` : ''}
         </div>
       </div>
     `;
@@ -1871,21 +1939,27 @@
 
     modal.style.display = 'flex';
 
-    document.getElementById('closeDiagModalBtn').onclick = () => { modal.style.display = 'none'; };
-    document.getElementById('copyDiagLogBtn').onclick = () => {
+    document.getElementById('closeDiagModalBtn').onclick = (e) => {
+      e.stopPropagation();
+      modal.style.display = 'none';
+    };
+
+    document.getElementById('copyDiagLogBtn').onclick = (e) => {
+      e.stopPropagation();
       if (textarea) {
         textarea.select();
-        textarea.setSelectionRange(0, 99999);
+        textarea.setSelectionRange(0, 999999);
         navigator.clipboard.writeText(logText).then(() => {
           alert('Diagnostic log copied to clipboard!');
         }).catch(() => {
-          alert('Log highlighted in text box! You can copy it now.');
+          alert('Log selected in text box! You can copy it now.');
         });
       }
     };
 
     if (isUpdateAvailable) {
-      document.getElementById('applyUpdateDiagBtn').onclick = async () => {
+      document.getElementById('applyUpdateDiagBtn').onclick = async (e) => {
+        e.stopPropagation();
         if (targetVersion) await db.setSetting('appVersion', targetVersion);
         if ('serviceWorker' in navigator) {
           const regs = await navigator.serviceWorker.getRegistrations();
