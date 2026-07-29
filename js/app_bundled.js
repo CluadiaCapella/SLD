@@ -1685,7 +1685,10 @@
     }
 
     if (checkBtn) {
-      checkBtn.onclick = () => checkForAppUpdates(true);
+      checkBtn.onclick = (e) => {
+        if (e) { e.preventDefault(); e.stopPropagation(); }
+        checkForAppUpdates(true);
+      };
     }
 
     const isApkMode = window.isNativeApk || window.location.protocol === 'file:' || window.navigator.userAgent.includes('SLDAndroidAPK');
