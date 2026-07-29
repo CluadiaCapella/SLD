@@ -6966,8 +6966,11 @@
   const RTC_CONFIG = {
     iceServers: [
       { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:stun1.l.google.com:19302' }
-    ]
+      { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'stun:stun2.l.google.com:19302' },
+      { urls: 'stun:global.stun.twilio.com:3478' }
+    ],
+    iceCandidatePoolSize: 10
   };
 
   function updateP2pStatusUI(status, text) {
@@ -7064,7 +7067,7 @@
     }
   }
 
-  function waitForIceGatheringComplete(pc, maxWaitMs = 2500) {
+  function waitForIceGatheringComplete(pc, maxWaitMs = 2000) {
     return new Promise((resolve) => {
       if (pc.iceGatheringState === 'complete') {
         resolve();
@@ -7135,7 +7138,7 @@
     const offer = await rtcPeerConnection.createOffer();
     await rtcPeerConnection.setLocalDescription(offer);
 
-    await waitForIceGatheringComplete(rtcPeerConnection, 2500);
+    await waitForIceGatheringComplete(rtcPeerConnection, 2000);
     sortCandidatesPreferTailscale(candidates);
 
     const payload = {
@@ -7180,12 +7183,15 @@
           sortCandidatesPreferTailscale(payload.candidates);
           for (const c of payload.candidates) {
             try {
-              await rtcPeerConnection.addIceCandidate(new RTCIceCandidate(c));
+              const candInit = (typeof c === 'string') ? { candidate: c, sdpMid: '0', sdpMLineIndex: 0 } : c;
+              if (candInit && candInit.candidate) {
+                await rtcPeerConnection.addIceCandidate(new RTCIceCandidate(candInit));
+              }
             } catch (err) {}
           }
         }
 
-        await waitForIceGatheringComplete(rtcPeerConnection, 2500);
+        await waitForIceGatheringComplete(rtcPeerConnection, 2000);
         sortCandidatesPreferTailscale(candidates);
 
         const answerPayload = {
@@ -7201,12 +7207,20 @@
         if (codeArea && inputEl) {
           inputEl.value = answerCode;
           codeArea.style.display = 'block';
-          alert('Step 2: Copy this Answer Code back to Device 1 (Phone) to complete pairing!');
+          showCustomAppModal({
+            title: 'Step 2 Complete',
+            icon: '📋',
+            message: 'Answer Code generated! Copy this Answer Code back to Device 1 (Phone) to complete pairing.'
+          });
         }
         updateP2pStatusUI('connecting', 'Step 2: Answer Code Generated. Paste back on Device 1.');
       } else if (payload.answer) {
         if (!rtcPeerConnection) {
-          alert('Please click "Generate Pair Code" on this device first before connecting the answer code.');
+          showCustomAppModal({
+            title: 'Pairing Order Notice',
+            icon: '⚠️',
+            message: 'Please click "Generate Pair Code" on this device first before connecting the answer code.'
+          });
           return;
         }
         await rtcPeerConnection.setRemoteDescription(new RTCSessionDescription(payload.answer));
@@ -7214,7 +7228,10 @@
           sortCandidatesPreferTailscale(payload.candidates);
           for (const c of payload.candidates) {
             try {
-              await rtcPeerConnection.addIceCandidate(new RTCIceCandidate(c));
+              const candInit = (typeof c === 'string') ? { candidate: c, sdpMid: '0', sdpMLineIndex: 0 } : c;
+              if (candInit && candInit.candidate) {
+                await rtcPeerConnection.addIceCandidate(new RTCIceCandidate(candInit));
+              }
             } catch (err) {}
           }
         }
@@ -7222,7 +7239,11 @@
       }
     } catch (err) {
       console.error('Peer connection error:', err);
-      alert('Error connecting to peer. Please verify the pair code.');
+      showCustomAppModal({
+        title: 'Pairing Error',
+        icon: '❌',
+        message: 'Error connecting to peer. Please verify the pair code format.'
+      });
       updateP2pStatusUI('disconnected');
     }
   }
