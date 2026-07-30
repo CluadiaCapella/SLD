@@ -1713,7 +1713,7 @@
   /* ==========================================================================
      PWA & AUTO-UPDATE MANAGER
      ========================================================================== */
-  const CURRENT_APP_VERSION = '20260730.4';
+  const CURRENT_APP_VERSION = '20260730.5';
 
   async function initReleaseDownloadSection() {
     const versionBadge = document.getElementById('currentInstalledVersionBadge');
@@ -2178,6 +2178,7 @@
   }
 
   function switchView(viewId, skipPushState = false) {
+    closeLightbox(true);
     currentActiveView = viewId;
     document.querySelectorAll('.nav-item').forEach(el => {
       el.classList.toggle('active', el.getAttribute('data-view') === viewId);
@@ -2526,20 +2527,26 @@
         };
       });
 
-      const startPress = () => {
+      const startPress = (e) => {
+        if (e && e.touches && e.touches.length > 1) {
+          if (pressTimer) clearTimeout(pressTimer);
+          isLongPressTriggered = false;
+          return;
+        }
         isLongPressTriggered = false;
+        if (pressTimer) clearTimeout(pressTimer);
         pressTimer = setTimeout(() => {
           isLongPressTriggered = true;
           if (!selectedMediaIds.has(id)) selectedMediaIds.add(id);
           card.classList.add('selected');
           updateSelectionStateUI();
-        }, 200);
+        }, 650);
       };
 
       const cancelPress = () => { if (pressTimer) clearTimeout(pressTimer); };
 
       card.addEventListener('mousedown', startPress);
-      card.addEventListener('touchstart', startPress);
+      card.addEventListener('touchstart', startPress, { passive: true });
       card.addEventListener('mouseup', cancelPress);
       card.addEventListener('mouseleave', cancelPress);
       card.addEventListener('touchend', cancelPress);
@@ -2595,8 +2602,22 @@
 
     if (subInput && !subInput.dataset.bound) {
       subInput.dataset.bound = 'true';
+      setupSmartSubjectAutocomplete('inlineSubjectInput', 'inlineSubjectAutocomplete', async (subId) => {
+        if (selectedMediaIds.size > 0) {
+          const selectedFiles = currentMediaList.filter(m => selectedMediaIds.has(m.id));
+          for (const m of selectedFiles) {
+            if (!m.subjectTags) m.subjectTags = [];
+            if (!m.subjectTags.includes(subId)) m.subjectTags.push(subId);
+            await db.put('media', m);
+          }
+          await loadAppState();
+          updateSelectionStateUI();
+          if (subInput) setTimeout(() => subInput.focus(), 80);
+        }
+      });
       subInput.onkeydown = async (e) => {
-        if (e.key === 'Enter' && subInput.value.trim() && selectedMediaIds.size > 0) {
+        if ((e.key === 'Enter' || e.keyCode === 13 || e.which === 13) && subInput.value.trim() && selectedMediaIds.size > 0) {
+          e.preventDefault();
           const nameVal = subInput.value.trim();
           let sub = currentSubjectsList.find(s => s.name.toLowerCase() === nameVal.toLowerCase());
           if (!sub) {
@@ -2611,6 +2632,8 @@
             await db.put('media', m);
           }
           subInput.value = '';
+          const dropdown = document.getElementById('inlineSubjectAutocomplete');
+          if (dropdown) dropdown.classList.remove('active');
           await loadAppState();
           updateSelectionStateUI();
         }
@@ -2619,8 +2642,22 @@
 
     if (normalInput && !normalInput.dataset.bound) {
       normalInput.dataset.bound = 'true';
+      setupNormalTagAutocomplete('inlineNormalTagInput', 'inlineNormalTagAutocomplete', async (tagVal) => {
+        if (selectedMediaIds.size > 0) {
+          const selectedFiles = currentMediaList.filter(m => selectedMediaIds.has(m.id));
+          for (const m of selectedFiles) {
+            if (!m.normalTags) m.normalTags = [];
+            if (!m.normalTags.includes(tagVal)) m.normalTags.push(tagVal);
+            await db.put('media', m);
+          }
+          await loadAppState();
+          updateSelectionStateUI();
+          if (normalInput) setTimeout(() => normalInput.focus(), 80);
+        }
+      });
       normalInput.onkeydown = async (e) => {
-        if (e.key === 'Enter' && normalInput.value.trim() && selectedMediaIds.size > 0) {
+        if ((e.key === 'Enter' || e.keyCode === 13 || e.which === 13) && normalInput.value.trim() && selectedMediaIds.size > 0) {
+          e.preventDefault();
           const tagVal = normalInput.value.trim();
           const selectedFiles = currentMediaList.filter(m => selectedMediaIds.has(m.id));
           for (const m of selectedFiles) {
@@ -2629,6 +2666,8 @@
             await db.put('media', m);
           }
           normalInput.value = '';
+          const dropdown = document.getElementById('inlineNormalTagAutocomplete');
+          if (dropdown) dropdown.classList.remove('active');
           await loadAppState();
           updateSelectionStateUI();
         }
@@ -2637,8 +2676,10 @@
 
     if (sldInput && !sldInput.dataset.bound) {
       sldInput.dataset.bound = 'true';
+      setupSmartDateAutocomplete('inlineSldInput', 'inlineSldAutocomplete');
       sldInput.onkeydown = async (e) => {
-        if (e.key === 'Enter' && sldInput.value.trim() && selectedMediaIds.size > 0) {
+        if ((e.key === 'Enter' || e.keyCode === 13 || e.which === 13) && sldInput.value.trim() && selectedMediaIds.size > 0) {
+          e.preventDefault();
           const dateTagVal = sldInput.value.trim();
           const selectedFiles = currentMediaList.filter(m => selectedMediaIds.has(m.id));
           for (const m of selectedFiles) {
@@ -2653,6 +2694,8 @@
             await db.put('media', m);
           }
           sldInput.value = '';
+          const dropdown = document.getElementById('inlineSldAutocomplete');
+          if (dropdown) dropdown.classList.remove('active');
           await loadAppState();
           updateSelectionStateUI();
         }
@@ -2661,8 +2704,30 @@
 
     if (alikeInput && !alikeInput.dataset.bound) {
       alikeInput.dataset.bound = 'true';
+      setupSmartSubjectAutocomplete('inlineAlikeInput', 'inlineAlikeAutocomplete', async (subId) => {
+        if (selectedMediaIds.size > 0) {
+          const raw = alikeInput?.value.trim() || '';
+          const parts = raw.split('::');
+          const strPart = (parts[1] || 'faint').trim().toLowerCase();
+          const strength = ['faint', 'medium', 'strong'].includes(strPart) ? strPart : 'faint';
+
+          const selectedFiles = currentMediaList.filter(m => selectedMediaIds.has(m.id));
+          for (const m of selectedFiles) {
+            if (!m.alikeTags) m.alikeTags = [];
+            if (!m.alikeTags.some(al => al.targetSubjectId === subId && al.strength === strength)) {
+              m.alikeTags.push({ targetSubjectId: subId, strength });
+            }
+            await db.put('media', m);
+          }
+          if (alikeInput) alikeInput.value = '';
+          await loadAppState();
+          updateSelectionStateUI();
+          if (alikeInput) setTimeout(() => alikeInput.focus(), 80);
+        }
+      });
       alikeInput.onkeydown = async (e) => {
-        if (e.key === 'Enter' && alikeInput.value.trim() && selectedMediaIds.size > 0) {
+        if ((e.key === 'Enter' || e.keyCode === 13 || e.which === 13) && alikeInput.value.trim() && selectedMediaIds.size > 0) {
+          e.preventDefault();
           const raw = alikeInput.value.trim();
           const parts = raw.split('::');
           const namePart = parts[0].trim();
@@ -2685,6 +2750,8 @@
             await db.put('media', m);
           }
           alikeInput.value = '';
+          const dropdown = document.getElementById('inlineAlikeAutocomplete');
+          if (dropdown) dropdown.classList.remove('active');
           await loadAppState();
           updateSelectionStateUI();
         }
@@ -7797,8 +7864,27 @@
       await db.setSetting('theme', val);
     });
 
-    window.addEventListener('popstate', (e) => {
-      if (e.state) {
+    const handleBackButtonNavigation = (e) => {
+      const lbModal = document.getElementById('lightboxModal');
+      if (lbModal && (lbModal.classList.contains('active') || lbModal.style.display === 'flex')) {
+        closeLightbox(true);
+        return;
+      }
+
+      if (selectedMediaIds.size > 0) {
+        selectedMediaIds.clear();
+        updateSelectionStateUI();
+        renderMediaBrowser();
+        return;
+      }
+
+      const activeDropdowns = document.querySelectorAll('.date-autocomplete-dropdown.active, .subject-autocomplete-dropdown.active, .tag-autocomplete-dropdown.active');
+      if (activeDropdowns.length > 0) {
+        activeDropdowns.forEach(d => d.classList.remove('active'));
+        return;
+      }
+
+      if (e && e.state) {
         const st = e.state;
         if (st.activeDetailSubjectId !== undefined) activeDetailSubjectId = st.activeDetailSubjectId;
         if (st.activeDetailComboKey !== undefined) activeDetailComboKey = st.activeDetailComboKey;
@@ -7812,12 +7898,13 @@
           closeLightbox(true);
           switchView(st.viewId || 'mediaBrowserView', true);
         }
-      } else {
+      } else if (currentActiveView !== 'mediaBrowserView') {
         closeLightbox(true);
         switchView('mediaBrowserView', true);
       }
-    });
+    };
 
+    window.addEventListener('popstate', handleBackButtonNavigation);
     window.history.replaceState({ viewId: 'mediaBrowserView', isLightbox: false }, '', '#mediaBrowserView');
   }
 
