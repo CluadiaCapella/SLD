@@ -7466,8 +7466,40 @@
   /* Event Listeners */
   let aiFilterMode = 'all';
 
+  function setupSettingsSectionAccordions() {
+    document.querySelectorAll('.settings-section-header').forEach(header => {
+      header.addEventListener('click', () => {
+        const card = header.closest('.settings-section-card');
+        if (card) card.classList.toggle('open');
+      });
+    });
+
+    document.getElementById('expandAllSettingsBtn')?.addEventListener('click', () => {
+      document.querySelectorAll('.settings-section-card').forEach(card => card.classList.add('open'));
+    });
+
+    document.getElementById('collapseAllSettingsBtn')?.addEventListener('click', () => {
+      document.querySelectorAll('.settings-section-card').forEach(card => card.classList.remove('open'));
+    });
+
+    if ('IntersectionObserver' in window) {
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('open');
+          }
+        });
+      }, { threshold: 0.15 });
+
+      document.querySelectorAll('.settings-section-card').forEach(card => {
+        observer.observe(card);
+      });
+    }
+  }
+
   function setupEventListeners() {
     setupAutoSaveSettings();
+    setupSettingsSectionAccordions();
     document.getElementById('regenerateThumbnailsBtn')?.addEventListener('click', regenerateAllThumbnails);
     document.getElementById('globalUndoBtn')?.addEventListener('click', triggerGlobalUndo);
 

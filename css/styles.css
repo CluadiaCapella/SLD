@@ -976,3 +976,70 @@ body {
   .lightbox-nav-btn { width: 40px; height: 40px; font-size: 1.3rem; }
   .modal-card { width: 95% !important; padding: 16px !important; margin: 10px auto !important; }
 }
+
+/* ⚙️ Expandable Settings Category Sections */
+.settings-section-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.25s ease;
+}
+.settings-section-card:hover {
+  border-color: var(--accent-blue);
+  box-shadow: var(--shadow-md);
+}
+.settings-section-header {
+  padding: 18px 24px;
+  background: var(--bg-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+  border-bottom: 1px solid transparent;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.settings-section-card.open .settings-section-header {
+  border-bottom-color: var(--border-color);
+  background: rgba(255, 255, 255, 0.02);
+}
+.settings-section-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.settings-section-icon {
+  font-size: 1.5rem;
+}
+.settings-section-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+.settings-section-subtitle {
+  margin: 2px 0 0 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.settings-section-chevron {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.settings-section-card.open .settings-section-chevron {
+  transform: rotate(180deg);
+  color: var(--accent-blue);
+}
+.settings-section-body {
+  display: none;
+  padding: 20px 24px 24px 24px;
+  flex-direction: column;
+  gap: 20px;
+  animation: fadeIn 0.25s ease;
+}
+.settings-section-card.open .settings-section-body {
+  display: flex;
+}
