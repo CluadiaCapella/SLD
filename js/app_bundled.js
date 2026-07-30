@@ -1713,448 +1713,39 @@
   /* ==========================================================================
      PWA & AUTO-UPDATE MANAGER
      ========================================================================== */
-  let deferredPrompt = null;
-  let isAutoUpdateEnabled = true;
+  const CURRENT_APP_VERSION = '20260730.4';
 
-  async function initPWAandUpdates() {
-    const toggleEl = document.getElementById('autoUpdateToggle');
-    const checkBtn = document.getElementById('checkForUpdatesBtn');
-    const installBtn = document.getElementById('installPwaBtn');
+  async function initReleaseDownloadSection() {
+    const versionBadge = document.getElementById('currentInstalledVersionBadge');
+    const androidBtnText = document.getElementById('androidBtnText');
+    const androidBtn = document.getElementById('androidDownloadBtn');
+    const noticeEl = document.getElementById('updateAvailableNotice');
 
-    const savedAutoUpdate = await db.getSetting('isAutoUpdateEnabled');
-    if (savedAutoUpdate !== null && savedAutoUpdate !== undefined) {
-      isAutoUpdateEnabled = !!savedAutoUpdate;
-    }
-    if (toggleEl) {
-      toggleEl.checked = isAutoUpdateEnabled;
-      toggleEl.onchange = async () => {
-        isAutoUpdateEnabled = toggleEl.checked;
-        await db.setSetting('isAutoUpdateEnabled', isAutoUpdateEnabled);
-      };
-    }
-
-    if (checkBtn) {
-      checkBtn.onclick = (e) => {
-        if (e) { e.preventDefault(); e.stopPropagation(); }
-        checkForAppUpdates(true);
-      };
-    }
-
-    const isApkMode = window.isNativeApk || window.location.protocol === 'file:' || window.navigator.userAgent.includes('SLDAndroidAPK');
-    const badgeEl = document.getElementById('appEnvironmentBadge');
-    if (badgeEl) {
-      if (isApkMode) {
-        badgeEl.textContent = '🤖 Native Android APK V1.2.0';
-        badgeEl.style.background = 'rgba(16, 185, 129, 0.2)';
-        badgeEl.style.color = '#34d399';
-        badgeEl.style.borderColor = '#10b981';
-      } else {
-        badgeEl.textContent = '🌐 Web PWA & APK Available';
-      }
-    }
-
-    if (installBtn) {
-      installBtn.onclick = () => {
-        if (deferredPrompt) {
-          deferredPrompt.prompt();
-          deferredPrompt.userChoice.then((choice) => {
-            if (choice.outcome === 'accepted') {
-              installBtn.style.display = 'none';
-            }
-            deferredPrompt = null;
-          });
-        } else {
-          alert('📲 How to Install SLD App on your phone:\n\n• Android (Chrome/Firefox): Tap browser menu ⋮ → "Add to Home screen" or "Install app".\n\n• iPhone (Safari): Tap Share ⎋ → "Add to Home Screen".');
-        }
-      };
-    }
-
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      deferredPrompt = e;
-      if (installBtn) {
-        installBtn.style.display = 'inline-block';
-      }
-    });
-
-    if ('serviceWorker' in navigator) {
-      try {
-        const reg = await navigator.serviceWorker.register('./sw.js');
-        reg.onupdatefound = () => {
-          const installingWorker = reg.installing;
-          if (installingWorker) {
-            installingWorker.onstatechange = () => {
-              if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                handleNewVersionDetected();
-              }
-            };
-          }
-        };
-      } catch (err) {
-        console.warn('Service worker registration failed:', err);
-      }
-    }
-
-    if (isAutoUpdateEnabled) {
-      checkForAppUpdates(false);
-    }
-  }
-
-  let hasCheckedUpdatesThisSession = false;
-
-  function fetchGithubVersionJsonp() {
-    return new Promise((resolve) => {
-      const callbackName = '__gh_ver_cb_' + Date.now();
-      const script = document.createElement('script');
-      let timeoutId = setTimeout(() => {
-        if (window[callbackName]) {
-          delete window[callbackName];
-          if (script.parentNode) script.parentNode.removeChild(script);
-          resolve(null);
-        }
-      }, 5000);
-
-      window[callbackName] = function(response) {
-        clearTimeout(timeoutId);
-        delete window[callbackName];
-        if (script.parentNode) script.parentNode.removeChild(script);
-        try {
-          if (response && response.data && response.data.content) {
-            const jsonText = atob(response.data.content.replace(/\s/g, ''));
-            const parsed = JSON.parse(jsonText);
-            resolve(parsed);
-          } else {
-            resolve(null);
-          }
-        } catch (e) {
-          resolve(null);
-        }
-      };
-
-      script.onerror = function() {
-        clearTimeout(timeoutId);
-        delete window[callbackName];
-        if (script.parentNode) script.parentNode.removeChild(script);
-        resolve(null);
-      };
-
-      script.src = `https://api.github.com/repos/CluadiaCapella/SLD/contents/version.json?callback=${callbackName}&t=${Date.now()}`;
-      document.body.appendChild(script);
-    });
-  }
-
-  function fetchRemoteJsonWithFallback(url) {
-    return new Promise((resolve) => {
-      fetch(url + '?t=' + Date.now(), { cache: 'no-store' })
-        .then(r => r.ok ? r.json() : null)
-        .then(data => {
-          if (data) resolve(data);
-          else xhrFallback();
-        })
-        .catch(() => xhrFallback());
-
-      function xhrFallback() {
-        try {
-          const xhr = new XMLHttpRequest();
-          xhr.open('GET', url + '?t=' + Date.now(), true);
-          xhr.timeout = 6000;
-          xhr.onload = function() {
-            if (xhr.status >= 200 && xhr.status < 300) {
-              try { resolve(JSON.parse(xhr.responseText)); } catch (e) { resolve(null); }
-            } else { resolve(null); }
-          };
-          xhr.onerror = function() { resolve(null); };
-          xhr.ontimeout = function() { resolve(null); };
-          xhr.send();
-        } catch (e) {
-          resolve(null);
-        }
-      }
-    });
-  }
-
-  window.__SLD_DIAG_LOGS__ = window.__SLD_DIAG_LOGS__ || [];
-
-  window.addEventListener('error', (evt) => {
-    const errStr = `[JS Error] ${evt.message} @ ${evt.filename}:${evt.lineno}:${evt.colno}\nStack: ${evt.error?.stack || 'N/A'}`;
-    window.__SLD_DIAG_LOGS__.push(errStr);
-  });
-
-  window.addEventListener('unhandledrejection', (evt) => {
-    const errStr = `[Unhandled Promise Rejection] Reason: ${evt.reason?.stack || evt.reason || 'N/A'}`;
-    window.__SLD_DIAG_LOGS__.push(errStr);
-  });
-
-  function showCustomAppModal(options = {}) {
-    const title = options.title || 'Notification';
-    const icon = options.icon || 'ℹ️';
-    const message = options.message || '';
-    const confirmText = options.confirmText || 'OK';
-    const cancelText = options.cancelText || null;
-    const onConfirm = options.onConfirm || null;
-
-    let modal = document.getElementById('customAppModalOverlay');
-    if (!modal) {
-      modal = document.createElement('div');
-      modal.id = 'customAppModalOverlay';
-      modal.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(15,23,42,0.85); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); z-index:25000; display:flex; align-items:center; justify-content:center; padding:16px; box-sizing:border-box;';
-      document.body.appendChild(modal);
-    }
-
-    modal.innerHTML = `
-      <div style="background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:var(--radius-lg); width:100%; max-width:440px; padding:24px; box-shadow:var(--shadow-lg); color:var(--text-primary); font-family:'Inter', sans-serif;">
-        <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
-          <span style="font-size:1.5rem;">${icon}</span>
-          <h3 style="margin:0; font-weight:800; font-size:1.15rem; color:var(--text-primary);">${title}</h3>
-        </div>
-        <p style="font-size:0.9rem; line-height:1.5; color:var(--text-secondary); margin-bottom:20px;">${message}</p>
-        <div style="display:flex; gap:10px; justify-content:flex-end;">
-          ${cancelText ? `<button id="customModalCancelBtn" type="button" class="btn btn-secondary btn-sm" style="font-weight:700;">${cancelText}</button>` : ''}
-          <button id="customModalConfirmBtn" type="button" class="btn btn-accent-blue btn-sm" style="font-weight:700; background:linear-gradient(135deg, var(--accent-blue), #2563eb); color:#fff; border:none; padding:8px 18px; border-radius:var(--radius-md);">${confirmText}</button>
-        </div>
-      </div>
-    `;
-
-    modal.style.display = 'flex';
-
-    if (cancelText) {
-      document.getElementById('customModalCancelBtn').onclick = (e) => { e.stopPropagation(); modal.style.display = 'none'; };
-    }
-    document.getElementById('customModalConfirmBtn').onclick = (e) => {
-      e.stopPropagation();
-      modal.style.display = 'none';
-      if (onConfirm) onConfirm();
-    };
-  }
-
-  function showDiagnosticLogModal(diagLogsList = [], targetVersion = null, isUpdateAvailable = false) {
-    let modal = document.getElementById('diagLogModal');
-    if (!modal) {
-      modal = document.createElement('div');
-      modal.id = 'diagLogModal';
-      modal.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(15,23,42,0.9); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); z-index:25000; display:flex; align-items:center; justify-content:center; padding:16px; box-sizing:border-box;';
-      document.body.appendChild(modal);
-    }
-
-    const envLogs = [
-      `=== SLD DIAGNOSTIC SYSTEM LOG ===`,
-      `Time: ${new Date().toISOString()}`,
-      `URL: ${window.location.href}`,
-      `Protocol: ${window.location.protocol}`,
-      `UserAgent: ${navigator.userAgent}`,
-      `Online: ${navigator.onLine}`,
-      `----------------------------------------`,
-      `--- FETCH & CDN LOGS ---`,
-      ...(Array.isArray(diagLogsList) ? diagLogsList : []),
-      `----------------------------------------`,
-      `--- CAPTURED RUNTIME JS ERRORS (${(window.__SLD_DIAG_LOGS__ || []).length}) ---`,
-      ...((window.__SLD_DIAG_LOGS__ || []).length > 0 ? window.__SLD_DIAG_LOGS__ : ['(No runtime JS errors captured yet)'])
-    ];
-
-    const logText = envLogs.join('\n');
-    let titleText = '🛠️ Update Diagnostics';
-    let statusMsg = '';
-
-    if (isUpdateAvailable) {
-      titleText = '🎉 New Update Available!';
-      statusMsg = `<span style="color:#38bdf8; font-weight:800;">A new version (V${targetVersion}) is available!</span>`;
-    } else if (targetVersion) {
-      titleText = '✅ Up To Date';
-      statusMsg = `<span style="color:#22c55e; font-weight:700;">Your app is running the latest version (V${targetVersion}).</span>`;
-    } else {
-      titleText = '⚠️ Network Check Failed';
-      statusMsg = `<span style="color:#ef4444; font-weight:700;">Unable to reach update servers. Copy the log below for troubleshooting.</span>`;
-    }
-
-    modal.innerHTML = `
-      <div style="background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:var(--radius-lg); width:100%; max-width:600px; padding:24px; box-shadow:var(--shadow-lg); color:var(--text-primary); font-family:'Inter', sans-serif;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; border-bottom:1px solid var(--border-color); padding-bottom:12px;">
-          <h3 style="margin:0; font-weight:800; font-size:1.15rem; color:var(--text-primary);">${titleText}</h3>
-          <button id="closeDiagModalBtn" type="button" class="btn btn-secondary btn-sm" style="border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; padding:0; font-size:1rem;">✕</button>
-        </div>
-        <p style="font-size:0.85rem; margin-bottom:12px; line-height:1.4;">${statusMsg}</p>
-        <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">Diagnostic Log (Select & Copy All)</div>
-        <textarea id="diagLogTextarea" readonly style="width:100%; height:240px; background:var(--bg-primary); color:var(--accent-blue); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:10px; font-family:monospace; font-size:0.78rem; resize:vertical; box-sizing:border-box; user-select:all; -webkit-user-select:all;"></textarea>
-        <div style="display:flex; gap:10px; margin-top:16px; justify-content:flex-end; flex-wrap:wrap;">
-          <button id="copyDiagLogBtn" type="button" class="btn btn-secondary btn-sm" style="font-weight:700;">📋 Copy Log</button>
-          ${isUpdateAvailable ? `<button id="applyUpdateDiagBtn" type="button" class="btn btn-accent-blue btn-sm" style="font-weight:700; background:linear-gradient(135deg, var(--accent-blue), #2563eb); color:#fff; border:none; padding:8px 16px; border-radius:var(--radius-md);">🚀 Update Now (V${targetVersion})</button>` : ''}
-        </div>
-      </div>
-    `;
-
-    const textarea = document.getElementById('diagLogTextarea');
-    if (textarea) textarea.value = logText;
-
-    modal.style.display = 'flex';
-
-    document.getElementById('closeDiagModalBtn').onclick = (e) => {
-      e.stopPropagation();
-      modal.style.display = 'none';
-    };
-
-    document.getElementById('copyDiagLogBtn').onclick = (e) => {
-      e.stopPropagation();
-      if (textarea) {
-        textarea.select();
-        textarea.setSelectionRange(0, 999999);
-        navigator.clipboard.writeText(logText).then(() => {
-          alert('Diagnostic log copied to clipboard!');
-        }).catch(() => {
-          alert('Log selected in text box! You can copy it now.');
-        });
-      }
-    };
-
-    if (isUpdateAvailable) {
-      document.getElementById('applyUpdateDiagBtn').onclick = async (e) => {
-        e.stopPropagation();
-        if (targetVersion) await db.setSetting('appVersion', targetVersion);
-        if ('serviceWorker' in navigator) {
-          const regs = await navigator.serviceWorker.getRegistrations();
-          for (const reg of regs) await reg.update();
-        }
-        window.location.reload();
-      };
-    }
-  }
-
-  async function checkForAppUpdates(userTriggered = false) {
-    if (!userTriggered && hasCheckedUpdatesThisSession) return;
-    hasCheckedUpdatesThisSession = true;
-
-    let data = null;
-    const diagLogs = [];
-    const logDiag = (msg) => { console.log(msg); diagLogs.push(msg); };
+    if (versionBadge) versionBadge.textContent = `V${CURRENT_APP_VERSION}`;
+    if (androidBtnText) androidBtnText.textContent = `Android (V${CURRENT_APP_VERSION})`;
 
     try {
-      logDiag(`[Check] Protocol: ${window.location.protocol}`);
+      const res = await fetch('https://raw.githubusercontent.com/CluadiaCapella/SLD/main/version.json?t=' + Date.now(), { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.version) {
+          const remoteVer = data.version;
+          if (androidBtnText) androidBtnText.textContent = `Android (V${remoteVer})`;
 
-      // 0. Try GitHub Pages Global Edge Endpoint
-      try {
-        logDiag('[Check 0] Querying GitHub Pages CDN...');
-        const pagesRes = await fetch('https://cluadiacapella.github.io/SLD/version.json?t=' + Date.now(), { cache: 'no-store' });
-        if (pagesRes.ok) {
-          data = await pagesRes.json();
-          logDiag(`[Success 0] GitHub Pages returned Version V${data?.version}`);
-        } else {
-          logDiag(`[Fail 0] GitHub Pages status: ${pagesRes.status}`);
-        }
-      } catch (err) {
-        logDiag(`[Fail 0] GitHub Pages error: ${err.message}`);
-      }
-
-      // 1. Try jsDelivr Global Edge CDN (Super fast in South America / Brazil & full CORS support)
-      if (!data) {
-        try {
-          logDiag('[Check 1] Querying jsDelivr Global CDN...');
-          const jsDelivrRes = await fetch('https://cdn.jsdelivr.net/gh/CluadiaCapella/SLD@main/version.json?t=' + Date.now(), { cache: 'no-store' });
-          if (jsDelivrRes.ok) {
-            data = await jsDelivrRes.json();
-            logDiag(`[Success 1] jsDelivr CDN returned Version V${data?.version}`);
-          } else {
-            logDiag(`[Fail 1] jsDelivr status: ${jsDelivrRes.status}`);
+          if (remoteVer !== CURRENT_APP_VERSION) {
+            if (noticeEl) noticeEl.style.display = 'inline-flex';
+            if (androidBtn) {
+              androidBtn.style.background = 'linear-gradient(135deg, #16a34a, #22c55e)';
+              androidBtn.style.borderColor = '#22c55e';
+              androidBtn.style.color = '#fff';
+              androidBtn.style.boxShadow = '0 0 14px rgba(34, 197, 94, 0.6)';
+            }
           }
-        } catch (err) {
-          logDiag(`[Fail 1] jsDelivr error: ${err.message}`);
         }
       }
-
-      // 2. Try GitHub API JSONP (Bypasses file:// CORS in desktop browsers)
-      if (!data) {
-        logDiag('[Check 2] Querying GitHub API JSONP...');
-        try {
-          data = await fetchGithubVersionJsonp();
-          if (data) logDiag(`[Success 2] GitHub API JSONP returned Version V${data?.version}`);
-          else logDiag('[Fail 2] GitHub API JSONP returned null');
-        } catch (err) {
-          logDiag(`[Fail 2] GitHub API JSONP error: ${err.message}`);
-        }
-      }
-
-      // 3. Try Statically Global CDN Fallback
-      if (!data) {
-        logDiag('[Check 3] Querying Statically Global CDN...');
-        try {
-          const staticRes = await fetch('https://cdn.statically.io/gh/CluadiaCapella/SLD/main/version.json?t=' + Date.now());
-          if (staticRes.ok) {
-            data = await staticRes.json();
-            logDiag(`[Success 3] Statically CDN returned Version V${data?.version}`);
-          } else {
-            logDiag(`[Fail 3] Statically status: ${staticRes.status}`);
-          }
-        } catch (err) {
-          logDiag(`[Fail 3] Statically error: ${err.message}`);
-        }
-      }
-
-      // 4. Try Raw GitHub CDN Fallback
-      if (!data) {
-        logDiag('[Check 4] Querying Raw GitHub CDN...');
-        data = await fetchRemoteJsonWithFallback('https://raw.githubusercontent.com/CluadiaCapella/SLD/main/version.json');
-        if (data) logDiag(`[Success 4] Raw GitHub returned Version V${data?.version}`);
-        else logDiag('[Fail 4] Raw GitHub fetch failed');
-      }
-
-      // 5. Fallback to Local version.json
-      if (!data) {
-        logDiag('[Check 5] Reading local version.json...');
-        data = await fetchRemoteJsonWithFallback('./version.json');
-        if (data) logDiag(`[Success 5] Local version file: V${data?.version}`);
-      }
-
-      if (data && data.version) {
-        const currentLocalVersion = await db.getSetting('appVersion');
-
-        if (!currentLocalVersion) {
-          await db.setSetting('appVersion', data.version);
-          if (userTriggered) showDiagnosticLogModal(diagLogs, data.version, false);
-          return;
-        }
-
-        if (currentLocalVersion !== data.version) {
-          showUpdateAvailableBanner(data.version);
-          if (userTriggered) {
-            showDiagnosticLogModal(diagLogs, data.version, true);
-          }
-        } else {
-          if (userTriggered) showDiagnosticLogModal(diagLogs, data.version, false);
-        }
-      } else {
-        if (userTriggered) showDiagnosticLogModal(diagLogs, null, false);
-      }
-    } catch (err) {
-      logDiag(`[Fatal Error] Update check exception: ${err.stack || err.message}`);
-      if (userTriggered) showDiagnosticLogModal(diagLogs, null, false);
+    } catch (e) {
+      console.warn('Release version check warning:', e);
     }
-  }
-
-  async function handleNewVersionDetected(newVer = '') {
-    showUpdateAvailableBanner(newVer);
-  }
-
-  function showUpdateAvailableBanner(newVer = '') {
-    let banner = document.getElementById('appUpdateBanner');
-    if (!banner) {
-      banner = document.createElement('div');
-      banner.id = 'appUpdateBanner';
-      banner.style.cssText = `
-        position: fixed; top: 70px; left: 50%; transform: translateX(-50%); z-index: 9999;
-        background: linear-gradient(135deg, var(--accent-pink), var(--accent-blue));
-        color: #fff; padding: 10px 20px; border-radius: 30px; font-weight: 800; font-size: 0.85rem;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.5); display: flex; align-items: center; gap: 12px;
-      `;
-      document.body.appendChild(banner);
-    }
-    banner.innerHTML = `
-      <span>🚀 New Version Available! ${newVer ? '(V' + newVer + ')' : ''}</span>
-      <button class="btn btn-secondary btn-sm" id="reloadUpdateBtn" style="background:#fff; color:#000; font-weight:800;">Update Now</button>
-      <button style="background:none; border:none; color:#fff; cursor:pointer; font-weight:bold;" onclick="this.parentElement.remove()">✖</button>
-    `;
-    document.getElementById('reloadUpdateBtn').onclick = async () => {
-      if (newVer) await db.setSetting('appVersion', newVer);
-      banner.remove();
-      window.location.reload();
-    };
   }
 
   async function initApp() {
@@ -2163,6 +1754,7 @@
     try {
       await db.init();
       await loadAppState();
+      renderMediaBrowser();
     } catch (err) {
       console.warn('DB Init Warning:', err);
     }
@@ -2170,7 +1762,7 @@
     setupNavigation();
     setupEventListeners();
     setupNavbarAutoHide();
-    initPWAandUpdates();
+    initReleaseDownloadSection();
     initSystemErrorLoggerUI();
     initGlobalThumbSizeSlider();
 

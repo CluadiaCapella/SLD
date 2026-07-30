@@ -804,12 +804,12 @@ body {
 
 /* Selection Floating Banner Overlay */
 .selection-banner-sticky {
-  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 2500;
-  background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.95));
+  position: fixed; bottom: 85px !important; left: 50%; transform: translateX(-50%); z-index: 100000 !important;
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(30, 41, 59, 0.96));
   backdrop-filter: blur(12px); border: 1px solid var(--accent-pink); color: #fff;
   padding: 12px 20px; border-radius: var(--radius-lg); display: flex;
-  justify-space-between; align-items: center; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
-  margin-bottom: 0;
+  justify-space-between; align-items: center; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+  margin-bottom: 0; overflow: visible !important;
 }
 
 /* Tags & Bubbles */
@@ -978,7 +978,7 @@ body {
   .media-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)) !important; gap: 10px !important; }
   .leaderboard-grid { grid-template-columns: 1fr !important; gap: 12px !important; }
   .sorting-toolbar { padding: 8px !important; gap: 6px !important; }
-  .selection-banner-sticky { bottom: calc(65px + env(safe-area-inset-bottom, 0px)) !important; width: 94% !important; left: 3% !important; transform: none !important; padding: 10px 14px !important; z-index: 100000 !important; }
+  .selection-banner-sticky { bottom: calc(80px + env(safe-area-inset-bottom, 0px)) !important; width: 94% !important; left: 3% !important; transform: none !important; padding: 10px 14px !important; z-index: 100000 !important; }
   .floating-heart-overlay { bottom: 20px !important; padding: 8px 12px !important; gap: 6px !important; }
   .lightbox-nav-btn { width: 40px; height: 40px; font-size: 1.3rem; }
   .modal-card { width: 95% !important; padding: 16px !important; margin: 10px auto !important; }

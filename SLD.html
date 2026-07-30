@@ -595,33 +595,28 @@
             </div>
           </div>
           <div class="settings-section-body">
-            <!-- 📱 Mobile App Installation & Updates Card -->
+            <!-- 📦 App Version & Official Release Downloads Card -->
             <div class="chart-card">
               <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-                <h3 style="margin:0;">📱 Mobile App Installation & Updates</h3>
-                <span id="appEnvironmentBadge" class="subject-stat-badge" style="background:rgba(56,189,248,0.15); color:#38bdf8; border:1px solid #38bdf8; font-size:0.75rem;">📱 Mobile & Desktop PWA V1.2.0</span>
+                <h3 style="margin:0;">📦 App Version & Official Release Downloads</h3>
+                <span id="currentInstalledVersionBadge" class="subject-stat-badge" style="background:rgba(56,189,248,0.15); color:#38bdf8; border:1px solid #38bdf8; font-size:0.75rem;">V20260730.3</span>
               </div>
-              <p class="text-muted" style="font-size:0.85rem; margin-top:4px;">Install SLD directly onto your Android phone, iPhone, or Desktop for offline use, full-screen playback, and fast performance.</p>
+              <p class="text-muted" style="font-size:0.85rem; margin-top:4px;">Download official releases or visit the open source GitHub repository.</p>
 
-              <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px; margin-top:12px; background:var(--bg-secondary); padding:14px 16px; border-radius:var(--radius-md); border:1px solid var(--border-color);">
-                <div style="display:flex; align-items:center; gap:10px;">
-                  <input type="checkbox" id="autoUpdateToggle" style="width:18px; height:18px; cursor:pointer;" checked>
-                  <label for="autoUpdateToggle" style="font-size:0.85rem; font-weight:700; cursor:pointer;">🔄 Automatically update on app launch</label>
-                </div>
-                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                  <button type="button" class="btn btn-secondary btn-sm" id="checkForUpdatesBtn">🚀 Check for Updates</button>
-                  <button class="btn btn-primary btn-sm" id="installPwaBtn" style="display:inline-block; font-weight:800; padding:6px 14px;">📲 Install App to Phone / Desktop</button>
-                </div>
-              </div>
+              <div style="display:flex; align-items:center; gap:12px; margin-top:14px; flex-wrap:wrap;">
+                <a href="https://github.com/CluadiaCapella/SLD/raw/main/SLD.apk" id="androidDownloadBtn" class="btn btn-primary" style="display:inline-flex; align-items:center; gap:8px; font-weight:800; text-decoration:none; padding:10px 18px; border-radius:var(--radius-md);" target="_blank">
+                  <span style="font-size:1.2rem;">🤖</span>
+                  <span id="androidBtnText">Android (V20260730.3)</span>
+                </a>
 
-              <!-- Installation Guide for Android & iOS -->
-              <div style="margin-top:14px; background:rgba(0,0,0,0.3); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:12px 16px; font-size:0.82rem;">
-                <div style="font-weight:800; color:var(--accent-blue); margin-bottom:6px;">📲 How to install on your phone:</div>
-                <div style="margin-bottom:8px; line-height:1.5;">APK is available at <a href="https://github.com/CluadiaCapella/SLD/raw/main/SLD.apk" target="_blank" style="color:var(--accent-pink); font-weight:700; text-decoration:underline;">https://github.com/CluadiaCapella/SLD/raw/main/SLD.apk</a></div>
-                <ul style="padding-left:18px; line-height:1.6; color:var(--text-secondary); margin:0;">
-                  <li><strong>Android (Chrome/Firefox/Edge PWA)</strong>: Tap <strong>📲 Install App to Phone</strong> above OR open browser menu <strong style="color:#fff;">⋮</strong> → tap <strong style="color:#fff;">"Add to Home screen"</strong>.</li>
-                  <li><strong>iPhone / iPad (Safari)</strong>: Tap Share <strong style="color:#fff;">⎋</strong> → scroll down and tap <strong style="color:#fff;">"Add to Home Screen"</strong>.</li>
-                </ul>
+                <a href="https://github.com/CluadiaCapella/SLD" class="btn btn-secondary" style="display:inline-flex; align-items:center; gap:8px; font-weight:700; text-decoration:none; padding:10px 16px; border-radius:var(--radius-md);" target="_blank">
+                  <span style="font-size:1.2rem;">🐙</span>
+                  <span>GitHub</span>
+                </a>
+
+                <span id="updateAvailableNotice" style="display:none; color:#22c55e; font-size:0.85rem; font-weight:800; align-items:center; gap:6px;">
+                  🚀 A new version is available!
+                </span>
               </div>
             </div>
 
