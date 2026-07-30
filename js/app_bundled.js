@@ -1625,6 +1625,51 @@
         await db.setSetting('globalThumbSize', val);
       };
     }
+    setupPinchToZoomThumbnails();
+  }
+
+  function setupPinchToZoomThumbnails() {
+    const container = document.getElementById('mediaBrowserView');
+    if (!container) return;
+
+    let initialPinchDistance = null;
+    let initialThumbSize = 200;
+
+    container.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 2) {
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        initialPinchDistance = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+
+        const slider = document.getElementById('globalThumbSizeSlider');
+        initialThumbSize = slider ? parseInt(slider.value, 10) : 200;
+      }
+    }, { passive: true });
+
+    container.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 2 && initialPinchDistance) {
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        const currentDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+
+        const scale = currentDist / initialPinchDistance;
+        let newSize = Math.round(initialThumbSize * scale);
+        newSize = Math.min(200, Math.max(50, newSize));
+
+        const slider = document.getElementById('globalThumbSizeSlider');
+        if (slider && parseInt(slider.value, 10) !== newSize) {
+          slider.value = newSize;
+          applyGlobalThumbSize(newSize);
+          db.setSetting('globalThumbSize', newSize);
+        }
+      }
+    }, { passive: true });
+
+    container.addEventListener('touchend', (e) => {
+      if (e.touches.length < 2) {
+        initialPinchDistance = null;
+      }
+    }, { passive: true });
   }
 
   function applyGlobalThumbSize(sizePx) {
@@ -7538,26 +7583,31 @@
   /* Event Listeners */
   let aiFilterMode = 'all';
 
+  let allowAutoIntersectionExpand = true;
+
   function setupSettingsSectionAccordions() {
     document.querySelectorAll('.settings-section-header').forEach(header => {
       header.addEventListener('click', () => {
+        allowAutoIntersectionExpand = false;
         const card = header.closest('.settings-section-card');
         if (card) card.classList.toggle('open');
       });
     });
 
     document.getElementById('expandAllSettingsBtn')?.addEventListener('click', () => {
+      allowAutoIntersectionExpand = true;
       document.querySelectorAll('.settings-section-card').forEach(card => card.classList.add('open'));
     });
 
     document.getElementById('collapseAllSettingsBtn')?.addEventListener('click', () => {
+      allowAutoIntersectionExpand = false;
       document.querySelectorAll('.settings-section-card').forEach(card => card.classList.remove('open'));
     });
 
     if ('IntersectionObserver' in window) {
       const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
-          if (entry.isIntersecting) {
+          if (entry.isIntersecting && allowAutoIntersectionExpand) {
             entry.target.classList.add('open');
           }
         });
