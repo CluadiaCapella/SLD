@@ -7352,54 +7352,6 @@
     }
   }
 
-        const answerCode = btoa(JSON.stringify(answerPayload));
-        const codeArea = document.getElementById('pairCodeDisplayArea');
-        const inputEl = document.getElementById('activePairCodeInput');
-
-        if (codeArea && inputEl) {
-          inputEl.value = answerCode;
-          codeArea.style.display = 'block';
-          showCustomAppModal({
-            title: 'Step 2 Complete',
-            icon: '📋',
-            message: 'Answer Code generated! Copy this Answer Code back to Device 1 (Phone) to complete pairing.'
-          });
-        }
-        updateP2pStatusUI('connecting', 'Step 2: Answer Code Generated. Paste back on Device 1.');
-      } else if (payload.answer) {
-        if (!rtcPeerConnection) {
-          showCustomAppModal({
-            title: 'Pairing Order Notice',
-            icon: '⚠️',
-            message: 'Please click "Generate Pair Code" on this device first before connecting the answer code.'
-          });
-          return;
-        }
-        await rtcPeerConnection.setRemoteDescription(new RTCSessionDescription(payload.answer));
-        if (payload.candidates && Array.isArray(payload.candidates)) {
-          sortCandidatesPreferTailscale(payload.candidates);
-          for (const c of payload.candidates) {
-            try {
-              const candInit = (typeof c === 'string') ? { candidate: c, sdpMid: '0', sdpMLineIndex: 0 } : c;
-              if (candInit && candInit.candidate) {
-                await rtcPeerConnection.addIceCandidate(new RTCIceCandidate(candInit));
-              }
-            } catch (err) {}
-          }
-        }
-        updateP2pStatusUI('connecting', 'Finalizing Connection...');
-      }
-    } catch (err) {
-      console.error('Peer connection error:', err);
-      showCustomAppModal({
-        title: 'Pairing Error',
-        icon: '❌',
-        message: 'Error connecting to peer. Please verify the pair code format.'
-      });
-      updateP2pStatusUI('disconnected');
-    }
-  }
-
   /* PRIORITY SYNC QUEUE HANDLER */
   async function triggerPriorityQueueSync() {
     if (!isP2pConnected) return;
