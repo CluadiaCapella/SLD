@@ -1713,7 +1713,7 @@
   /* ==========================================================================
      PWA & AUTO-UPDATE MANAGER
      ========================================================================== */
-  const CURRENT_APP_VERSION = '20260730.6';
+  const CURRENT_APP_VERSION = '20260730.7';
 
   async function initReleaseDownloadSection() {
     const versionBadge = document.getElementById('currentInstalledVersionBadge');
@@ -1722,24 +1722,36 @@
     const noticeEl = document.getElementById('updateAvailableNotice');
 
     if (versionBadge) versionBadge.textContent = `V${CURRENT_APP_VERSION}`;
-    if (androidBtnText) androidBtnText.textContent = `Android (V${CURRENT_APP_VERSION})`;
 
     try {
+      let remoteVer = null;
       const res = await fetch('https://raw.githubusercontent.com/CluadiaCapella/SLD/main/version.json?t=' + Date.now(), { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
-        if (data && data.version) {
-          const remoteVer = data.version;
-          if (androidBtnText) androidBtnText.textContent = `Android (V${remoteVer})`;
+        if (data && data.version) remoteVer = data.version;
+      }
 
-          if (remoteVer !== CURRENT_APP_VERSION) {
-            if (noticeEl) noticeEl.style.display = 'inline-flex';
-            if (androidBtn) {
-              androidBtn.style.background = 'linear-gradient(135deg, #16a34a, #22c55e)';
-              androidBtn.style.borderColor = '#22c55e';
-              androidBtn.style.color = '#fff';
-              androidBtn.style.boxShadow = '0 0 14px rgba(34, 197, 94, 0.6)';
-            }
+      if (remoteVer) {
+        if (androidBtnText) androidBtnText.textContent = `Android (V${remoteVer})`;
+
+        if (remoteVer !== CURRENT_APP_VERSION) {
+          if (noticeEl) {
+            noticeEl.textContent = `🚀 New Version V${remoteVer} Available!`;
+            noticeEl.style.display = 'inline-flex';
+          }
+          if (androidBtn) {
+            androidBtn.style.background = 'linear-gradient(135deg, #16a34a, #22c55e)';
+            androidBtn.style.borderColor = '#22c55e';
+            androidBtn.style.color = '#fff';
+            androidBtn.style.boxShadow = '0 0 16px rgba(34, 197, 94, 0.7)';
+          }
+        } else {
+          if (noticeEl) noticeEl.style.display = 'none';
+          if (androidBtn) {
+            androidBtn.style.background = '';
+            androidBtn.style.borderColor = '';
+            androidBtn.style.color = '';
+            androidBtn.style.boxShadow = '';
           }
         }
       }
@@ -2192,6 +2204,10 @@
       el.classList.toggle('active', el.id === viewId);
     });
     renderCurrentView();
+
+    if (viewId === 'settingsView') {
+      initReleaseDownloadSection();
+    }
 
     if (!skipPushState) {
       const stateObj = {
