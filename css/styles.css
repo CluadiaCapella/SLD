@@ -897,14 +897,21 @@ body {
 .heart-toggle-btn.active-3 { background: rgba(255, 215, 0, 0.4); border-color: #ffd700; color: #fff; font-weight: 800; box-shadow: 0 0 10px rgba(255,215,0,0.5); }
 
 /* Autocomplete Dropdowns & Button Grid */
-.date-autocomplete-container, .subject-autocomplete-container, .tag-autocomplete-container { position: relative; }
+.date-autocomplete-container, .subject-autocomplete-container, .tag-autocomplete-container { position: relative; overflow: visible !important; }
 .date-autocomplete-dropdown, .subject-autocomplete-dropdown, .tag-autocomplete-dropdown {
-  position: absolute; bottom: 105%; left: 0; min-width: 280px; max-width: 480px; width: max-content;
-  background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md);
-  max-height: 185px; overflow-y: auto; z-index: 5000; display: none; margin-top: 4px; box-shadow: var(--shadow-lg);
+  position: absolute; bottom: 108%; left: 0; min-width: 220px; max-width: 90vw; width: max-content;
+  background: var(--bg-card); border: 1px solid var(--accent-blue); border-radius: var(--radius-md);
+  max-height: 220px; overflow-y: auto; z-index: 100005 !important; display: none; box-shadow: 0 -10px 30px rgba(0,0,0,0.85);
   padding: 8px; flex-wrap: wrap; gap: 6px; align-content: flex-start;
 }
 .date-autocomplete-dropdown.active, .subject-autocomplete-dropdown.active, .tag-autocomplete-dropdown.active { display: flex; }
+
+/* Right-align dropdowns for inputs on the right side of the screen */
+.date-autocomplete-container:nth-child(n+3) .date-autocomplete-dropdown,
+.subject-autocomplete-container:nth-child(n+3) .subject-autocomplete-dropdown,
+.tag-autocomplete-container:nth-child(n+3) .tag-autocomplete-dropdown {
+  left: auto !important; right: 0 !important;
+}
 
 .autocomplete-btn-chip {
   display: inline-flex; align-items: center; justify-content: space-between; gap: 6px;
@@ -971,7 +978,7 @@ body {
   .media-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)) !important; gap: 10px !important; }
   .leaderboard-grid { grid-template-columns: 1fr !important; gap: 12px !important; }
   .sorting-toolbar { padding: 8px !important; gap: 6px !important; }
-  .selection-banner-sticky { bottom: 70px !important; width: 94% !important; left: 3% !important; transform: none !important; padding: 10px 14px !important; }
+  .selection-banner-sticky { bottom: calc(65px + env(safe-area-inset-bottom, 0px)) !important; width: 94% !important; left: 3% !important; transform: none !important; padding: 10px 14px !important; z-index: 100000 !important; }
   .floating-heart-overlay { bottom: 20px !important; padding: 8px 12px !important; gap: 6px !important; }
   .lightbox-nav-btn { width: 40px; height: 40px; font-size: 1.3rem; }
   .modal-card { width: 95% !important; padding: 16px !important; margin: 10px auto !important; }
