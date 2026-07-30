@@ -7072,25 +7072,74 @@
     iceCandidatePoolSize: 10
   };
 
-  function updateP2pStatusUI(status, text) {
+  let currentP2pProgressPct = null;
+
+  function updateP2pStatusUI(status, text, pct) {
+    if (pct !== undefined) currentP2pProgressPct = pct;
     const badge = document.getElementById('p2pSyncStatusBadge');
-    if (!badge) return;
+    const navBtn = document.getElementById('p2pStatusNavBtn');
+    const navLabel = document.getElementById('p2pNavLabel');
+
+    const modalDevName = document.getElementById('p2pModalDeviceName');
+    const modalStateText = document.getElementById('p2pModalSyncStateText');
+    const modalBarWrap = document.getElementById('p2pModalProgressBarWrap');
+    const modalPctText = document.getElementById('p2pModalPctText');
+    const modalBar = document.getElementById('p2pModalProgressBar');
+
+    if (modalDevName) modalDevName.textContent = p2pDeviceName || 'Connected Peer';
 
     if (status === 'connected') {
-      badge.textContent = `🟢 Connected (${text || 'Live Sync'})`;
-      badge.style.background = 'rgba(34,197,94,0.2)';
-      badge.style.color = '#22c55e';
-      badge.style.borderColor = '#22c55e';
+      if (badge) {
+        badge.textContent = `🟢 Connected (${text || p2pDeviceName || 'Live Sync'})`;
+        badge.style.background = 'rgba(34,197,94,0.2)';
+        badge.style.color = '#22c55e';
+        badge.style.borderColor = '#22c55e';
+      }
+
+      if (navBtn) {
+        navBtn.style.display = 'flex';
+        if (currentP2pProgressPct !== null && currentP2pProgressPct > 0 && currentP2pProgressPct < 100) {
+          if (navLabel) navLabel.textContent = `⚡ ${currentP2pProgressPct}%`;
+        } else {
+          if (navLabel) navLabel.textContent = `P2P (1)`;
+        }
+      }
+
+      if (modalStateText) {
+        if (currentP2pProgressPct !== null && currentP2pProgressPct > 0 && currentP2pProgressPct < 100) {
+          modalStateText.textContent = `Syncing media & records (${currentP2pProgressPct}%)...`;
+        } else {
+          modalStateText.textContent = `🟢 Connected & real-time synced with ${p2pDeviceName}`;
+        }
+      }
+
+      if (modalBarWrap && modalPctText && modalBar) {
+        if (currentP2pProgressPct !== null && currentP2pProgressPct > 0 && currentP2pProgressPct < 100) {
+          modalBarWrap.style.display = 'block';
+          modalPctText.textContent = `${currentP2pProgressPct}%`;
+          modalBar.style.width = `${currentP2pProgressPct}%`;
+        } else {
+          modalBarWrap.style.display = 'none';
+        }
+      }
+
     } else if (status === 'connecting') {
-      badge.textContent = `🟡 ${text || 'Connecting...'}`;
-      badge.style.background = 'rgba(234,179,8,0.2)';
-      badge.style.color = '#eab308';
-      badge.style.borderColor = '#eab308';
+      if (badge) {
+        badge.textContent = `🟡 ${text || 'Connecting...'}`;
+        badge.style.background = 'rgba(234,179,8,0.2)';
+        badge.style.color = '#eab308';
+        badge.style.borderColor = '#eab308';
+      }
+      if (navBtn) navBtn.style.display = 'none';
     } else {
-      badge.textContent = '⚪ Disconnected';
-      badge.style.background = 'rgba(255,255,255,0.1)';
-      badge.style.color = 'var(--text-muted)';
-      badge.style.borderColor = 'var(--border-color)';
+      if (badge) {
+        badge.textContent = '⚪ Disconnected';
+        badge.style.background = 'rgba(255,255,255,0.1)';
+        badge.style.color = 'var(--text-muted)';
+        badge.style.borderColor = 'var(--border-color)';
+      }
+      if (navBtn) navBtn.style.display = 'none';
+      if (modalBarWrap) modalBarWrap.style.display = 'none';
     }
   }
 
@@ -7535,6 +7584,29 @@
     document.getElementById('exportSelectedMediaBtn')?.addEventListener('click', exportSelectedMediaFiles);
 
     // WebRTC & Storage Listeners
+    document.getElementById('p2pStatusNavBtn')?.addEventListener('click', () => {
+      document.getElementById('p2pStatusModal')?.classList.add('active');
+    });
+    document.getElementById('closeP2pStatusModalBtn')?.addEventListener('click', () => {
+      document.getElementById('p2pStatusModal')?.classList.remove('active');
+    });
+    document.getElementById('p2pModalGoToSettingsBtn')?.addEventListener('click', () => {
+      document.getElementById('p2pStatusModal')?.classList.remove('active');
+      switchView('settingsView');
+      const sec = document.getElementById('secSync');
+      if (sec) {
+        sec.classList.add('open');
+        sec.scrollIntoView({ behavior: 'smooth' });
+      }
+    });
+    document.getElementById('p2pModalRenameBtn')?.addEventListener('click', () => {
+      promptRenameP2pDevice();
+    });
+    document.getElementById('p2pModalDisconnectBtn')?.addEventListener('click', () => {
+      disconnectP2p();
+      document.getElementById('p2pStatusModal')?.classList.remove('active');
+    });
+
     document.getElementById('generatePairCodeBtn')?.addEventListener('click', generatePairCode);
     document.getElementById('connectPeerBtn')?.addEventListener('click', () => {
       const val = document.getElementById('connectPeerCodeInput')?.value;

@@ -701,7 +701,7 @@
               <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
                 <div>
                   <h3 style="margin:0;">🌐 Peer-to-Peer Device Sync</h3>
-                  <p class="text-muted" style="font-size:0.85rem; margin-top:4px;">Connect devices directly over LAN, Wi-Fi, or Tailscale. Sync profiles, settings, tags, events, and media in real time without a server.</p>
+                  <p class="text-muted" style="font-size:0.85rem; margin-top:4px; line-height:1.5;">P2P Sync will copy over media, points, and settings between however many devices you wish to use. Both devices must have the app open at the same time for syncing. Note that, because SLD is designed to not require a server, when a devices IP address changes, the P2P connection will break. To counter this, we recommend putting all of your synced devices on a tailscale or similar network so that they all have a permanent 100.xxx.xxx.xxx ip address, as SLD will prefer 100 based addresses over others.</p>
                 </div>
                 <span id="p2pSyncStatusBadge" class="subject-stat-badge" style="background:rgba(255,255,255,0.1); color:var(--text-muted); border:1px solid var(--border-color);">⚪ Disconnected</span>
               </div>
@@ -861,6 +861,11 @@
     <div class="nav-item" data-view="settingsView">
       <span class="nav-icon">⚙️</span>
       <span>Settings</span>
+    </div>
+    <!-- P2P Connected Status Nav Button (Rightmost, hidden when disconnected) -->
+    <div class="nav-item" id="p2pStatusNavBtn" style="display:none; color:#22c55e;">
+      <span class="nav-icon" id="p2pNavIcon">🌐</span>
+      <span id="p2pNavLabel" style="font-weight:700;">P2P (1)</span>
     </div>
   </nav>
 
@@ -1133,6 +1138,47 @@
       <div class="modal-footer">
         <button class="btn btn-secondary" id="cancelAddSubjectBtn">Cancel</button>
         <button class="btn btn-primary" id="saveSubjectBtn">Save Subject</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Peer-to-Peer Device Sync Status Modal -->
+  <div id="p2pStatusModal" class="modal-backdrop">
+    <div class="modal-card" style="max-width:480px; width:92%;">
+      <div class="modal-header">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:1.3rem;">🌐</span>
+          <h3 style="margin:0;">Peer-to-Peer Sync Status</h3>
+        </div>
+        <button class="btn btn-secondary btn-sm" id="closeP2pStatusModalBtn">✖</button>
+      </div>
+      <div class="modal-body" style="padding:16px;">
+        <div style="background:var(--bg-primary); padding:14px; border-radius:var(--radius-md); border:1px solid #22c55e; margin-bottom:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-size:1.2rem;">💻</span>
+              <span style="font-weight:800; font-size:0.95rem; color:#fff;" id="p2pModalDeviceName">Device 1</span>
+            </div>
+            <span class="subject-stat-badge" style="background:rgba(34,197,94,0.2); color:#22c55e; border:1px solid #22c55e;">🟢 Connected</span>
+          </div>
+          <div style="font-size:0.8rem; color:var(--text-secondary);" id="p2pModalSyncStateText">Real-time data sync active</div>
+          
+          <div id="p2pModalProgressBarWrap" style="margin-top:12px; display:none;">
+            <div style="display:flex; justify-content:space-between; font-size:0.75rem; font-weight:700; margin-bottom:4px;">
+              <span>Transferring Data & Media:</span>
+              <span id="p2pModalPctText" style="color:var(--accent-blue);">0%</span>
+            </div>
+            <div style="background:rgba(0,0,0,0.4); border-radius:6px; height:8px; overflow:hidden;">
+              <div id="p2pModalProgressBar" style="width:0%; height:100%; background:linear-gradient(90deg, var(--accent-blue), #22c55e); transition:width 0.2s ease;"></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
+          <button class="btn btn-secondary btn-sm" id="p2pModalRenameBtn" style="font-weight:700;">✏️ Rename</button>
+          <button class="btn btn-accent-blue btn-sm" id="p2pModalGoToSettingsBtn">⚙️ P2P Settings</button>
+          <button class="btn btn-danger btn-sm" id="p2pModalDisconnectBtn">Disconnect</button>
+        </div>
       </div>
     </div>
   </div>
