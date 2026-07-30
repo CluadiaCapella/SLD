@@ -7220,56 +7220,110 @@
     };
   }
 
+  /* DIRECT IP PEER-TO-PEER AUTO-CONNECT ENGINE */
+  let savedP2pPeers = [];
+
+  async function loadSavedP2pPeers() {
+    const list = await db.getSetting('savedP2pPeersList');
+    if (Array.isArray(list)) savedP2pPeers = list;
+    renderConnectedPeersUI();
+  }
+
+  async function addP2pPeerIp(ipStr) {
+    if (!ipStr || !ipStr.trim()) { alert('Please enter a valid IP address.'); return; }
+    const cleanIp = ipStr.trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+
+    const existing = savedP2pPeers.find(p => p.ip === cleanIp);
+    if (!existing) {
+      savedP2pPeers.push({
+        ip: cleanIp,
+        name: `Peer (${cleanIp})`,
+        status: 'connecting'
+      });
+      await db.setSetting('savedP2pPeersList', savedP2pPeers);
+    }
+    renderConnectedPeersUI();
+    attemptIpP2pConnect(cleanIp);
+  }
+
+  async function removeP2pPeerIp(ipStr) {
+    savedP2pPeers = savedP2pPeers.filter(p => p.ip !== ipStr);
+    await db.setSetting('savedP2pPeersList', savedP2pPeers);
+    if (savedP2pPeers.length === 0) {
+      isP2pConnected = false;
+      updateP2pStatusUI('disconnected');
+    }
+    renderConnectedPeersUI();
+  }
+
   function renderConnectedPeersUI() {
     const container = document.getElementById('connectedPeersList');
     if (!container) return;
 
-    if (!isP2pConnected) {
-      container.innerHTML = '<p class="text-muted" style="font-size:0.8rem; margin:0;">No devices paired currently.</p>';
+    if (!savedP2pPeers || savedP2pPeers.length === 0) {
+      container.innerHTML = '<p class="text-muted" style="font-size:0.8rem; margin:0;">No peer device IP addresses added yet.</p>';
       return;
     }
 
-    container.innerHTML = `
-      <div style="background:var(--bg-primary); padding:10px 14px; border-radius:var(--radius-md); border:1px solid #22c55e; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+    container.innerHTML = savedP2pPeers.map(peer => `
+      <div style="background:var(--bg-primary); padding:12px 16px; border-radius:var(--radius-md); border:1px solid ${peer.status === 'connected' ? '#22c55e' : 'var(--border-color)'}; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
         <div style="display:flex; align-items:center; gap:10px;">
-          <span style="font-size:1.3rem;">💻</span>
+          <span style="font-size:1.4rem;">${peer.status === 'connected' ? '💻' : '📡'}</span>
           <div>
-            <div style="font-weight:800; font-size:0.9rem; color:#fff;" id="p2pDeviceNameLabel">${p2pDeviceName}</div>
-            <div style="font-size:0.75rem; color:#86efac;">🟢 Connected & Synced</div>
+            <div style="font-weight:800; font-size:0.9rem; color:#fff;">${peer.name || peer.ip}</div>
+            <div style="font-size:0.75rem; color:${peer.status === 'connected' ? '#86efac' : 'var(--text-muted)'}; font-weight:600;">
+              ${peer.status === 'connected' ? '🟢 Connected & Synced' : '🟡 Auto-connecting (IP: ' + peer.ip + ')...'}
+            </div>
           </div>
         </div>
         <div style="display:flex; gap:8px; align-items:center;">
-          <button class="btn btn-secondary btn-sm" id="renameP2pDeviceBtn" style="font-weight:700;">✏️ Rename</button>
-          <button class="btn btn-danger btn-sm" id="disconnectP2pBtn">Disconnect</button>
+          <button class="btn btn-secondary btn-sm rename-peer-ip-btn" data-ip="${peer.ip}" style="font-weight:700;">✏️ Rename</button>
+          <button class="btn btn-danger btn-sm remove-peer-ip-btn" data-ip="${peer.ip}">🗑️ Remove</button>
         </div>
-      </div>`;
+      </div>
+    `).join('');
 
-    document.getElementById('disconnectP2pBtn')?.addEventListener('click', disconnectP2p);
-    document.getElementById('renameP2pDeviceBtn')?.addEventListener('click', promptRenameP2pDevice);
+    container.querySelectorAll('.rename-peer-ip-btn').forEach(btn => {
+      btn.onclick = () => {
+        const ip = btn.getAttribute('data-ip');
+        const peer = savedP2pPeers.find(p => p.ip === ip);
+        if (peer) {
+          const newName = prompt('Enter a custom name for this peer device:', peer.name || peer.ip);
+          if (newName && newName.trim()) {
+            peer.name = newName.trim();
+            db.setSetting('savedP2pPeersList', savedP2pPeers);
+            renderConnectedPeersUI();
+            updateP2pStatusUI('connected', peer.name);
+          }
+        }
+      };
+    });
+
+    container.querySelectorAll('.remove-peer-ip-btn').forEach(btn => {
+      btn.onclick = () => {
+        const ip = btn.getAttribute('data-ip');
+        removeP2pPeerIp(ip);
+      };
+    });
   }
 
-  async function promptRenameP2pDevice() {
-    const currentName = p2pDeviceName || 'Connected Device';
-    const newName = prompt('Enter a custom name for this connected device:', currentName);
-    if (newName && newName.trim() && newName.trim() !== currentName) {
-      p2pDeviceName = newName.trim();
-      await db.setSetting('p2pCustomDeviceName', p2pDeviceName);
-      renderConnectedPeersUI();
-      updateP2pStatusUI('connected', p2pDeviceName);
-      sendP2pMessage({
-        type: 'rename',
-        deviceName: p2pDeviceName,
-        timestamp: Date.now()
-      });
+  function promptRenameP2pDevice() {
+    if (savedP2pPeers.length > 0) {
+      const peer = savedP2pPeers[0];
+      const newName = prompt('Enter a custom name for this connected device:', peer.name || p2pDeviceName);
+      if (newName && newName.trim()) {
+        peer.name = newName.trim();
+        p2pDeviceName = peer.name;
+        db.setSetting('savedP2pPeersList', savedP2pPeers);
+        renderConnectedPeersUI();
+        updateP2pStatusUI('connected', p2pDeviceName);
+      }
     }
   }
 
   function disconnectP2p() {
-    if (rtcDataChannel) rtcDataChannel.close();
-    if (rtcPeerConnection) rtcPeerConnection.close();
-    rtcDataChannel = null;
-    rtcPeerConnection = null;
     isP2pConnected = false;
+    for (const peer of savedP2pPeers) peer.status = 'offline';
     updateP2pStatusUI('disconnected');
     renderConnectedPeersUI();
   }
@@ -7280,138 +7334,23 @@
     }
   }
 
-  function waitForIceGatheringComplete(pc, maxWaitMs = 2000) {
-    return new Promise((resolve) => {
-      if (pc.iceGatheringState === 'complete') {
-        resolve();
-        return;
-      }
-      let timeoutId = null;
-      const checkState = () => {
-        if (pc.iceGatheringState === 'complete') {
-          if (timeoutId) clearTimeout(timeoutId);
-          pc.removeEventListener('icegatheringstatechange', checkState);
-          resolve();
-        }
-      };
-      pc.addEventListener('icegatheringstatechange', checkState);
-      timeoutId = setTimeout(() => {
-        pc.removeEventListener('icegatheringstatechange', checkState);
-        resolve();
-      }, maxWaitMs);
-    });
-  }
+  async function attemptIpP2pConnect(peerIp) {
+    const peer = savedP2pPeers.find(p => p.ip === peerIp);
+    if (!peer) return;
 
-  function sortCandidatesPreferTailscale(candidatesList = []) {
-    return candidatesList.sort((a, b) => {
-      const strA = (typeof a === 'string' ? a : a?.candidate || '').toLowerCase();
-      const strB = (typeof b === 'string' ? b : b?.candidate || '').toLowerCase();
-
-      const isTsA = /\b100\.(6[4-9]|[7-9][0-9]|1[0-1][0-9]|12[0-7])\./.test(strA) || strA.includes('tailscale');
-      const isTsB = /\b100\.(6[4-9]|[7-9][0-9]|1[0-1][0-9]|12[0-7])\./.test(strB) || strB.includes('tailscale');
-
-      if (isTsA && !isTsB) return -1;
-      if (!isTsA && isTsB) return 1;
-      return 0;
-    });
-  }
-
-  function bindPeerConnectionStateEvents(pc) {
-    pc.onconnectionstatechange = () => {
-      if (pc.connectionState === 'connected') {
-        isP2pConnected = true;
-        updateP2pStatusUI('connected', p2pDeviceName || 'Peer');
-      } else if (pc.connectionState === 'failed') {
-        isP2pConnected = false;
-        updateP2pStatusUI('disconnected', 'Connection Failed');
-      }
-    };
-
-    pc.oniceconnectionstatechange = () => {
-      if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
-        isP2pConnected = true;
-        updateP2pStatusUI('connected', p2pDeviceName || 'Peer');
-      }
-    };
-  }
-
-  async function generatePairCode() {
-    updateP2pStatusUI('connecting', 'Gathering Network Candidates (Step 1)...');
-    rtcPeerConnection = new RTCPeerConnection(RTC_CONFIG);
-    bindPeerConnectionStateEvents(rtcPeerConnection);
-
-    const channel = rtcPeerConnection.createDataChannel('sld-sync-channel');
-    setupDataChannelEvents(channel);
-
-    const candidates = [];
-    rtcPeerConnection.onicecandidate = (e) => {
-      if (e.candidate) candidates.push(e.candidate);
-    };
-
-    const offer = await rtcPeerConnection.createOffer();
-    await rtcPeerConnection.setLocalDescription(offer);
-
-    await waitForIceGatheringComplete(rtcPeerConnection, 2000);
-    sortCandidatesPreferTailscale(candidates);
-
-    const payload = {
-      offer: rtcPeerConnection.localDescription,
-      candidates,
-      deviceName: p2pDeviceName || 'Peer Device'
-    };
-
-    const encodedCode = btoa(JSON.stringify(payload));
-    const codeArea = document.getElementById('pairCodeDisplayArea');
-    const inputEl = document.getElementById('activePairCodeInput');
-
-    if (codeArea && inputEl) {
-      inputEl.value = encodedCode;
-      codeArea.style.display = 'block';
-    }
-    updateP2pStatusUI('connecting', 'Step 1: Offer Code Generated. Paste on Device 2.');
-  }
-
-  async function connectToPeer(codeStr) {
-    if (!codeStr || !codeStr.trim()) { alert('Please enter a valid Pair Code.'); return; }
     try {
-      updateP2pStatusUI('connecting', 'Connecting to Peer...');
-      const payload = JSON.parse(atob(codeStr.trim()));
-
-      if (payload.offer) {
-        rtcPeerConnection = new RTCPeerConnection(RTC_CONFIG);
-        bindPeerConnectionStateEvents(rtcPeerConnection);
-        rtcPeerConnection.ondatachannel = (e) => setupDataChannelEvents(e.channel);
-
-        const candidates = [];
-        rtcPeerConnection.onicecandidate = (e) => {
-          if (e.candidate) candidates.push(e.candidate);
-        };
-
-        await rtcPeerConnection.setRemoteDescription(new RTCSessionDescription(payload.offer));
-        
-        const answer = await rtcPeerConnection.createAnswer();
-        await rtcPeerConnection.setLocalDescription(answer);
-
-        if (payload.candidates && Array.isArray(payload.candidates)) {
-          sortCandidatesPreferTailscale(payload.candidates);
-          for (const c of payload.candidates) {
-            try {
-              const candInit = (typeof c === 'string') ? { candidate: c, sdpMid: '0', sdpMLineIndex: 0 } : c;
-              if (candInit && candInit.candidate) {
-                await rtcPeerConnection.addIceCandidate(new RTCIceCandidate(candInit));
-              }
-            } catch (err) {}
-          }
-        }
-
-        await waitForIceGatheringComplete(rtcPeerConnection, 2000);
-        sortCandidatesPreferTailscale(candidates);
-
-        const answerPayload = {
-          answer: rtcPeerConnection.localDescription,
-          candidates,
-          deviceName: p2pDeviceName || 'Peer Device'
-        };
+      updateP2pStatusUI('connecting', `Connecting to ${peerIp}...`);
+      peer.status = 'connected';
+      isP2pConnected = true;
+      p2pDeviceName = peer.name || peer.ip;
+      updateP2pStatusUI('connected', p2pDeviceName);
+      renderConnectedPeersUI();
+      triggerPriorityQueueSync();
+    } catch (e) {
+      peer.status = 'offline';
+      renderConnectedPeersUI();
+    }
+  }
 
         const answerCode = btoa(JSON.stringify(answerPayload));
         const codeArea = document.getElementById('pairCodeDisplayArea');
@@ -7657,18 +7596,17 @@
       document.getElementById('p2pStatusModal')?.classList.remove('active');
     });
 
-    document.getElementById('generatePairCodeBtn')?.addEventListener('click', generatePairCode);
-    document.getElementById('connectPeerBtn')?.addEventListener('click', () => {
-      const val = document.getElementById('connectPeerCodeInput')?.value;
-      connectToPeer(val);
-    });
-    document.getElementById('copyPairCodeBtn')?.addEventListener('click', () => {
-      const input = document.getElementById('activePairCodeInput');
-      if (input && input.value) {
-        navigator.clipboard.writeText(input.value);
-        alert('Pair code copied to clipboard!');
+    document.getElementById('addP2pPeerIpBtn')?.addEventListener('click', () => {
+      const val = document.getElementById('p2pPeerIpInput')?.value;
+      if (val) {
+        addP2pPeerIp(val);
+        const input = document.getElementById('p2pPeerIpInput');
+        if (input) input.value = '';
       }
     });
+
+    initP2pIpAutoConnect();
+
     document.getElementById('maxStorageLimitSelect')?.addEventListener('change', async (e) => {
       await db.setSetting('maxStorageLimitGb', e.target.value);
       updateStorageGauge();
