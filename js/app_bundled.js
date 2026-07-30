@@ -7136,18 +7136,38 @@
     }
 
     container.innerHTML = `
-      <div style="background:var(--bg-primary); padding:10px 14px; border-radius:var(--radius-md); border:1px solid #22c55e; display:flex; align-items:center; justify-content:space-between;">
-        <div style="display:flex; align-items:center; gap:8px;">
-          <span style="font-size:1.2rem;">💻</span>
+      <div style="background:var(--bg-primary); padding:10px 14px; border-radius:var(--radius-md); border:1px solid #22c55e; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span style="font-size:1.3rem;">💻</span>
           <div>
-            <div style="font-weight:800; font-size:0.85rem; color:#fff;">${p2pDeviceName}</div>
+            <div style="font-weight:800; font-size:0.9rem; color:#fff;" id="p2pDeviceNameLabel">${p2pDeviceName}</div>
             <div style="font-size:0.75rem; color:#86efac;">🟢 Connected & Synced</div>
           </div>
         </div>
-        <button class="btn btn-danger btn-sm" id="disconnectP2pBtn">Disconnect</button>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <button class="btn btn-secondary btn-sm" id="renameP2pDeviceBtn" style="font-weight:700;">✏️ Rename</button>
+          <button class="btn btn-danger btn-sm" id="disconnectP2pBtn">Disconnect</button>
+        </div>
       </div>`;
 
     document.getElementById('disconnectP2pBtn')?.addEventListener('click', disconnectP2p);
+    document.getElementById('renameP2pDeviceBtn')?.addEventListener('click', promptRenameP2pDevice);
+  }
+
+  async function promptRenameP2pDevice() {
+    const currentName = p2pDeviceName || 'Connected Device';
+    const newName = prompt('Enter a custom name for this connected device:', currentName);
+    if (newName && newName.trim() && newName.trim() !== currentName) {
+      p2pDeviceName = newName.trim();
+      await db.setSetting('p2pCustomDeviceName', p2pDeviceName);
+      renderConnectedPeersUI();
+      updateP2pStatusUI('connected', p2pDeviceName);
+      sendP2pMessage({
+        type: 'rename',
+        deviceName: p2pDeviceName,
+        timestamp: Date.now()
+      });
+    }
   }
 
   function disconnectP2p() {
@@ -7243,7 +7263,7 @@
     const payload = {
       offer: rtcPeerConnection.localDescription,
       candidates,
-      deviceName: document.getElementById('syncDeviceNameInput')?.value || 'Device 1'
+      deviceName: p2pDeviceName || 'Peer Device'
     };
 
     const encodedCode = btoa(JSON.stringify(payload));
@@ -7296,7 +7316,7 @@
         const answerPayload = {
           answer: rtcPeerConnection.localDescription,
           candidates,
-          deviceName: document.getElementById('syncDeviceNameInput')?.value || 'Device 2'
+          deviceName: p2pDeviceName || 'Peer Device'
         };
 
         const answerCode = btoa(JSON.stringify(answerPayload));
@@ -7409,8 +7429,11 @@
   async function handleIncomingP2pMessage(msg) {
     if (!msg || !msg.type) return;
 
-    if (msg.type === 'handshake') {
-      p2pDeviceName = msg.deviceName || 'Sibling Device';
+    if (msg.type === 'handshake' || msg.type === 'rename') {
+      if (msg.deviceName) {
+        p2pDeviceName = msg.deviceName;
+        await db.setSetting('p2pCustomDeviceName', p2pDeviceName);
+      }
       updateP2pStatusUI('connected', p2pDeviceName);
       renderConnectedPeersUI();
     } else if (msg.type === 'candidate') {
