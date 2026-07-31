@@ -1,6 +1,3 @@
-(function() {
-'use strict';
-
 /* === Module: 01_db.js === */
 /* Module 01_db.js */
 /**
@@ -7864,5 +7861,3 @@ await Promise.all(chunk.map(file => {
   }
 
 
-
-})();
