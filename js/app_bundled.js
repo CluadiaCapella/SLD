@@ -7467,15 +7467,16 @@ function triggerSplashScreen(onComplete) {
   splash.classList.add('active');
   splash.style.display = 'flex';
   splash.style.opacity = '1';
+  splash.style.pointerEvents = 'auto';
 
   setTimeout(() => {
     splash.classList.add('fade-out');
+    splash.classList.remove('active');
     setTimeout(() => {
-      splash.classList.remove('active', 'fade-out');
       splash.style.display = 'none';
       if (onComplete) onComplete();
     }, 500);
-  }, 800);
+  }, 1000);
 }
 
 function setupEventListeners() {
@@ -7503,33 +7504,34 @@ function setupEventListeners() {
 }
 
 async function initApp() {
-  try { triggerSplashScreen(); } catch (e) { console.warn('Splash trigger warning:', e); }
-
-  try {
-    await db.init();
-    await loadAppState();
-  } catch (err) {
-    console.warn('DB Init Warning:', err);
-  }
-
+  // 1. Synchronous UI & Event Setup (Instant Navbar interactivity & Splash)
   try { setupNavigation(); } catch (e) { console.warn('Nav setup warning:', e); }
   try { setupEventListeners(); } catch (e) { console.warn('Listeners setup warning:', e); }
   try { setupNavbarAutoHide(); } catch (e) { console.warn('Navbar auto hide warning:', e); }
-  try { initPWAandUpdates(); } catch (e) { console.warn('PWA updates warning:', e); }
   try { initSystemErrorLoggerUI(); } catch (e) { console.warn('Error logger warning:', e); }
   try { initGlobalThumbSizeSlider(); } catch (e) { console.warn('Thumb slider warning:', e); }
+  try { triggerSplashScreen(); } catch (e) { console.warn('Splash trigger warning:', e); }
+
+  // 2. Synchronous First Render (Page layout & Media Browser active)
+  try { renderCurrentView(); } catch (e) { console.warn('Initial view render warning:', e); }
+
+  // 3. Asynchronous Database Initialization
+  try {
+    await db.init();
+    await loadAppState();
+    renderCurrentView();
+  } catch (err) {
+    console.warn('DB Init Warning:', err);
+    try { renderCurrentView(); } catch(e) {}
+  }
+
+  try { initPWAandUpdates(); } catch (e) { console.warn('PWA updates warning:', e); }
 
   document.getElementById('headerBrandLogo')?.addEventListener('click', () => {
     triggerSplashScreen(() => {
       switchView('mediaBrowserView');
     });
   });
-
-  try {
-    renderCurrentView();
-  } catch(e) {
-    console.error('Render current view error:', e);
-  }
 }
 
 if (document.readyState === 'loading') {
