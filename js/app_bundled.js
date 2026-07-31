@@ -174,10 +174,6 @@
           m.profileId = activeProfileId;
           await this.put('media', m);
         }
-        if (!m.hash && m.dataUrl) {
-          m.hash = await calculateContentHash(m.dataUrl);
-          await this.put('media', m);
-        }
         if (!m.blueBookEvents) {
           m.blueBookEvents = [];
           if (m.dateTag || m.heartTags) {
@@ -186,8 +182,8 @@
               dateTag: m.dateTag || getTodaySmartDateTag(),
               heartTags: m.heartTags || { pink: 0, grey: 0, blue: 0 }
             });
+            await this.put('media', m);
           }
-          await this.put('media', m);
         }
       }
       return items;
@@ -1541,6 +1537,31 @@
      ========================================================================== */
   const systemErrorLogs = [];
 
+  function showRuntimeErrorAlertModal(errSummary, stackTrace) {
+    const modal = document.getElementById('runtimeErrorAlertModal');
+    const textarea = document.getElementById('runtimeErrorAlertTextarea');
+    if (!modal || !textarea) return;
+
+    textarea.value = `[Time]: ${new Date().toISOString()}\n[Error]: ${errSummary}\n\n[Stack Trace]:\n${stackTrace || 'N/A'}`;
+    modal.style.display = 'flex';
+    modal.classList.add('active');
+
+    const closeBtn = document.getElementById('closeRuntimeErrorAlertBtn');
+    const dismissBtn = document.getElementById('dismissRuntimeErrorAlertBtn');
+    const copyBtn = document.getElementById('copyRuntimeErrorAlertBtn');
+
+    const hide = () => { modal.style.display = 'none'; modal.classList.remove('active'); };
+    if (closeBtn) closeBtn.onclick = hide;
+    if (dismissBtn) dismissBtn.onclick = hide;
+    if (copyBtn) {
+      copyBtn.onclick = () => {
+        textarea.select();
+        navigator.clipboard.writeText(textarea.value);
+        alert('Bug details copied to clipboard!');
+      };
+    }
+  }
+
   function logSystemError(type, message, file = '', line = 0, col = 0, stack = '') {
     const errorEntry = {
       timestamp: new Date().toISOString(),
@@ -1612,6 +1633,20 @@
   /* ==========================================================================
      GLOBAL THUMBNAIL SIZE SLIDER SUBSYSTEM (50px to 200px)
      ========================================================================== */
+  function initGlobalErrorHandler() {
+    window.addEventListener('error', (evt) => {
+      const errStr = `[JS Error] ${evt.message} @ ${evt.filename}:${evt.lineno}:${evt.colno}`;
+      logSystemError('JS Error', evt.message, evt.filename, evt.lineno, evt.colno, evt.error?.stack);
+      showRuntimeErrorAlertModal(errStr, evt.error?.stack);
+    });
+
+    window.addEventListener('unhandledrejection', (evt) => {
+      const errStr = `[Unhandled Promise Rejection] Reason: ${evt.reason?.message || evt.reason}`;
+      logSystemError('Promise Rejection', evt.reason?.message || String(evt.reason), '', 0, 0, evt.reason?.stack);
+      showRuntimeErrorAlertModal(errStr, evt.reason?.stack || String(evt.reason));
+    });
+  }
+
   async function initGlobalThumbSizeSlider() {
     const slider = document.getElementById('globalThumbSizeSlider');
 
@@ -1713,7 +1748,7 @@
   /* ==========================================================================
      PWA & AUTO-UPDATE MANAGER
      ========================================================================== */
-  const CURRENT_APP_VERSION = '20260730.7';
+  const CURRENT_APP_VERSION = '20260730.8';
 
   async function initReleaseDownloadSection() {
     const versionBadge = document.getElementById('currentInstalledVersionBadge');
@@ -7525,6 +7560,7 @@
   }
 
   const processFilesArray = async (filesList) => {
+    if (!filesList || filesList.length === 0) return;
     const files = Array.from(filesList).filter(f => f.type.startsWith('image/') || f.type.startsWith('video/') || f.name.match(/\.(jpg|jpeg|png|gif|webp|mp4|webm|mov)$/i));
     if (files.length === 0) {
       alert('No supported image or video files found in the selection.');
@@ -7532,89 +7568,98 @@
     }
 
     showUploadProgressModal('📤 Uploading Media Files...', `Found ${files.length} file(s). Starting import...`);
-    await new Promise(r => requestAnimationFrame(() => setTimeout(r, 60)));
+    await new Promise(r => setTimeout(r, 60));
 
-    const activeProfileId = await db.getActiveProfileId();
-    const existingMedia = await db.getActiveMedia();
-    const existingHashes = new Set(existingMedia.map(m => m.hash).filter(Boolean));
+    try {
+      const activeProfileId = (await db.getActiveProfileId()) || 'default-profile';
+      const existingMedia = await db.getActiveMedia();
+      const existingHashes = new Set(existingMedia.map(m => m.hash).filter(Boolean));
 
-    let addedCount = 0;
-    let duplicateCount = 0;
-    let processedCount = 0;
+      let addedCount = 0;
+      let duplicateCount = 0;
+      let processedCount = 0;
 
-    const BATCH_SIZE = 4;
-    for (let i = 0; i < files.length; i += BATCH_SIZE) {
-      const chunk = files.slice(i, i + BATCH_SIZE);
-      await Promise.all(chunk.map(file => {
-        return new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onload = async (evt) => {
-            try {
-              const dataUrl = evt.target.result;
-              const fileHash = await calculateContentHash(dataUrl);
+      const BATCH_SIZE = 4;
+      for (let i = 0; i < files.length; i += BATCH_SIZE) {
+        const chunk = files.slice(i, i + BATCH_SIZE);
+        await Promise.all(chunk.map(file => {
+          return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = async (evt) => {
+              try {
+                const dataUrl = evt.target.result;
+                let fileHash = null;
+                try { fileHash = await calculateContentHash(dataUrl); } catch (e) { fileHash = 'hash-' + Date.now(); }
 
-              if (existingHashes.has(fileHash)) {
-                duplicateCount++;
-              } else {
-                existingHashes.add(fileHash);
-                addedCount++;
+                if (fileHash && existingHashes.has(fileHash)) {
+                  duplicateCount++;
+                } else {
+                  if (fileHash) existingHashes.add(fileHash);
+                  addedCount++;
 
-                const compressedThumb = await createCompressedThumbnail(file.type, dataUrl);
-                const { parsedSubjects, parsedNormalTags, parsedSldDate, parsedHearts } = parseTagPrefixes(file.name);
+                  let compressedThumb = '';
+                  try { compressedThumb = await createCompressedThumbnail(file.type, dataUrl); } catch (e) { compressedThumb = dataUrl; }
 
-                const blueBookEvents = [];
-                if (parsedSldDate) {
-                  blueBookEvents.push({
-                    id: 'be-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
-                    dateTag: parsedSldDate,
-                    heartTags: parsedHearts
-                  });
+                  const { parsedSubjects, parsedNormalTags, parsedSldDate, parsedHearts } = parseTagPrefixes(file.name);
+
+                  const blueBookEvents = [];
+                  if (parsedSldDate) {
+                    blueBookEvents.push({
+                      id: 'be-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+                      dateTag: parsedSldDate,
+                      heartTags: parsedHearts
+                    });
+                  }
+
+                  const mediaItem = {
+                    id: 'media-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
+                    profileId: activeProfileId,
+                    filename: file.name,
+                    type: file.type,
+                    dataUrl: dataUrl,
+                    thumbnailUrl: compressedThumb || dataUrl,
+                    hash: fileHash,
+                    blueBookEvents: blueBookEvents,
+                    subjectTags: parsedSubjects,
+                    normalTags: parsedNormalTags,
+                    viewTransform: { rotate: 0, clipStart: 0, clipEnd: null }
+                  };
+                  await db.put('media', mediaItem);
                 }
-
-                const mediaItem = {
-                  id: 'media-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
-                  profileId: activeProfileId,
-                  filename: file.name,
-                  type: file.type,
-                  dataUrl: dataUrl,
-                  thumbnailUrl: compressedThumb,
-                  hash: fileHash,
-                  blueBookEvents: blueBookEvents,
-                  subjectTags: parsedSubjects,
-                  normalTags: parsedNormalTags,
-                  viewTransform: { rotate: 0, clipStart: 0, clipEnd: null }
-                };
-                await db.put('media', mediaItem);
+              } catch (err) {
+                console.warn('Error reading upload item:', file.name, err);
+              } finally {
+                processedCount++;
+                const pct = (processedCount / files.length) * 100;
+                updateUploadProgress(pct, `Importing file ${processedCount} of ${files.length} (${addedCount} added)...`);
+                resolve();
               }
-            } catch (err) {
-              console.warn('Error reading upload item:', file.name, err);
-            } finally {
+            };
+            reader.onerror = () => {
               processedCount++;
-              const pct = (processedCount / files.length) * 100;
-              updateUploadProgress(pct, `Importing file ${processedCount} of ${files.length} (${addedCount} added)...`);
               resolve();
-            }
-          };
-          reader.onerror = () => {
-            processedCount++;
-            resolve();
-          };
-          reader.readAsDataURL(file);
-        });
-      }));
-      await new Promise(r => setTimeout(r, 0));
-    }
+            };
+            reader.readAsDataURL(file);
+          });
+        }));
+        await new Promise(r => setTimeout(r, 0));
+      }
 
-    updateUploadProgress(100, 'Finishing up...');
-    await loadAppState();
-    renderCurrentView();
+      updateUploadProgress(100, 'Finishing up...');
+      await loadAppState();
+      renderCurrentView();
 
-    setTimeout(() => {
+      setTimeout(() => {
+        hideUploadProgressModal();
+        let msg = `Successfully uploaded ${addedCount} media file(s).`;
+        if (duplicateCount > 0) msg += ` Skipped ${duplicateCount} duplicate file(s).`;
+        alert(msg);
+      }, 300);
+    } catch (err) {
       hideUploadProgressModal();
-      let msg = `Successfully uploaded ${addedCount} media file(s).`;
-      if (duplicateCount > 0) msg += ` Skipped ${duplicateCount} duplicate file(s).`;
-      alert(msg);
-    }, 300);
+      logSystemError('Upload Error', err.message, '', 0, 0, err.stack);
+      showRuntimeErrorAlertModal(`Error during media upload: ${err.message}`, err.stack);
+    }
   };
 
   async function regenerateAllThumbnails() {
