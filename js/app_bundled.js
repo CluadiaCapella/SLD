@@ -52,6 +52,26 @@
   // 3-Deep Cascade Sort History Stack
   let sortCascadeStack = [{ key: 'date', dir: 'desc' }];
 
+  function getTodaySmartDateTag() {
+    const d = new Date();
+    const yy = d.getFullYear().toString().slice(-2);
+    const mm = (d.getMonth() + 1).toString().padStart(2, '0');
+    const dd = d.getDate().toString().padStart(2, '0');
+    return `${yy}${mm}${dd}`;
+  }
+
+  async function calculateContentHash(dataUrl) {
+    if (!dataUrl) return '';
+    const sample = dataUrl.length > 50000 ? dataUrl.slice(0, 25000) + dataUrl.slice(-25000) : dataUrl;
+    let hash = 0;
+    for (let i = 0; i < sample.length; i++) {
+      const char = sample.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash |= 0;
+    }
+    return 'h_' + Math.abs(hash).toString(36) + '_' + sample.length;
+  }
+
   class Database {
     constructor() { this.db = null; }
 
