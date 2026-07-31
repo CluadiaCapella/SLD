@@ -899,10 +899,11 @@ body {
 /* Autocomplete Dropdowns & Button Grid */
 .date-autocomplete-container, .subject-autocomplete-container, .tag-autocomplete-container { position: relative; overflow: visible !important; }
 .date-autocomplete-dropdown, .subject-autocomplete-dropdown, .tag-autocomplete-dropdown {
-  position: absolute; bottom: 108%; left: 0; min-width: 220px; max-width: 90vw; width: max-content;
-  background: var(--bg-card); border: 1px solid var(--accent-blue); border-radius: var(--radius-md);
-  max-height: 220px; overflow-y: auto; z-index: 100005 !important; display: none; box-shadow: 0 -10px 30px rgba(0,0,0,0.85);
-  padding: 8px; flex-wrap: wrap; gap: 6px; align-content: flex-start;
+  position: absolute; bottom: 108%; left: 0; min-width: 240px; max-width: 92vw; width: max-content;
+  background: rgba(15, 23, 42, 0.96) !important; border: 1.5px solid var(--accent-blue); border-radius: var(--radius-md);
+  max-height: 240px; overflow-y: auto; z-index: 100005 !important; display: none; box-shadow: 0 -12px 35px rgba(0,0,0,0.95);
+  padding: 10px; flex-wrap: wrap; gap: 8px; align-content: flex-start; backdrop-filter: blur(12px);
+  opacity: 0.96 !important;
 }
 .date-autocomplete-dropdown.active, .subject-autocomplete-dropdown.active, .tag-autocomplete-dropdown.active { display: flex; }
 
@@ -915,10 +916,10 @@ body {
 
 .autocomplete-btn-chip {
   display: inline-flex; align-items: center; justify-content: space-between; gap: 6px;
-  padding: 6px 12px; border-radius: 16px; font-size: 0.8rem; font-weight: 700; cursor: pointer;
-  background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-primary);
-  max-width: 170px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  transition: all 0.15s ease; user-select: none;
+  padding: 8px 14px; border-radius: 18px; font-size: 0.85rem; font-weight: 800; cursor: pointer;
+  background: #1e293b !important; border: 1px solid #475569; color: #f8fafc !important; opacity: 1 !important;
+  max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  transition: all 0.15s ease; user-select: none; box-shadow: 0 2px 6px rgba(0,0,0,0.4);
 }
 
 .autocomplete-btn-chip .btn-text-label {

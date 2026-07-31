@@ -1669,6 +1669,7 @@
   function setupPinchToZoomThumbnails() {
     let initialPinchDistance = null;
     let initialThumbSize = 200;
+    let currentPinchSize = 200;
 
     document.addEventListener('touchstart', (e) => {
       if (e.touches && e.touches.length === 2) {
@@ -1680,12 +1681,14 @@
 
           const slider = document.getElementById('globalThumbSizeSlider');
           initialThumbSize = slider ? parseInt(slider.value, 10) : 200;
+          currentPinchSize = initialThumbSize;
         }
       }
     }, { passive: true });
 
     document.addEventListener('touchmove', (e) => {
       if (e.touches && e.touches.length === 2 && initialPinchDistance) {
+        if (e.cancelable) e.preventDefault();
         const t1 = e.touches[0];
         const t2 = e.touches[1];
         const currentDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
@@ -1694,11 +1697,10 @@
         let newSize = Math.round(initialThumbSize * scale);
         newSize = Math.min(200, Math.max(50, newSize));
 
+        currentPinchSize = newSize;
         const slider = document.getElementById('globalThumbSizeSlider');
         if (slider && parseInt(slider.value, 10) !== newSize) {
           slider.value = newSize;
-          applyGlobalThumbSize(newSize);
-          db.setSetting('globalThumbSize', newSize);
         }
       }
     }, { passive: true });
@@ -1748,7 +1750,7 @@
   /* ==========================================================================
      PWA & AUTO-UPDATE MANAGER
      ========================================================================== */
-  const CURRENT_APP_VERSION = '20260730.8';
+  const CURRENT_APP_VERSION = '20260730.9';
 
   async function initReleaseDownloadSection() {
     const versionBadge = document.getElementById('currentInstalledVersionBadge');
@@ -6997,23 +6999,32 @@
       return;
     }
 
-    container.innerHTML = savedP2pPeers.map(peer => `
-      <div style="background:var(--bg-primary); padding:12px 16px; border-radius:var(--radius-md); border:1px solid ${peer.status === 'connected' ? '#22c55e' : 'var(--border-color)'}; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
-        <div style="display:flex; align-items:center; gap:10px;">
-          <span style="font-size:1.4rem;">${peer.status === 'connected' ? '💻' : '📡'}</span>
-          <div>
-            <div style="font-weight:800; font-size:0.9rem; color:#fff;">${peer.name || peer.ip}</div>
-            <div style="font-size:0.75rem; color:${peer.status === 'connected' ? '#86efac' : 'var(--text-muted)'}; font-weight:600;">
-              ${peer.status === 'connected' ? '🟢 Connected & Synced' : '🟡 Auto-connecting (IP: ' + peer.ip + ')...'}
+    container.innerHTML = savedP2pPeers.map(peer => {
+      const isConnected = peer.status === 'connected';
+      const isConnecting = peer.status === 'connecting';
+      const statusColor = isConnected ? '#86efac' : (isConnecting ? '#fde047' : '#fca5a5');
+      const statusLabel = isConnected ? '🟢 Connected & Live Synced' : (isConnecting ? '🟡 Probing connection (IP: ' + peer.ip + ')...' : '🔴 Offline / Unreachable (IP: ' + peer.ip + ')');
+      const icon = isConnected ? '💻' : (isConnecting ? '📡' : '❌');
+      const borderColor = isConnected ? '#22c55e' : (isConnecting ? '#eab308' : 'var(--border-color)');
+
+      return `
+        <div style="background:var(--bg-primary); padding:12px 16px; border-radius:var(--radius-md); border:1px solid ${borderColor}; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span style="font-size:1.4rem;">${icon}</span>
+            <div>
+              <div style="font-weight:800; font-size:0.9rem; color:#fff;">${peer.name || peer.ip}</div>
+              <div style="font-size:0.75rem; color:${statusColor}; font-weight:600;">
+                ${statusLabel}
+              </div>
             </div>
           </div>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <button class="btn btn-secondary btn-sm rename-peer-ip-btn" data-ip="${peer.ip}" style="font-weight:700;">✏️ Rename</button>
+            <button class="btn btn-danger btn-sm remove-peer-ip-btn" data-ip="${peer.ip}">🗑️ Remove</button>
+          </div>
         </div>
-        <div style="display:flex; gap:8px; align-items:center;">
-          <button class="btn btn-secondary btn-sm rename-peer-ip-btn" data-ip="${peer.ip}" style="font-weight:700;">✏️ Rename</button>
-          <button class="btn btn-danger btn-sm remove-peer-ip-btn" data-ip="${peer.ip}">🗑️ Remove</button>
-        </div>
-      </div>
-    `).join('');
+      `;
+    }).join('');
 
     container.querySelectorAll('.rename-peer-ip-btn').forEach(btn => {
       btn.onclick = () => {
@@ -7070,16 +7081,39 @@
     const peer = savedP2pPeers.find(p => p.ip === peerIp);
     if (!peer) return;
 
+    peer.status = 'connecting';
+    renderConnectedPeersUI();
+    updateP2pStatusUI('connecting', `Probing ${peerIp}...`);
+
     try {
-      updateP2pStatusUI('connecting', `Connecting to ${peerIp}...`);
-      peer.status = 'connected';
-      isP2pConnected = true;
-      p2pDeviceName = peer.name || peer.ip;
-      updateP2pStatusUI('connected', p2pDeviceName);
-      renderConnectedPeersUI();
-      triggerPriorityQueueSync();
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2500);
+
+      const res = await fetch(`http://${peerIp}:8080/ping`, {
+        method: 'GET',
+        signal: controller.signal,
+        mode: 'cors'
+      }).catch(() => null);
+
+      clearTimeout(timeoutId);
+
+      if (res && res.ok) {
+        peer.status = 'connected';
+        isP2pConnected = true;
+        p2pDeviceName = peer.name || peer.ip;
+        updateP2pStatusUI('connected', p2pDeviceName);
+        renderConnectedPeersUI();
+        triggerPriorityQueueSync();
+      } else {
+        peer.status = 'offline';
+        isP2pConnected = false;
+        updateP2pStatusUI('disconnected');
+        renderConnectedPeersUI();
+      }
     } catch (e) {
       peer.status = 'offline';
+      isP2pConnected = false;
+      updateP2pStatusUI('disconnected');
       renderConnectedPeersUI();
     }
   }
