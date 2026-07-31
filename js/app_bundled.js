@@ -1750,7 +1750,7 @@
   /* ==========================================================================
      PWA & AUTO-UPDATE MANAGER
      ========================================================================== */
-  const CURRENT_APP_VERSION = '20260730.11';
+  const CURRENT_APP_VERSION = '20260730.12';
 
   async function initReleaseDownloadSection() {
     const versionBadge = document.getElementById('currentInstalledVersionBadge');
@@ -7185,9 +7185,39 @@
     renderConnectedPeersUI();
   }
 
-  function sendP2pMessage(msgObj) {
+  window.handleNativeP2pPayload = async function(jsonStr) {
+    try {
+      const msg = typeof jsonStr === 'string' ? JSON.parse(jsonStr) : jsonStr;
+      await handleIncomingP2pMessage(msg);
+    } catch (e) {
+      console.warn('Native P2P payload parse error:', e);
+    }
+  };
+
+  async function sendP2pMessage(msgObj) {
     if (rtcDataChannel && rtcDataChannel.readyState === 'open') {
-      rtcDataChannel.send(JSON.stringify(msgObj));
+      try { rtcDataChannel.send(JSON.stringify(msgObj)); } catch (e) {}
+    }
+
+    if (savedP2pPeers && savedP2pPeers.length > 0) {
+      const payload = JSON.stringify(msgObj);
+      for (const peer of savedP2pPeers) {
+        try {
+          fetch(`http://${peer.ip}:8080/sync`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: payload,
+            mode: 'cors'
+          }).then(res => {
+            if (res.ok) {
+              peer.status = 'connected';
+              isP2pConnected = true;
+              updateP2pStatusUI('connected', peer.name || peer.ip);
+              renderConnectedPeersUI();
+            }
+          }).catch(() => {});
+        } catch (e) {}
+      }
     }
   }
 
@@ -7201,7 +7231,7 @@
 
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 2500);
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
 
       const res = await fetch(`http://${peerIp}:8080/ping`, {
         method: 'GET',
