@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sld-app-cache-v20260730.10';
+const CACHE_NAME = 'sld-app-cache-v20260730.11';
 const ASSETS_TO_CACHE = [
   './',
   './SLD.html',
