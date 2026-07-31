@@ -1750,7 +1750,7 @@
   /* ==========================================================================
      PWA & AUTO-UPDATE MANAGER
      ========================================================================== */
-  const CURRENT_APP_VERSION = '20260730.9';
+  const CURRENT_APP_VERSION = '20260730.10';
 
   async function initReleaseDownloadSection() {
     const versionBadge = document.getElementById('currentInstalledVersionBadge');
