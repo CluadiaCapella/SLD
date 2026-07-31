@@ -1750,7 +1750,7 @@
   /* ==========================================================================
      PWA & AUTO-UPDATE MANAGER
      ========================================================================== */
-  const CURRENT_APP_VERSION = '20260730.12';
+  const CURRENT_APP_VERSION = '20260730.13';
 
   async function initReleaseDownloadSection() {
     const versionBadge = document.getElementById('currentInstalledVersionBadge');
@@ -6954,118 +6954,18 @@
     };
   }
 
-  let rtcBroadcastChannel = null;
-  if ('BroadcastChannel' in window) {
-    rtcBroadcastChannel = new BroadcastChannel('sld_p2p_sync');
-    rtcBroadcastChannel.onmessage = async (evt) => {
-      if (evt.data && evt.data.type === 'sld_rtc_signal') {
-        handleIncomingRtcSignal(evt.data.signal);
+  let p2pAutoConnectTimer = null;
+
+  async function initP2pIpAutoConnect() {
+    await loadSavedP2pPeers();
+    if (p2pAutoConnectTimer) clearInterval(p2pAutoConnectTimer);
+    p2pAutoConnectTimer = setInterval(async () => {
+      if (savedP2pPeers && savedP2pPeers.length > 0) {
+        for (const peer of savedP2pPeers) {
+          attemptIpP2pConnect(peer.ip);
+        }
       }
-    };
-  }
-
-  function setupRtcPairingUI() {
-    const genBtn = document.getElementById('generateRtcOfferBtn');
-    const pasteBtn = document.getElementById('pasteRtcOfferBtn');
-    const acceptBtn = document.getElementById('acceptRtcCodeBtn');
-    const box = document.getElementById('rtcCodeBox');
-
-    if (genBtn && !genBtn.dataset.bound) {
-      genBtn.dataset.bound = 'true';
-      genBtn.onclick = async () => {
-        try {
-          if (box) { box.style.display = 'block'; box.value = 'Generating WebRTC Sync Code...'; }
-          createRtcPeerConnection();
-          rtcDataChannel = rtcPeerConnection.createDataChannel('sldSyncData');
-          setupDataChannelEvents(rtcDataChannel);
-
-          const offer = await rtcPeerConnection.createOffer();
-          await rtcPeerConnection.setLocalDescription(offer);
-
-          rtcPeerConnection.onicecandidate = (e) => {
-            if (!e.candidate) {
-              const codeStr = 'SLD-OFFER:' + btoa(JSON.stringify(rtcPeerConnection.localDescription));
-              if (box) box.value = codeStr;
-              if (acceptBtn) { acceptBtn.style.display = 'inline-flex'; acceptBtn.textContent = '📋 Copy & Share Code'; }
-              if (rtcBroadcastChannel) rtcBroadcastChannel.postMessage({ type: 'sld_rtc_signal', signal: codeStr });
-            }
-          };
-        } catch (err) {
-          alert('Error generating WebRTC code: ' + err.message);
-        }
-      };
-    }
-
-    if (pasteBtn && !pasteBtn.dataset.bound) {
-      pasteBtn.dataset.bound = 'true';
-      pasteBtn.onclick = async () => {
-        if (box) {
-          box.style.display = 'block';
-          box.value = '';
-          box.placeholder = 'Paste the SLD-OFFER: or SLD-ANSWER: code from the other device here...';
-          box.focus();
-        }
-        if (acceptBtn) { acceptBtn.style.display = 'inline-flex'; acceptBtn.textContent = '✅ Connect Pair Code'; }
-      };
-    }
-
-    if (acceptBtn && !acceptBtn.dataset.bound) {
-      acceptBtn.dataset.bound = 'true';
-      acceptBtn.onclick = async () => {
-        const val = box ? box.value.trim() : '';
-        if (acceptBtn.textContent.includes('Copy')) {
-          if (box && box.value) {
-            box.select();
-            navigator.clipboard.writeText(box.value);
-            alert('Pairing Code copied to clipboard! Send this code to the second device or paste on your Tailscale device.');
-          }
-          return;
-        }
-
-        if (!val) { alert('Please paste a valid SLD-OFFER: or SLD-ANSWER: code.'); return; }
-        await handleIncomingRtcSignal(val);
-      };
-    }
-  }
-
-  async function handleIncomingRtcSignal(signalStr) {
-    const box = document.getElementById('rtcCodeBox');
-    const acceptBtn = document.getElementById('acceptRtcCodeBtn');
-
-    if (signalStr.startsWith('SLD-OFFER:')) {
-      const rawJson = atob(signalStr.replace('SLD-OFFER:', ''));
-      const desc = JSON.parse(rawJson);
-
-      createRtcPeerConnection();
-      rtcPeerConnection.ondatachannel = (e) => setupDataChannelEvents(e.channel);
-
-      await rtcPeerConnection.setRemoteDescription(new RTCSessionDescription(desc));
-      const answer = await rtcPeerConnection.createAnswer();
-      await rtcPeerConnection.setLocalDescription(answer);
-
-      rtcPeerConnection.onicecandidate = (e) => {
-        if (!e.candidate) {
-          const answerCode = 'SLD-ANSWER:' + btoa(JSON.stringify(rtcPeerConnection.localDescription));
-          if (box) { box.style.display = 'block'; box.value = answerCode; }
-          if (acceptBtn) { acceptBtn.style.display = 'inline-flex'; acceptBtn.textContent = '📋 Copy & Return Answer Code'; }
-          if (rtcBroadcastChannel) rtcBroadcastChannel.postMessage({ type: 'sld_rtc_signal', signal: answerCode });
-        }
-      };
-    } else if (signalStr.startsWith('SLD-ANSWER:')) {
-      const rawJson = atob(signalStr.replace('SLD-ANSWER:', ''));
-      const desc = JSON.parse(rawJson);
-      if (rtcPeerConnection) {
-        await rtcPeerConnection.setRemoteDescription(new RTCSessionDescription(desc));
-        alert('WebRTC Pair Code accepted! Establishing P2P sync DataChannel connection...');
-      }
-    }
-  }
-
-  function createRtcPeerConnection() {
-    if (rtcPeerConnection) {
-      try { rtcPeerConnection.close(); } catch (e) {}
-    }
-    rtcPeerConnection = new RTCPeerConnection(RTC_CONFIG);
+    }, 10000);
   }
 
   /* DIRECT IP PEER-TO-PEER AUTO-CONNECT ENGINE */
@@ -8123,7 +8023,7 @@
       }
     });
 
-    setupRtcPairingUI();
+    initP2pIpAutoConnect();
 
     document.getElementById('themeSelect')?.addEventListener('change', async (e) => {
       const val = e.target.value;

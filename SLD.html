@@ -705,21 +705,11 @@
               <!-- Direct IP Peer Pairing Input Card -->
               <div style="margin-top:16px; background:var(--bg-secondary); padding:16px; border-radius:var(--radius-md); border:1px solid var(--border-color);">
                 <label class="form-label" style="font-size:0.82rem; margin-bottom:6px; display:block; font-weight:700;">➕ Add Peer Device IP Address (Tailscale 100.x.x.x or LAN IP):</label>
-                <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;">
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
                   <input type="text" id="p2pPeerIpInput" class="input-text btn-sm" placeholder="Enter IP Address (e.g. 100.115.82.12)..." style="flex:1; min-width:200px;">
-                  <button class="btn btn-accent-blue btn-sm" id="addP2pPeerIpBtn" style="font-weight:700;">➕ Save IP Device</button>
+                  <button class="btn btn-accent-blue btn-sm" id="addP2pPeerIpBtn" style="font-weight:700;">➕ Save & Connect IP Device</button>
                 </div>
-
-                <div style="border-top:1px dashed var(--border-color); padding-top:14px; margin-top:8px;">
-                  <label class="form-label" style="font-size:0.82rem; margin-bottom:6px; display:block; font-weight:700;">🤝 WebRTC Direct P2P Pairing Code (1-Click Setup):</label>
-                  <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
-                    <button type="button" class="btn btn-primary btn-sm" id="generateRtcOfferBtn" style="font-weight:700;">📋 1. Generate Sync Code</button>
-                    <button type="button" class="btn btn-secondary btn-sm" id="pasteRtcOfferBtn" style="font-weight:700;">📥 2. Paste & Pair Code</button>
-                  </div>
-                  <textarea id="rtcCodeBox" class="input-text" placeholder="Generated or received P2P Sync Code will appear here..." style="width:100%; height:75px; font-family:monospace; font-size:0.75rem; resize:vertical; box-sizing:border-box; display:none;"></textarea>
-                  <button type="button" class="btn btn-success btn-sm" id="acceptRtcCodeBtn" style="font-weight:800; margin-top:8px; display:none;">✅ Connect Pair Code</button>
-                </div>
-                <p class="text-muted" style="font-size:0.75rem; margin-top:8px; margin-bottom:0;">Once paired, SLD automatically discovered & syncs media, points, and settings between devices whenever both apps are open.</p>
+                <p class="text-muted" style="font-size:0.75rem; margin-top:8px; margin-bottom:0;">SLD automatically probes saved Tailscale IP addresses and syncs media, points, and settings whenever both devices are open on Tailscale.</p>
               </div>
 
               <!-- Connected & Saved Peer Devices List -->
