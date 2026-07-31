@@ -1,6 +1,60 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
+  <!-- Early Global Diagnostic Error Handler & System Audit Tracker (Line 1 of HEAD) -->
+  <script>
+    (function() {
+      function formatDiagnosticReport(msg, url, lineNo, columnNo, error, eventType) {
+        var report = [];
+        report.push("=== SLD SYSTEM DIAGNOSTIC REPORT ===");
+        report.push("Timestamp: " + new Date().toISOString());
+        report.push("Event Type: " + (eventType || "Window Error"));
+        report.push("Message: " + msg);
+        report.push("Location: " + (url || "Unknown Origin") + ":" + (lineNo || 0) + ":" + (columnNo || 0));
+        report.push("Stack Trace:\n" + (error && error.stack ? error.stack : "N/A (Cross-origin CORS script restriction or browser event)"));
+        report.push("");
+        report.push("--- ENVIRONMENT STATE ---");
+        report.push("User Agent: " + navigator.userAgent);
+        report.push("URL Protocol: " + window.location.protocol);
+        report.push("Online Status: " + (navigator.onLine ? "Online 🌐" : "Offline 📴"));
+        report.push("Cropper.js: " + (typeof window.Cropper !== 'undefined' ? "YES ✅" : "NO ❌"));
+        report.push("JSZip: " + (typeof window.JSZip !== 'undefined' ? "YES ✅" : "NO ❌"));
+        report.push("Plotly.js: " + (typeof window.Plotly !== 'undefined' ? "YES ✅" : "NO ❌"));
+        report.push("IndexedDB: " + (typeof window.indexedDB !== 'undefined' ? "YES ✅" : "NO ❌"));
+
+        var scripts = Array.from(document.querySelectorAll('script')).map(function(s) {
+          return (s.src || "inline script");
+        });
+        report.push("Scripts in DOM (" + scripts.length + "):\n  " + scripts.join("\n  "));
+
+        return report.join("\n");
+      }
+
+      window.onerror = function(msg, url, lineNo, columnNo, error) {
+        var report = formatDiagnosticReport(msg, url, lineNo, columnNo, error, "Uncaught Exception");
+        console.error(report);
+        window.showEarlyErrorModal(report);
+        return false;
+      };
+
+      window.onunhandledrejection = function(event) {
+        var reason = event ? (event.reason ? (event.reason.stack || event.reason.message || event.reason) : "Unknown rejection") : "Empty rejection";
+        var report = formatDiagnosticReport(reason, "", 0, 0, event.reason, "Unhandled Promise Rejection");
+        console.error(report);
+        window.showEarlyErrorModal(report);
+      };
+
+      window.showEarlyErrorModal = function(errText) {
+        var modal = document.getElementById('globalEarlyErrorModal');
+        var textEl = document.getElementById('globalEarlyErrorDetails');
+        if (modal && textEl) {
+          textEl.value = errText;
+          modal.style.display = 'flex';
+        }
+      };
+    })();
+  </script>
+
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>SLD</title>
@@ -25,28 +79,6 @@
 
   <!-- Application Stylesheet -->
   <link rel="stylesheet" href="css/styles.css">
-  <!-- Early Global Diagnostic Error Handler -->
-  <script>
-    window.onerror = function(msg, url, lineNo, columnNo, error) {
-      var details = "Window Error: " + msg + "\nAt: " + url + ":" + lineNo + ":" + columnNo + "\nStack:\n" + (error ? error.stack : 'N/A');
-      console.error(details);
-      showEarlyErrorModal(details);
-      return false;
-    };
-    window.onunhandledrejection = function(event) {
-      var details = "Unhandled Promise Rejection: " + (event.reason ? (event.reason.stack || event.reason.message || event.reason) : 'Unknown rejection');
-      console.error(details);
-      showEarlyErrorModal(details);
-    };
-    function showEarlyErrorModal(errText) {
-      var modal = document.getElementById('globalEarlyErrorModal');
-      var textEl = document.getElementById('globalEarlyErrorDetails');
-      if (modal && textEl) {
-        textEl.value = errText;
-        modal.style.display = 'flex';
-      }
-    }
-  </script>
 </head>
 <body>
 
