@@ -5,8 +5,7 @@
  * Unified Standalone Script (Subject Groups, Color Tinting, Grouped Media Browser, Content Hash Duplicate Prevention, 3-Deep Cascade Sorting & 4-Tier SLD System)
  */
 
-(function () {
-  'use strict';
+
 
   /* ==========================================================================
      1. DATABASE MANAGER (IndexedDB) & ACTION TAGS / GROUPS MAP
