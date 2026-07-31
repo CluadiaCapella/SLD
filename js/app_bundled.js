@@ -466,7 +466,7 @@ function showRuntimeErrorAlertModal(entry) {
 /* ==========================================================================
    MODULE 04: PWA & AUTO-UPDATE MANAGER
    ========================================================================== */
-const CURRENT_APP_VERSION = '260730.14';
+const CURRENT_APP_VERSION = '260730.15';
 
 async function initReleaseDownloadSection() {
   const versionBadge = document.getElementById('currentInstalledVersionBadge');
@@ -497,6 +497,90 @@ async function initReleaseDownloadSection() {
     }
   } catch (e) {
     console.warn('Failed to check live release version:', e);
+  }
+}
+
+
+/* === Module: 05_views_router.js === */
+/* ==========================================================================
+   MODULE 05: VIEW ROUTER & PAGE RENDERERS
+   ========================================================================== */
+function setupNavigation() {
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      const viewId = e.currentTarget.getAttribute('data-view');
+      if (viewId) switchView(viewId);
+    });
+  });
+}
+
+function switchView(viewId, skipPushState = false) {
+  currentActiveView = viewId;
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.classList.toggle('active', el.getAttribute('data-view') === viewId);
+  });
+  document.querySelectorAll('.view-page').forEach(el => {
+    el.classList.toggle('active', el.id === viewId);
+  });
+  renderCurrentView();
+
+  if (!skipPushState) {
+    const stateObj = {
+      viewId,
+      activeDetailSubjectId,
+      activeDetailComboKey,
+      activeDetailSldDateTag,
+      activeDetailEventId,
+      activeDetailTagName,
+      isLightbox: false
+    };
+    window.history.pushState(stateObj, '', '#' + viewId);
+  }
+}
+
+function renderCurrentView() {
+  const stats = processAllStats(currentMediaList, currentSubjectsList, currentEventsList, currentWeights);
+
+  switch (currentActiveView) {
+    case 'mediaBrowserView': renderMediaBrowser(); break;
+    case 'subjectsView': renderSubjectsPage(stats); break;
+    case 'subjectDetailsView': renderSubjectDetailsPage(stats); break;
+    case 'combinationDetailsView': renderCombinationDetailsPage(stats); break;
+    case 'sldView': renderSldListPage(); break;
+    case 'sldDetailsView': renderSldDetailsPage(); break;
+    case 'eventsView': renderEventsPage(stats); break;
+    case 'eventDetailsView': renderEventDetailsPage(stats); break;
+    case 'tagsView': renderTagsPage(); break;
+    case 'tagDetailsView': renderTagDetailsPage(); break;
+    case 'statsView': renderStatsPage(stats); break;
+    case 'settingsView': renderSettingsPage(); break;
+  }
+}
+
+
+/* === Module: 06_selection_tags.js === */
+/* ==========================================================================
+   MODULE 06: MULTI-SELECT SELECTION BANNER & TAGGING
+   ========================================================================== */
+function clearMediaSelection() {
+  selectedMediaIds.clear();
+  updateSelectionStateUI();
+}
+
+function updateSelectionStateUI() {
+  const selectionBanner = document.getElementById('selectionBanner');
+  const selectedCountEl = document.getElementById('selectedCount');
+
+  if (selectedMediaIds.size > 0) {
+    if (selectionBanner) {
+      selectionBanner.style.display = 'flex';
+      selectionBanner.className = 'selection-banner-sticky';
+    }
+    if (selectedCountEl) selectedCountEl.textContent = `${selectedMediaIds.size} file(s) selected`;
+    renderSelectionInlineTags();
+  } else {
+    if (selectionBanner) selectionBanner.style.display = 'none';
+    renderMediaBrowser();
   }
 }
 
@@ -676,6 +760,153 @@ async function attemptIpP2pConnect(peerIp) {
     updateP2pStatusUI('disconnected');
     renderConnectedPeersUI();
   }
+}
+
+
+/* === Module: 10_main_app.js === */
+/* ==========================================================================
+   MODULE 10: MAIN APPLICATION INITIALIZER & FILE IMPORTER
+   ========================================================================== */
+async function processFilesArray(files) {
+  if (!files || files.length === 0) return;
+
+  const activeProfileId = await db.getActiveProfileId();
+  showUploadProgressModal('📤 Importing Media Files...', `Scanning 0 of ${files.length}...`);
+
+  let addedCount = 0;
+  let duplicateCount = 0;
+  let processedCount = 0;
+  const existingHashes = new Set(currentMediaList.map(m => m.hash).filter(Boolean));
+
+  const BATCH_SIZE = 10;
+  for (let i = 0; i < files.length; i += BATCH_SIZE) {
+    const chunk = Array.from(files).slice(i, i + BATCH_SIZE);
+    await Promise.all(chunk.map(file => {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = async (evt) => {
+          try {
+            const dataUrl = evt.target.result;
+            const fileHash = await calculateContentHash(dataUrl);
+
+            if (existingHashes.has(fileHash)) {
+              duplicateCount++;
+            } else {
+              existingHashes.add(fileHash);
+              addedCount++;
+
+              const compressedThumb = await createCompressedThumbnail(file.type, dataUrl);
+              const mediaItem = {
+                id: 'media-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
+                profileId: activeProfileId,
+                filename: file.name,
+                type: file.type,
+                dataUrl: dataUrl,
+                thumbnailUrl: compressedThumb,
+                hash: fileHash,
+                blueBookEvents: [],
+                subjectTags: [],
+                normalTags: [],
+                viewTransform: { rotate: 0, clipStart: 0, clipEnd: null }
+              };
+              await db.put('media', mediaItem);
+            }
+          } catch (err) {
+            console.warn('Error reading upload item:', file.name, err);
+          } finally {
+            processedCount++;
+            const pct = (processedCount / files.length) * 100;
+            updateUploadProgress(pct, `Importing file ${processedCount} of ${files.length} (${addedCount} added)...`);
+            resolve();
+          }
+        };
+        reader.onerror = () => { processedCount++; resolve(); };
+        reader.readAsDataURL(file);
+      });
+    }));
+    await new Promise(r => setTimeout(r, 0));
+  }
+
+  updateUploadProgress(100, 'Finishing up...');
+  await loadAppState();
+  renderCurrentView();
+
+  setTimeout(() => {
+    hideUploadProgressModal();
+    let msg = `Successfully uploaded ${addedCount} media file(s).`;
+    if (duplicateCount > 0) msg += ` Skipped ${duplicateCount} duplicate file(s).`;
+    alert(msg);
+  }, 300);
+}
+
+function triggerSplashScreen(onComplete) {
+  const splash = document.getElementById('splashScreen');
+  if (!splash) { if (onComplete) onComplete(); return; }
+
+  splash.classList.add('active');
+  splash.style.display = 'flex';
+  splash.style.opacity = '1';
+
+  setTimeout(() => {
+    splash.classList.add('fade-out');
+    setTimeout(() => {
+      splash.classList.remove('active', 'fade-out');
+      splash.style.display = 'none';
+      if (onComplete) onComplete();
+    }, 500);
+  }, 500);
+}
+
+function setupEventListeners() {
+  const uploadInput = document.getElementById('mediaFileInput');
+  if (uploadInput) uploadInput.addEventListener('change', (e) => processFilesArray(e.target.files));
+
+  const folderInput = document.getElementById('mediaFolderInput');
+  if (folderInput) folderInput.addEventListener('change', (e) => processFilesArray(e.target.files));
+
+  document.getElementById('addP2pPeerIpBtn')?.addEventListener('click', () => {
+    const input = document.getElementById('p2pPeerIpInput');
+    if (input) {
+      addP2pPeerIp(input.value);
+      input.value = '';
+    }
+  });
+
+  initP2pIpAutoConnect();
+
+  document.getElementById('themeSelect')?.addEventListener('change', async (e) => {
+    const val = e.target.value;
+    document.documentElement.setAttribute('data-theme', val);
+    await db.setSetting('theme', val);
+  });
+}
+
+async function initApp() {
+  triggerSplashScreen();
+
+  try {
+    await db.init();
+    await loadAppState();
+  } catch (err) {
+    console.warn('DB Init Warning:', err);
+  }
+
+  setupNavigation();
+  setupEventListeners();
+
+  document.getElementById('headerBrandLogo')?.addEventListener('click', () => {
+    triggerSplashScreen(() => {
+      switchView('mediaBrowserView');
+    });
+  });
+
+  renderCurrentView();
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
 }
 
 
