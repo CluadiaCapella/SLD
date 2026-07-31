@@ -31,6 +31,12 @@
       }
 
       window.onerror = function(msg, url, lineNo, columnNo, error) {
+        // Ignore generic cross-origin "Script error." at line 0 (file:// protocol CORS restriction for CDNs)
+        if ((msg === "Script error." || msg === "Script error") && (lineNo === 0 || !url)) {
+          console.warn("Ignored generic cross-origin CDN Script error at :0:0 (file:// CORS restriction).");
+          return true;
+        }
+
         var report = formatDiagnosticReport(msg, url, lineNo, columnNo, error, "Uncaught Exception");
         console.error(report);
         window.showEarlyErrorModal(report);
