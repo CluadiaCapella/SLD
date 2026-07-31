@@ -7208,656 +7208,315 @@ return `
 
 
 /* === Module: 09_p2p_sync.js === */
-/* Module 09_p2p_sync.js */
-aiFilterBtn.style.fontWeight = '600';
-        } else if (aiFilterMode === 'ai_only') {
-          aiFilterBtn.textContent = '🤖';
-          aiFilterBtn.setAttribute('title', '🤖 Filter: AI Only');
-          aiFilterBtn.style.background = 'linear-gradient(135deg, #a855f7, #6366f1)';
-          aiFilterBtn.style.color = '#ffffff';
-          aiFilterBtn.style.fontWeight = '800';
-        } else if (aiFilterMode === 'human_only') {
-          aiFilterBtn.textContent = '👤';
-          aiFilterBtn.setAttribute('title', '👤 Filter: Non-AI Only');
-          aiFilterBtn.style.background = 'var(--accent-blue)';
-          aiFilterBtn.style.color = '#ffffff';
-          aiFilterBtn.style.fontWeight = '800';
-        }
+/* ==========================================================================
+   MODULE 09: DIRECT IP PEER-TO-PEER TAILSCALE AUTO-CONNECT ENGINE
+   ========================================================================== */
+let savedP2pPeers = [];
+let isP2pConnected = false;
+let p2pDeviceName = 'This Device';
+let p2pAutoConnectTimer = null;
 
-        renderCurrentView();
-      };
-    }
+async function loadSavedP2pPeers() {
+  try {
+    const list = await db.getSetting('savedP2pPeersList');
+    if (Array.isArray(list)) savedP2pPeers = list;
+  } catch(e) {}
+  renderConnectedPeersUI();
+}
 
-    const toggleSelectionAiBtn = document.getElementById('toggleSelectionAiBtn');
-    if (toggleSelectionAiBtn) {
-      toggleSelectionAiBtn.onclick = async () => {
-        if (selectedMediaIds.size === 0) return;
-        const selectedFiles = currentMediaList.filter(m => selectedMediaIds.has(m.id));
-
-        const allAreAi = selectedFiles.every(m => m.isAiGenerated || (m.normalTags || []).includes('AI'));
-        const newStatus = !allAreAi;
-
-        for (const m of selectedFiles) {
-          m.isAiGenerated = newStatus;
-          if (!m.normalTags) m.normalTags = [];
-          if (newStatus) {
-            if (!m.normalTags.includes('AI')) m.normalTags.push('AI');
-          } else {
-            m.normalTags = m.normalTags.filter(t => t !== 'AI');
-          }
-          await db.put('media', m);
-        }
-
-        await loadAppState();
-        renderCurrentView();
-      };
-    }
-
-    document.getElementById('openManageGroupsBtn')?.addEventListener('click', openManageGroupsModal);
-    document.getElementById('closeManageGroupsBtn')?.addEventListener('click', () => {
-      document.getElementById('manageGroupsModal').classList.remove('active');
-    });
-
-    document.getElementById('openAddSubjectBtn')?.addEventListener('click', () => {
-      const nameInput = document.getElementById('subjectNameInput');
-      if (nameInput) nameInput.value = '';
-      document.getElementById('addSubjectModal').classList.add('active');
-      if (nameInput) nameInput.focus();
-    });
-
-    document.getElementById('cancelAddSubjectBtn')?.addEventListener('click', () => {
-      document.getElementById('addSubjectModal').classList.remove('active');
-    });
-
-    document.getElementById('saveSubjectBtn')?.addEventListener('click', async () => {
-      const nameInput = document.getElementById('subjectNameInput');
-      const val = nameInput ? nameInput.value.trim() : '';
-      if (!val) { alert('Please enter a subject name.'); return; }
-      const pId = await db.getActiveProfileId();
-      const newSub = { id: 'sub-' + Date.now(), profileId: pId, name: val, groupId: 'green', avatarUrl: null };
-      await db.put('subjects', newSub);
-      document.getElementById('addSubjectModal').classList.remove('active');
-      await loadAppState();
-      renderCurrentView();
-    });
-
-    document.getElementById('addCustomGroupBtn')?.addEventListener('click', async () => {
-      const input = document.getElementById('newCustomGroupNameInput');
-      const name = input ? input.value.trim() : '';
-      if (!name) return;
-
-      const gId = 'custom-' + Date.now();
-      const newGroup = {
-        id: gId, name: name, emoji: '⭐', color: '#38bdf8', cssClass: 'group-border-blue', isBuiltIn: false
-      };
-
-      currentSubjectGroupsList.push(newGroup);
-      await db.setSetting('subjectGroups', currentSubjectGroupsList);
-      input.value = '';
-      renderGroupsList();
-      renderCurrentView();
-    });
-
-  /* Upload Progress Modal Helpers */
-  function showUploadProgressModal(title = 'Uploading Media Files...', message = 'Scanning and importing selected files...') {
-    const modal = document.getElementById('uploadProgressModal');
-    const titleEl = document.getElementById('uploadProgressTitle');
-    const msgEl = document.getElementById('uploadProgressMessage');
-    const barEl = document.getElementById('uploadProgressBar');
-    const pctEl = document.getElementById('uploadProgressPercent');
-
-    if (titleEl) titleEl.textContent = title;
-    if (msgEl) msgEl.textContent = message;
-    if (barEl) barEl.style.width = '0%';
-    if (pctEl) pctEl.textContent = '0%';
-    if (modal) {
-      modal.style.display = 'flex';
-      modal.classList.add('active');
-    }
-  }
-
-  function updateUploadProgress(percent, message) {
-    const barEl = document.getElementById('uploadProgressBar');
-    const pctEl = document.getElementById('uploadProgressPercent');
-    const msgEl = document.getElementById('uploadProgressMessage');
-
-    const pct = Math.min(100, Math.max(0, Math.round(percent)));
-    if (barEl) barEl.style.width = `${pct}%`;
-    if (pctEl) pctEl.textContent = `${pct}%`;
-    if (msgEl && message) msgEl.textContent = message;
-  }
-
-  function hideUploadProgressModal() {
-    const modal = document.getElementById('uploadProgressModal');
-    if (modal) {
-      modal.classList.remove('active');
-      modal.style.display = 'none';
-    }
-  }
-
-  /* Auto-save Settings Listeners */
-  function setupAutoSaveSettings() {
-    const bindAutoSave = (elementId, saveCallback) => {
-      const el = document.getElementById(elementId);
-      if (el && !el.dataset.autoSaveBound) {
-        el.dataset.autoSaveBound = 'true';
-        el.addEventListener('input', saveCallback);
-        el.addEventListener('change', saveCallback);
-      }
-    };
-
-    const saveTrophySettings = async () => {
-      currentMedalSettings = {
-        goldPts: parseFloat(document.getElementById('goldPointValueInput')?.value) || 1.0,
-        silverPts: parseFloat(document.getElementById('silverPointValueInput')?.value) || 0.3,
-        bronzePts: parseFloat(document.getElementById('bronzePointValueInput')?.value) || 0.1,
-        maxGold: parseInt(document.getElementById('maxGoldPerHeartInput')?.value, 10) || 1,
-        maxSilver: parseInt(document.getElementById('maxSilverPerHeartInput')?.value, 10) || 2,
-        maxBronze: parseInt(document.getElementById('maxBronzePerHeartInput')?.value, 10) || 5
-      };
-      await db.setSetting('medalSettings', currentMedalSettings);
-    };
-
-    ['goldPointValueInput', 'maxGoldPerHeartInput', 'silverPointValueInput', 'maxSilverPerHeartInput', 'bronzePointValueInput', 'maxBronzePerHeartInput'].forEach(id => {
-      bindAutoSave(id, saveTrophySettings);
-    });
-
-    const saveAlikeSettings = async () => {
-      alikeSettings = {
-        faint: parseFloat(document.getElementById('alikeFaintPctInput')?.value) || 15,
-        medium: parseFloat(document.getElementById('alikeMediumPctInput')?.value) || 30,
-        strong: parseFloat(document.getElementById('alikeStrongPctInput')?.value) || 45
-      };
-      globalPointsDisplayMode = document.getElementById('globalPointsDisplayModeSelect')?.value || 'points';
-      await db.setSetting('alikeSettings', alikeSettings);
-      await db.setSetting('globalPointsDisplayMode', globalPointsDisplayMode);
-      renderCurrentView();
-    };
-
-    ['alikeFaintPctInput', 'alikeMediumPctInput', 'alikeStrongPctInput', 'globalPointsDisplayModeSelect'].forEach(id => {
-      bindAutoSave(id, saveAlikeSettings);
-    });
-
-    const savePrefixSettings = async () => {
-      tagPrefixSettings = {
-        subject: document.getElementById('prefixSubjectInput')?.value || '🔴,🟠,🟡,🟢,🔵,🟣,🟤,🖤,⚪',
-        normal: document.getElementById('prefixNormalTagInput')?.value || '🧿',
-        action: document.getElementById('prefixActionTagInput')?.value || '🧿',
-        heart: document.getElementById('prefixHeartInput')?.value || '🩷,🩵,🩶',
-        sld: document.getElementById('prefixSldInput')?.value || '🪾'
-      };
-      await db.setSetting('tagPrefixSettings', tagPrefixSettings);
-    };
-
-    ['prefixSubjectInput', 'prefixNormalTagInput', 'prefixActionTagInput', 'prefixHeartInput', 'prefixSldInput'].forEach(id => {
-      bindAutoSave(id, savePrefixSettings);
-    });
-  }
-
-  /* File & Folder Upload with Progress & Chunking */
-  function parseTagPrefixes(filename) {
-    const subjectPrefixes = (tagPrefixSettings.subject || '🔴,🟠,🟡,🟢,🔵,🟣,🟤,🖤,⚪').split(',').map(s => s.trim()).filter(Boolean);
-    const normalPrefixes = (tagPrefixSettings.normal || '🧿').split(',').map(s => s.trim()).filter(Boolean);
-    const actionPrefixes = (tagPrefixSettings.action || '🧿').split(',').map(s => s.trim()).filter(Boolean);
-    const heartPrefixes = (tagPrefixSettings.heart || '🩷,🩵,🩶').split(',').map(s => s.trim()).filter(Boolean);
-    const sldPrefixes = (tagPrefixSettings.sld || '🪾').split(',').map(s => s.trim()).filter(Boolean);
-
-    const parsedSubjects = [];
-    const parsedNormalTags = [];
-    let parsedSldDate = null;
-    let parsedActionCode = null;
-    let parsedHearts = { pink: 0, grey: 0, blue: 0 };
-
-    const segments = filename.replace(/\.[^/.]+$/, "").split(/[_\s,-]+/);
-    for (const seg of segments) {
-      if (!seg) continue;
-
-      let subMatched = false;
-      for (const pref of subjectPrefixes) {
-        if (seg.startsWith(pref)) {
-          const val = seg.substring(pref.length).trim();
-          if (val) {
-            const sub = currentSubjectsList.find(s => s.name.toLowerCase() === val.toLowerCase());
-            if (sub) parsedSubjects.push(sub.id);
-            subMatched = true;
-            break;
-          }
-        }
-      }
-      if (subMatched) continue;
-
-      for (const pref of sldPrefixes) {
-        if (seg.startsWith(pref)) {
-          const val = seg.substring(pref.length).trim();
-          if (val) parsedSldDate = val;
-        }
-      }
-
-      for (const pref of normalPrefixes) {
-        if (seg.startsWith(pref)) {
-          const val = seg.substring(pref.length).trim();
-          const numMatch = val.match(/^(\d{1,2})$/);
-          if (numMatch) {
-            parsedActionCode = parseInt(numMatch[1], 10);
-          } else if (val) {
-            parsedNormalTags.push(val);
-          }
-        }
-      }
-
-      for (const pref of heartPrefixes) {
-        if (seg.startsWith(pref)) {
-          const val = seg.substring(pref.length).trim();
-          if (pref === '🩷') parsedHearts.pink = parseInt(val, 10) || 1;
-          if (pref === '🩵') parsedHearts.blue = parseInt(val, 10) || 1;
-          if (pref === '🩶') parsedHearts.grey = parseInt(val, 10) || 1;
-        }
+async function initP2pIpAutoConnect() {
+  await loadSavedP2pPeers();
+  if (p2pAutoConnectTimer) clearInterval(p2pAutoConnectTimer);
+  p2pAutoConnectTimer = setInterval(async () => {
+    if (savedP2pPeers && savedP2pPeers.length > 0) {
+      for (const peer of savedP2pPeers) {
+        attemptIpP2pConnect(peer.ip);
       }
     }
+  }, 10000);
+}
 
-    return { parsedSubjects, parsedNormalTags, parsedSldDate, parsedActionCode, parsedHearts };
+async function addP2pPeerIp(ipStr) {
+  if (!ipStr || !ipStr.trim()) { alert('Please enter a valid IP address.'); return; }
+  const cleanIp = ipStr.trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+
+  const existing = savedP2pPeers.find(p => p.ip === cleanIp);
+  if (!existing) {
+    savedP2pPeers.push({
+      ip: cleanIp,
+      name: `Peer (${cleanIp})`,
+      status: 'connecting'
+    });
+    await db.setSetting('savedP2pPeersList', savedP2pPeers);
+  }
+  renderConnectedPeersUI();
+  attemptIpP2pConnect(cleanIp);
+}
+
+async function removeP2pPeerIp(ipStr) {
+  savedP2pPeers = savedP2pPeers.filter(p => p.ip !== ipStr);
+  await db.setSetting('savedP2pPeersList', savedP2pPeers);
+  if (savedP2pPeers.length === 0) {
+    isP2pConnected = false;
+    updateP2pStatusUI('disconnected');
+  }
+  renderConnectedPeersUI();
+}
+
+function updateP2pStatusUI(status, deviceName = '') {
+  const badge = document.getElementById('p2pSyncStatusBadge');
+  if (!badge) return;
+
+  if (status === 'connected') {
+    badge.style.background = 'rgba(34, 197, 94, 0.2)';
+    badge.style.color = '#4ade80';
+    badge.style.borderColor = '#22c55e';
+    badge.textContent = `🟢 Connected (${deviceName || 'Peer'})`;
+  } else if (status === 'connecting') {
+    badge.style.background = 'rgba(234, 179, 8, 0.2)';
+    badge.style.color = '#facc15';
+    badge.style.borderColor = '#eab308';
+    badge.textContent = `🟡 Probing ${deviceName || 'Peers'}...`;
+  } else {
+    badge.style.background = 'rgba(255, 255, 255, 0.1)';
+    badge.style.color = 'var(--text-muted)';
+    badge.style.borderColor = 'var(--border-color)';
+    badge.textContent = '⚪ Disconnected';
+  }
+}
+
+function renderConnectedPeersUI() {
+  const container = document.getElementById('connectedPeersList');
+  if (!container) return;
+
+  let itemsHtml = '';
+
+  if (savedP2pPeers && savedP2pPeers.length > 0) {
+    itemsHtml += savedP2pPeers.map(p => {
+      let statusBadge = `<span class="subject-stat-badge" style="background:rgba(239,68,68,0.2); color:#f87171; border:1px solid #ef4444; font-size:0.75rem;">🔴 Offline</span>`;
+      if (p.status === 'connected') {
+        statusBadge = `<span class="subject-stat-badge" style="background:rgba(34,197,94,0.2); color:#4ade80; border:1px solid #22c55e; font-size:0.75rem;">🟢 Connected</span>`;
+      } else if (p.status === 'connecting') {
+        statusBadge = `<span class="subject-stat-badge" style="background:rgba(234,179,8,0.2); color:#facc15; border:1px solid #eab308; font-size:0.75rem;">🟡 Probing...</span>`;
+      }
+
+      return `<div style="display:flex; align-items:center; justify-content:space-between; background:var(--bg-card); padding:10px 14px; border-radius:var(--radius-md); border:1px solid var(--border-color); margin-bottom:8px;">
+        <div>
+          <div style="font-weight:700; font-size:0.85rem;">🌐 ${p.ip}</div>
+          <div style="font-size:0.75rem; color:var(--text-secondary); margin-top:2px;">Tailscale / LAN Direct IP</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px;">
+          ${statusBadge}
+          <button class="btn btn-danger btn-sm" onclick="removeP2pPeerIp('${p.ip}')" title="Remove IP">🗑️</button>
+        </div>
+      </div>`;
+    }).join('');
   }
 
-  const processFilesArray = async (filesList) => {
-    const files = Array.from(filesList).filter(f => f.type.startsWith('image/') || f.type.startsWith('video/') || f.name.match(/\.(jpg|jpeg|png|gif|webp|mp4|webm|mov)$/i));
-    if (files.length === 0) {
-      alert('No supported image or video files found in the selection.');
-      return;
+  if (!itemsHtml) {
+    container.innerHTML = '<p class="text-muted" style="font-size:0.8rem; margin:0;">No devices paired currently.</p>';
+  } else {
+    container.innerHTML = itemsHtml;
+  }
+}
+
+async function attemptIpP2pConnect(peerIp) {
+  const peer = savedP2pPeers.find(p => p.ip === peerIp);
+  if (!peer) return;
+
+  peer.status = 'connecting';
+  renderConnectedPeersUI();
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+    const res = await fetch(`http://${peerIp}:8080/ping`, {
+      method: 'GET',
+      signal: controller.signal,
+      mode: 'cors'
+    }).catch(() => null);
+
+    clearTimeout(timeoutId);
+
+    if (res && res.ok) {
+      peer.status = 'connected';
+      isP2pConnected = true;
+      p2pDeviceName = peer.name || peer.ip;
+      updateP2pStatusUI('connected', p2pDeviceName);
+      renderConnectedPeersUI();
+    } else {
+      peer.status = 'offline';
+      isP2pConnected = false;
+      updateP2pStatusUI('disconnected');
+      renderConnectedPeersUI();
     }
+  } catch (e) {
+    peer.status = 'offline';
+    isP2pConnected = false;
+    updateP2pStatusUI('disconnected');
+    renderConnectedPeersUI();
+  }
+}
 
-    showUploadProgressModal('📤 Uploading Media Files...', `Found ${files.length} file(s). Starting import...`);
-    await new Promise(r => requestAnimationFrame(() => setTimeout(r, 60)));
-
-    const activeProfileId = await db.getActiveProfileId();
-    const existingMedia = await db.getActiveMedia();
-    const existingHashes = new Set(existingMedia.map(m => m.hash).filter(Boolean));
-
-    let addedCount = 0;
-    let duplicateCount = 0;
-    let processedCount = 0;
-
-    const BATCH_SIZE = 4;
-    for (let i = 0; i < files.length; i += BATCH_SIZE) {
-      const chunk = files.slice(i, i + BATCH_SIZE);
+window.initP2pIpAutoConnect = initP2pIpAutoConnect;
+window.addP2pPeerIp = addP2pPeerIp;
+window.removeP2pPeerIp = removeP2pPeerIp;
 
 
 /* === Module: 10_main_app.js === */
-/* Module 10_main_app.js */
-await Promise.all(chunk.map(file => {
-        return new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onload = async (evt) => {
-            try {
-              const dataUrl = evt.target.result;
-              const fileHash = await calculateContentHash(dataUrl);
+/* ==========================================================================
+   MODULE 10: MAIN APPLICATION INITIALIZER & FILE IMPORTER
+   ========================================================================== */
+async function processFilesArray(files) {
+  if (!files || files.length === 0) return;
 
-              if (existingHashes.has(fileHash)) {
-                duplicateCount++;
-              } else {
-                existingHashes.add(fileHash);
-                addedCount++;
+  const activeProfileId = await db.getActiveProfileId();
+  showUploadProgressModal('📤 Importing Media Files...', `Scanning 0 of ${files.length}...`);
 
-                const compressedThumb = await createCompressedThumbnail(file.type, dataUrl);
-                const { parsedSubjects, parsedNormalTags, parsedSldDate, parsedHearts } = parseTagPrefixes(file.name);
+  let addedCount = 0;
+  let duplicateCount = 0;
+  let processedCount = 0;
+  const existingHashes = new Set(currentMediaList.map(m => m.hash).filter(Boolean));
 
-                const blueBookEvents = [];
-                if (parsedSldDate) {
-                  blueBookEvents.push({
-                    id: 'be-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
-                    dateTag: parsedSldDate,
-                    heartTags: parsedHearts
-                  });
-                }
+  const BATCH_SIZE = 10;
+  for (let i = 0; i < files.length; i += BATCH_SIZE) {
+    const chunk = Array.from(files).slice(i, i + BATCH_SIZE);
+    await Promise.all(chunk.map(file => {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = async (evt) => {
+          try {
+            const dataUrl = evt.target.result;
+            const fileHash = await calculateContentHash(dataUrl);
 
-                const mediaItem = {
-                  id: 'media-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
-                  profileId: activeProfileId,
-                  filename: file.name,
-                  type: file.type,
-                  dataUrl: dataUrl,
-                  thumbnailUrl: compressedThumb,
-                  hash: fileHash,
-                  blueBookEvents: blueBookEvents,
-                  subjectTags: parsedSubjects,
-                  normalTags: parsedNormalTags,
-                  viewTransform: { rotate: 0, clipStart: 0, clipEnd: null }
-                };
-                await db.put('media', mediaItem);
-              }
-            } catch (err) {
-              console.warn('Error reading upload item:', file.name, err);
-            } finally {
-              processedCount++;
-              const pct = (processedCount / files.length) * 100;
-              updateUploadProgress(pct, `Importing file ${processedCount} of ${files.length} (${addedCount} added)...`);
-              resolve();
+            if (existingHashes.has(fileHash)) {
+              duplicateCount++;
+            } else {
+              existingHashes.add(fileHash);
+              addedCount++;
+
+              const compressedThumb = await createCompressedThumbnail(file.type, dataUrl);
+              const mediaItem = {
+                id: 'media-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
+                profileId: activeProfileId,
+                filename: file.name,
+                type: file.type,
+                dataUrl: dataUrl,
+                thumbnailUrl: compressedThumb,
+                hash: fileHash,
+                blueBookEvents: [],
+                subjectTags: [],
+                normalTags: [],
+                viewTransform: { rotate: 0, clipStart: 0, clipEnd: null }
+              };
+              await db.put('media', mediaItem);
             }
-          };
-          reader.onerror = () => {
+          } catch (err) {
+            console.warn('Error reading upload item:', file.name, err);
+          } finally {
             processedCount++;
+            const pct = (processedCount / files.length) * 100;
+            updateUploadProgress(pct, `Importing file ${processedCount} of ${files.length} (${addedCount} added)...`);
             resolve();
-          };
-          reader.readAsDataURL(file);
-        });
-      }));
-      await new Promise(r => setTimeout(r, 0));
-    }
+          }
+        };
+        reader.onerror = () => { processedCount++; resolve(); };
+        reader.readAsDataURL(file);
+      });
+    }));
+    await new Promise(r => setTimeout(r, 0));
+  }
 
-    updateUploadProgress(100, 'Finishing up...');
-    await loadAppState();
-    renderCurrentView();
+  updateUploadProgress(100, 'Finishing up...');
+  await loadAppState();
+  renderCurrentView();
 
+  setTimeout(() => {
+    hideUploadProgressModal();
+    let msg = `Successfully uploaded ${addedCount} media file(s).`;
+    if (duplicateCount > 0) msg += ` Skipped ${duplicateCount} duplicate file(s).`;
+    alert(msg);
+  }, 300);
+}
+
+function triggerSplashScreen(onComplete) {
+  const splash = document.getElementById('splashScreen');
+  if (!splash) { if (onComplete) onComplete(); return; }
+
+  splash.classList.remove('fade-out');
+  splash.classList.add('active');
+  splash.style.display = 'flex';
+  splash.style.opacity = '1';
+
+  setTimeout(() => {
+    splash.classList.add('fade-out');
     setTimeout(() => {
-      hideUploadProgressModal();
-      let msg = `Successfully uploaded ${addedCount} media file(s).`;
-      if (duplicateCount > 0) msg += ` Skipped ${duplicateCount} duplicate file(s).`;
-      alert(msg);
-    }, 300);
-  };
+      splash.classList.remove('active', 'fade-out');
+      splash.style.display = 'none';
+      if (onComplete) onComplete();
+    }, 500);
+  }, 800);
+}
 
-  async function regenerateAllThumbnails() {
-    const allMedia = await db.getActiveMedia();
-    if (allMedia.length === 0) {
-      alert('No media files found in the active collection.');
-      return;
+function setupEventListeners() {
+  const uploadInput = document.getElementById('mediaFileInput');
+  if (uploadInput) uploadInput.addEventListener('change', (e) => processFilesArray(e.target.files));
+
+  const folderInput = document.getElementById('mediaFolderInput');
+  if (folderInput) folderInput.addEventListener('change', (e) => processFilesArray(e.target.files));
+
+  document.getElementById('addP2pPeerIpBtn')?.addEventListener('click', () => {
+    const input = document.getElementById('p2pPeerIpInput');
+    if (input) {
+      addP2pPeerIp(input.value);
+      input.value = '';
     }
+  });
 
-    if (!confirm(`Re-generate thumbnails for ${allMedia.length} file(s)? Custom user-uploaded thumbnails will be preserved.`)) return;
+  try { initP2pIpAutoConnect(); } catch(e) { console.warn('P2P Auto Connect Warning:', e); }
 
-    showUploadProgressModal('🔄 Regenerating Thumbnails...', `Processing 0 of ${allMedia.length}...`);
-    await new Promise(r => requestAnimationFrame(() => setTimeout(r, 60)));
+  document.getElementById('themeSelect')?.addEventListener('change', async (e) => {
+    const val = e.target.value;
+    document.documentElement.setAttribute('data-theme', val);
+    await db.setSetting('theme', val);
+  });
+}
 
-    let updatedCount = 0;
-    let skippedCustomCount = 0;
+async function initApp() {
+  try { triggerSplashScreen(); } catch (e) { console.warn('Splash trigger warning:', e); }
 
-    for (let i = 0; i < allMedia.length; i++) {
-      const m = allMedia[i];
-      if (m.customThumbnail) {
-        skippedCustomCount++;
-      } else {
-        try {
-          const newThumb = await createCompressedThumbnail(m.type, m.dataUrl);
-          if (newThumb) {
-            m.thumbnailUrl = newThumb;
-            await db.put('media', m);
-            updatedCount++;
-          }
-        } catch (err) {
-          console.warn('Failed to regenerate thumbnail for:', m.filename, err);
-        }
-      }
-
-      const pct = ((i + 1) / allMedia.length) * 100;
-      updateUploadProgress(pct, `Re-generating ${i + 1} of ${allMedia.length} (${updatedCount} updated)...`);
-      await new Promise(r => setTimeout(r, 0));
-    }
-
-    updateUploadProgress(100, 'Thumbnail regeneration complete!');
+  try {
+    await db.init();
     await loadAppState();
+  } catch (err) {
+    console.warn('DB Init Warning:', err);
+  }
+
+  try { setupNavigation(); } catch (e) { console.warn('Nav setup warning:', e); }
+  try { setupEventListeners(); } catch (e) { console.warn('Listeners setup warning:', e); }
+  try { setupNavbarAutoHide(); } catch (e) { console.warn('Navbar auto hide warning:', e); }
+  try { initPWAandUpdates(); } catch (e) { console.warn('PWA updates warning:', e); }
+  try { initSystemErrorLoggerUI(); } catch (e) { console.warn('Error logger warning:', e); }
+  try { initGlobalThumbSizeSlider(); } catch (e) { console.warn('Thumb slider warning:', e); }
+
+  document.getElementById('headerBrandLogo')?.addEventListener('click', () => {
+    triggerSplashScreen(() => {
+      switchView('mediaBrowserView');
+    });
+  });
+
+  try {
     renderCurrentView();
-
-    setTimeout(() => {
-      hideUploadProgressModal();
-      alert(`Re-generated ${updatedCount} thumbnail(s). Preserved ${skippedCustomCount} custom thumbnail(s).`);
-    }, 300);
+  } catch(e) {
+    console.error('Render current view error:', e);
   }
+}
 
-    const uploadInput = document.getElementById('mediaFileInput');
-    if (uploadInput) uploadInput.addEventListener('change', (e) => processFilesArray(e.target.files));
-
-    const folderInput = document.getElementById('mediaFolderInput');
-    if (folderInput) folderInput.addEventListener('change', (e) => processFilesArray(e.target.files));
-
-    const folderLabel = document.getElementById('mediaFolderInputLabel') || folderInput?.parentElement;
-    if (folderLabel) {
-      folderLabel.addEventListener('click', (e) => {
-        const isMobileFirefox = /Android|iPhone|iPad/i.test(navigator.userAgent) && /Firefox/i.test(navigator.userAgent);
-        const isDirSupported = 'webkitdirectory' in document.createElement('input');
-        if (isMobileFirefox || !isDirSupported) {
-          e.preventDefault();
-          e.stopPropagation();
-          document.getElementById('mediaFileInput')?.click();
-        }
-      });
-    }
-
-    const lbContentWrapper = document.getElementById('lightboxContentWrapper');
-    if (lbContentWrapper) {
-      lbContentWrapper.onclick = (e) => {
-        if (e.target.closest('button') || e.target.closest('#floatingHeartOverlay') || e.target.closest('#lightboxEditorToolbar') || e.target.closest('#videoClipperPanel')) return;
-        const modal = document.getElementById('lightboxModal');
-        modal.classList.toggle('fullscreen-mode');
-        const isFS = modal.classList.contains('fullscreen-mode');
-
-        const docEl = document.documentElement;
-        if (isFS) {
-          if (docEl.requestFullscreen) {
-            docEl.requestFullscreen().catch(() => {});
-          } else if (docEl.mozRequestFullScreen) {
-            docEl.mozRequestFullScreen();
-          } else if (docEl.webkitRequestFullscreen) {
-            docEl.webkitRequestFullscreen();
-          }
-        } else {
-          if (document.exitFullscreen) {
-            document.exitFullscreen().catch(() => {});
-          } else if (document.mozCancelFullScreen) {
-            document.mozCancelFullScreen();
-          } else if (document.webkitExitFullscreen) {
-            document.webkitExitFullscreen();
-          }
-        }
-
-        if (sldDefaultFullscreen) {
-          document.getElementById('floatingHeartOverlay').style.display = isFS ? 'flex' : 'none';
-        } else {
-          document.getElementById('floatingHeartOverlay').style.display = 'none';
-        }
-      };
-    }
-
-    const handleFSChange = () => {
-      const modal = document.getElementById('lightboxModal');
-      const activeFS = document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement;
-      if (!activeFS && modal && modal.classList.contains('fullscreen-mode')) {
-        modal.classList.remove('fullscreen-mode');
-        if (!sldDefaultFullscreen) {
-          document.getElementById('floatingHeartOverlay').style.display = 'none';
-        }
-      }
-    };
-
-    document.addEventListener('fullscreenchange', handleFSChange);
-    document.addEventListener('mozfullscreenchange', handleFSChange);
-    document.addEventListener('webkitfullscreenchange', handleFSChange);
-
-    document.getElementById('closeLightboxBtn')?.addEventListener('click', closeLightbox);
-    document.getElementById('lbPrevBtn')?.addEventListener('click', () => openLightbox(lightboxIndex - 1));
-    document.getElementById('lbNextBtn')?.addEventListener('click', () => openLightbox(lightboxIndex + 1));
-
-    document.getElementById('clearSelectionBtn')?.addEventListener('click', () => {
-      selectedMediaIds.clear();
-      const modal = document.getElementById('multiSelectTagsModal');
-      if (modal) modal.style.display = 'none';
-      renderMediaBrowser();
-    });
-
-    document.getElementById('openMultiSelectTagsBtn')?.addEventListener('click', () => {
-      const modal = document.getElementById('multiSelectTagsModal');
-      if (modal) modal.style.display = 'flex';
-    });
-
-    document.getElementById('closeMultiSelectTagsBtn')?.addEventListener('click', () => {
-      const modal = document.getElementById('multiSelectTagsModal');
-      if (modal) modal.style.display = 'none';
-    });
-
-    document.getElementById('deleteSelectedMediaBtn')?.addEventListener('click', async () => {
-      if (selectedMediaIds.size === 0) return;
-      const count = selectedMediaIds.size;
-      if (confirm(`Are you sure you want to delete ${count} selected file(s) from the database? This action can be undone.`)) {
-        const selectedFiles = currentMediaList.filter(m => selectedMediaIds.has(m.id));
-        const savedFiles = selectedFiles.map(m => ({ ...m }));
-
-        for (const m of selectedFiles) {
-          await db.delete('media', m.id);
-        }
-
-        pushUndoState(`Delete ${count} file(s)`, async () => {
-          for (const saved of savedFiles) {
-            await db.put('media', saved);
-          }
-        });
-
-        selectedMediaIds.clear();
-        const modal = document.getElementById('multiSelectTagsModal');
-        if (modal) modal.style.display = 'none';
-
-        await loadAppState();
-        renderCurrentView();
-      }
-    });
-
-    document.getElementById('panelSldInput')?.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        applyTagToSelectedMedia('sld', e.target.value);
-        e.target.value = '';
-      }
-    });
-
-    document.getElementById('panelEventInput')?.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        const val = e.target.value;
-        if (val) openEventCreationWizard(parseSmartDateInput(val));
-        e.target.value = '';
-      }
-    });
-
-    document.getElementById('panelNormalTagInput')?.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        applyTagToSelectedMedia('normal', e.target.value.trim());
-        e.target.value = '';
-      }
-    });
-
-    document.getElementById('lbNormalTagInput')?.addEventListener('keydown', async (e) => {
-      if (e.key === 'Enter' && lightboxIndex >= 0) {
-        const val = e.target.value.trim();
-        if (val) {
-          const media = currentMediaList[lightboxIndex];
-          media.normalTags = media.normalTags || [];
-          if (!media.normalTags.includes(val)) media.normalTags.push(val);
-          await db.put('media', media);
-          e.target.value = '';
-          renderLightboxContent();
-          renderCurrentView();
-        }
-      }
-    });
-
-    document.getElementById('lbSldInput')?.addEventListener('keydown', async (e) => {
-      if (e.key === 'Enter' && lightboxIndex >= 0) {
-        const val = e.target.value.trim();
-        if (val) {
-          const media = currentMediaList[lightboxIndex];
-          const parsed = parseSmartDateInput(val);
-          if (!media.blueBookEvents) media.blueBookEvents = [];
-          if (!media.blueBookEvents.some(be => be.dateTag === parsed)) {
-            media.blueBookEvents.push({ id: 'sld-' + Date.now(), dateTag: parsed, heartTags: { pink: 0, grey: 0, blue: 0 } });
-            await db.put('media', media);
-          }
-          e.target.value = '';
-          renderLightboxContent();
-          renderCurrentView();
-        }
-      }
-    });
-
-    document.getElementById('inlineEventDateInput')?.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        const val = e.target.value.trim();
-        if (val) {
-          openEventCreationWizard(parseSmartDateInput(val));
-          e.target.value = '';
-        }
-      }
-    });
-
-    document.getElementById('cancelWizardBtn')?.addEventListener('click', () => {
-      document.getElementById('createEventWizardModal').classList.remove('active');
-    });
-
-    document.getElementById('saveWizardBtn')?.addEventListener('click', async () => {
-      if (wizardSubjectCountsMap.size < 2) {
-        alert('Creation blocked: At least 2 subjects are required for an event.');
-        return;
-      }
-
-      const subjectCounts = {};
-      wizardSubjectCountsMap.forEach((count, subId) => {
-        subjectCounts[subId] = count;
-      });
-
-      const actionCode = wizardSelectedActionCode || 1;
-      const notesVal = document.getElementById('wizardNotesInput').value;
-
-      const pId = await db.getActiveProfileId();
-      const newEvt = {
-        id: 'evt-' + Date.now(),
-        profileId: pId,
-        date: convertDateTagToIso(wizardEventDate),
-        dateTag: wizardEventDate,
-        eventCode: actionCode,
-        notes: notesVal,
-        subjectCounts: subjectCounts,
-        mediaIds: []
-      };
-
-      await db.put('events', newEvt);
-
-      pushUndoState(`Create Event "${wizardEventDate}"`, async () => {
-        await db.delete('events', newEvt.id);
-      });
-
-      document.getElementById('createEventWizardModal').classList.remove('active');
-      await loadAppState();
-      renderCurrentView();
-    });
-
-    document.getElementById('themeSelect')?.addEventListener('change', async (e) => {
-      const val = e.target.value;
-      document.documentElement.setAttribute('data-theme', val);
-      await db.setSetting('theme', val);
-    });
-
-    window.addEventListener('popstate', (e) => {
-      if (e.state) {
-        const st = e.state;
-        if (st.activeDetailSubjectId !== undefined) activeDetailSubjectId = st.activeDetailSubjectId;
-        if (st.activeDetailComboKey !== undefined) activeDetailComboKey = st.activeDetailComboKey;
-        if (st.activeDetailSldDateTag !== undefined) activeDetailSldDateTag = st.activeDetailSldDateTag;
-        if (st.activeDetailEventId !== undefined) activeDetailEventId = st.activeDetailEventId;
-        if (st.activeDetailTagName !== undefined) activeDetailTagName = st.activeDetailTagName;
-
-        if (st.isLightbox && st.lightboxIndex >= 0) {
-          openLightbox(st.lightboxIndex, true);
-        } else {
-          closeLightbox(true);
-          switchView(st.viewId || 'mediaBrowserView', true);
-        }
-      } else {
-        closeLightbox(true);
-        switchView('mediaBrowserView', true);
-      }
-    });
-
-    window.history.replaceState({ viewId: 'mediaBrowserView', isLightbox: false }, '', '#mediaBrowserView');
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initApp);
-  } else {
-    initApp();
-  }
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}
 
 
