@@ -65,7 +65,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>SLD</title>
   <link rel="icon" type="image/png" href="media/title-icon.png">
-  <link rel="manifest" href="manifest.json">
+  <!-- Dynamic PWA Manifest (HTTP/HTTPS only) -->
+  <script>
+    if (window.location.protocol.startsWith('http')) {
+      var mLink = document.createElement('link');
+      mLink.rel = 'manifest';
+      mLink.href = 'manifest.json';
+      document.head.appendChild(mLink);
+    }
+  </script>
   <meta name="theme-color" content="#0f172a">
 
   <!-- Google Fonts (Inter) -->

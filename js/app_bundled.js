@@ -1866,29 +1866,8 @@ let hasCheckedUpdatesThisSession = false;
 
 /* === Module: 05_views_router.js === */
 /* Module 05_views_router.js */
-triggerSplashScreen();
-
-    try {
-      await db.init();
-      await loadAppState();
-    } catch (err) {
-      console.warn('DB Init Warning:', err);
-    }
-
-    setupNavigation();
-    setupEventListeners();
-    setupNavbarAutoHide();
-    initPWAandUpdates();
-    initSystemErrorLoggerUI();
-    initGlobalThumbSizeSlider();
-
-    document.getElementById('headerBrandLogo')?.addEventListener('click', () => {
-      triggerSplashScreen(() => {
-        switchView('mediaBrowserView');
-      });
-    });
-
-    document.addEventListener('click', (e) => {
+function setupEventListeners() {
+  document.addEventListener('click', (e) => {
       if (selectedMediaIds.size > 0) {
         if (!e.target.closest('.media-card') && !e.target.closest('#selectionBanner') && !e.target.closest('#multiSelectTagsModal')) {
           selectedMediaIds.clear();
