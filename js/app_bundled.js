@@ -73,35 +73,71 @@
   }
 
   class Database {
-    constructor() { this.db = null; }
+    constructor() {
+      this.db = null;
+      this.isInMemory = false;
+      this.memoryStores = null;
+    }
 
     async init() {
-      return new Promise((resolve, reject) => {
-        const request = indexedDB.open(DB_NAME, DB_VERSION);
-        request.onupgradeneeded = (e) => {
-          const db = e.target.result;
-          if (!db.objectStoreNames.contains('profiles')) db.createObjectStore('profiles', { keyPath: 'id' });
-          if (!db.objectStoreNames.contains('media')) {
-            const mediaStore = db.createObjectStore('media', { keyPath: 'id' });
-            mediaStore.createIndex('profileId', 'profileId', { unique: false });
+      try {
+        return await new Promise((resolve) => {
+          if (!window.indexedDB) {
+            this.initInMemoryFallback();
+            resolve(this);
+            return;
           }
-          if (!db.objectStoreNames.contains('subjects')) {
-            const subStore = db.createObjectStore('subjects', { keyPath: 'id' });
-            subStore.createIndex('profileId', 'profileId', { unique: false });
-          }
-          if (!db.objectStoreNames.contains('events')) {
-            const evtStore = db.createObjectStore('events', { keyPath: 'id' });
-            evtStore.createIndex('profileId', 'profileId', { unique: false });
-          }
-          if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings', { keyPath: 'key' });
-        };
-        request.onsuccess = async (e) => {
-          this.db = e.target.result;
-          await this.ensureDefaultSetup();
-          resolve(this);
-        };
-        request.onerror = (e) => reject(e.target.error);
-      });
+          const request = indexedDB.open(DB_NAME, DB_VERSION);
+          request.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains('profiles')) db.createObjectStore('profiles', { keyPath: 'id' });
+            if (!db.objectStoreNames.contains('media')) {
+              const mediaStore = db.createObjectStore('media', { keyPath: 'id' });
+              mediaStore.createIndex('profileId', 'profileId', { unique: false });
+            }
+            if (!db.objectStoreNames.contains('subjects')) {
+              const subStore = db.createObjectStore('subjects', { keyPath: 'id' });
+              subStore.createIndex('profileId', 'profileId', { unique: false });
+            }
+            if (!db.objectStoreNames.contains('events')) {
+              const evtStore = db.createObjectStore('events', { keyPath: 'id' });
+              evtStore.createIndex('profileId', 'profileId', { unique: false });
+            }
+            if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings', { keyPath: 'key' });
+          };
+          request.onsuccess = async (e) => {
+            this.db = e.target.result;
+            await this.ensureDefaultSetup();
+            resolve(this);
+          };
+          request.onerror = () => {
+            this.initInMemoryFallback();
+            resolve(this);
+          };
+        });
+      } catch (err) {
+        this.initInMemoryFallback();
+        return this;
+      }
+    }
+
+    initInMemoryFallback() {
+      if (this.memoryStores) return;
+      this.isInMemory = true;
+      this.memoryStores = {
+        profiles: new Map([['default-profile', { id: 'default-profile', name: 'Main Collection', createdAt: new Date().toISOString() }]]),
+        media: new Map(),
+        subjects: new Map(),
+        events: new Map(),
+        settings: new Map([
+          ['activeProfileId', { key: 'activeProfileId', value: 'default-profile' }],
+          ['theme', { key: 'theme', value: 'dark' }],
+          ['scoringWeights', { key: 'scoringWeights', value: { heart1: 1, heart2: 3, heart3: 10, eventCCount: 10, eventTag: 1 } }],
+          ['actionPointsMap', { key: 'actionPointsMap', value: DEFAULT_ACTION_POINTS }],
+          ['medalSettings', { key: 'medalSettings', value: DEFAULT_MEDAL_SETTINGS }],
+          ['subjectGroups', { key: 'subjectGroups', value: DEFAULT_SUBJECT_GROUPS }]
+        ])
+      };
     }
 
     async ensureDefaultSetup() {
@@ -136,31 +172,53 @@
     }
 
     async get(storeName, key) {
-      return new Promise((resolve, reject) => {
+      if (this.isInMemory) {
+        const store = this.memoryStores[storeName];
+        return store ? (store.get(key) || null) : null;
+      }
+      return new Promise((resolve) => {
         if (!this.db || !this.db.objectStoreNames.contains(storeName)) { resolve(null); return; }
-        const tx = this.db.transaction(storeName, 'readonly');
-        const req = tx.objectStore(storeName).get(key);
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
+        try {
+          const tx = this.db.transaction(storeName, 'readonly');
+          const req = tx.objectStore(storeName).get(key);
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => resolve(null);
+        } catch(e) { resolve(null); }
       });
     }
 
     async getAll(storeName) {
-      return new Promise((resolve, reject) => {
+      if (this.isInMemory) {
+        const store = this.memoryStores[storeName];
+        return store ? Array.from(store.values()) : [];
+      }
+      return new Promise((resolve) => {
         if (!this.db || !this.db.objectStoreNames.contains(storeName)) { resolve([]); return; }
-        const tx = this.db.transaction(storeName, 'readonly');
-        const req = tx.objectStore(storeName).getAll();
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
+        try {
+          const tx = this.db.transaction(storeName, 'readonly');
+          const req = tx.objectStore(storeName).getAll();
+          req.onsuccess = () => resolve(req.result || []);
+          req.onerror = () => resolve([]);
+        } catch(e) { resolve([]); }
       });
     }
 
     async put(storeName, item) {
-      return new Promise((resolve, reject) => {
-        const tx = this.db.transaction(storeName, 'readwrite');
-        const req = tx.objectStore(storeName).put(item);
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
+      if (this.isInMemory) {
+        const store = this.memoryStores[storeName];
+        if (store) {
+          const key = storeName === 'settings' ? item.key : item.id;
+          store.set(key, item);
+        }
+        return item.id || item.key;
+      }
+      return new Promise((resolve) => {
+        try {
+          const tx = this.db.transaction(storeName, 'readwrite');
+          const req = tx.objectStore(storeName).put(item);
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => resolve(null);
+        } catch(e) { resolve(null); }
       });
     }
 
@@ -2283,16 +2341,20 @@ function setupEventListeners() {
     renderCurrentView();
 
     if (!skipPushState) {
-      const stateObj = {
-        viewId,
-        activeDetailSubjectId,
-        activeDetailComboKey,
-        activeDetailSldDateTag,
-        activeDetailEventId,
-        activeDetailTagName,
-        isLightbox: false
-      };
-      window.history.pushState(stateObj, '', '#' + viewId);
+      try {
+        const stateObj = {
+          viewId,
+          activeDetailSubjectId,
+          activeDetailComboKey,
+          activeDetailSldDateTag,
+          activeDetailEventId,
+          activeDetailTagName,
+          isLightbox: false
+        };
+        window.history.pushState(stateObj, '', '#' + viewId);
+      } catch (e) {
+        console.warn('pushState skipped on file:// protocol:', e);
+      }
     }
   }
 
