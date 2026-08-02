@@ -2333,8 +2333,11 @@
         isLightbox: false
       };
       try {
-        const targetUrl = window.location.protocol === 'file:' ? undefined : '#' + viewId;
-        window.history.pushState(stateObj, '', targetUrl);
+        if (window.location.protocol === 'file:') {
+          window.history.pushState(stateObj, '');
+        } else {
+          window.history.pushState(stateObj, '', '#' + viewId);
+        }
       } catch (e) {}
     }
   }
@@ -3246,8 +3249,7 @@
 
     if (!skipPushState) {
       try {
-        const targetUrl = window.location.protocol === 'file:' ? undefined : '#lightbox';
-        window.history.pushState({
+        const stateData = {
           viewId: currentActiveView,
           activeDetailSubjectId,
           activeDetailComboKey,
@@ -3256,7 +3258,12 @@
           activeDetailTagName,
           lightboxIndex: index,
           isLightbox: true
-        }, '', targetUrl);
+        };
+        if (window.location.protocol === 'file:') {
+          window.history.pushState(stateData, '');
+        } else {
+          window.history.pushState(stateData, '', '#lightbox');
+        }
       } catch (e) {}
     }
   }
@@ -3289,8 +3296,7 @@
     if (isAlreadyOpen && !isPopState) {
       if (window.history.state && window.history.state.isLightbox) {
         try {
-          const targetUrl = window.location.protocol === 'file:' ? undefined : '#' + (currentActiveView || 'mediaBrowserView');
-          window.history.replaceState({
+          const stateData = {
             viewId: currentActiveView || 'mediaBrowserView',
             activeDetailSubjectId,
             activeDetailComboKey,
@@ -3298,10 +3304,13 @@
             activeDetailEventId,
             activeDetailTagName,
             isLightbox: false
-          }, '', '#' + (currentActiveView || 'mediaBrowserView'));
-        } catch (e) {
-          console.warn('Error updating history replaceState on Lightbox exit:', e);
-        }
+          };
+          if (window.location.protocol === 'file:') {
+            window.history.replaceState(stateData, '');
+          } else {
+            window.history.replaceState(stateData, '', '#' + (currentActiveView || 'mediaBrowserView'));
+          }
+        } catch (e) {}
       }
     }
   }
@@ -6292,7 +6301,7 @@
       const bgHeaderStyle = coverMedia ? `<img src="${coverMedia.thumbnailUrl || coverMedia.dataUrl}" class="event-card-bg-img" alt="Event Cover">` : `<div class="event-card-bg-img" style="background: linear-gradient(135deg, rgba(236,72,153,0.3), rgba(56,189,248,0.3));"></div>`;
 
       const subjectAvatarsHTML = Object.keys(evt.subjectCounts || {}).map(subId => {
-        const sub = currentSubjectsList.find(s => s.id === sId);
+        const sub = currentSubjectsList.find(s => s.id === subId);
         const c = evt.subjectCounts[subId] || 0;
         const avatarSrc = sub?.avatarUrl;
         const genderSymbol = getSubjectGenderSymbol(sub?.gender);
@@ -8635,8 +8644,12 @@
     });
 
     try {
-      const targetUrl = window.location.protocol === 'file:' ? undefined : '#mediaBrowserView';
-      window.history.replaceState({ viewId: 'mediaBrowserView', isLightbox: false }, '', targetUrl);
+      const stateData = { viewId: 'mediaBrowserView', isLightbox: false };
+      if (window.location.protocol === 'file:') {
+        window.history.replaceState(stateData, '');
+      } else {
+        window.history.replaceState(stateData, '', '#mediaBrowserView');
+      }
     } catch (e) {}
   }
 
