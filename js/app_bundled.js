@@ -2299,7 +2299,10 @@
         activeDetailTagName,
         isLightbox: false
       };
-      window.history.pushState(stateObj, '', '#' + viewId);
+      try {
+        const targetUrl = window.location.protocol === 'file:' ? undefined : '#' + viewId;
+        window.history.pushState(stateObj, '', targetUrl);
+      } catch (e) {}
     }
   }
 
@@ -3209,16 +3212,19 @@
     renderLightboxContent();
 
     if (!skipPushState) {
-      window.history.pushState({
-        viewId: currentActiveView,
-        activeDetailSubjectId,
-        activeDetailComboKey,
-        activeDetailSldDateTag,
-        activeDetailEventId,
-        activeDetailTagName,
-        lightboxIndex: index,
-        isLightbox: true
-      }, '', '#lightbox');
+      try {
+        const targetUrl = window.location.protocol === 'file:' ? undefined : '#lightbox';
+        window.history.pushState({
+          viewId: currentActiveView,
+          activeDetailSubjectId,
+          activeDetailComboKey,
+          activeDetailSldDateTag,
+          activeDetailEventId,
+          activeDetailTagName,
+          lightboxIndex: index,
+          isLightbox: true
+        }, '', targetUrl);
+      } catch (e) {}
     }
   }
 
@@ -3250,6 +3256,7 @@
     if (isAlreadyOpen && !isPopState) {
       if (window.history.state && window.history.state.isLightbox) {
         try {
+          const targetUrl = window.location.protocol === 'file:' ? undefined : '#' + (currentActiveView || 'mediaBrowserView');
           window.history.replaceState({
             viewId: currentActiveView || 'mediaBrowserView',
             activeDetailSubjectId,
@@ -8441,7 +8448,10 @@
       }
     });
 
-    window.history.replaceState({ viewId: 'mediaBrowserView', isLightbox: false }, '', '#mediaBrowserView');
+    try {
+      const targetUrl = window.location.protocol === 'file:' ? undefined : '#mediaBrowserView';
+      window.history.replaceState({ viewId: 'mediaBrowserView', isLightbox: false }, '', targetUrl);
+    } catch (e) {}
   }
 
   if (document.readyState === 'loading') {
