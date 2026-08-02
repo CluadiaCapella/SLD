@@ -86,40 +86,17 @@
     </div>
   </div>
 
-  <!-- Animated Interactive Splash Screen Overlay -->
-  <div id="appSplashScreen" style="position:fixed; inset:0; z-index:99999; background:#090d16; display:flex; flex-direction:column; align-items:center; justify-content:center; opacity:1; transition:opacity 0.6s ease; overflow:hidden;">
-    <div style="position:absolute; inset:0; pointer-events:none; opacity:0.15;">
-      <video id="splashBgVideo" autoplay loop muted playsinline style="width:100%; height:100%; object-fit:cover;">
-        <source src="media/splash-video.mp4" type="video/mp4">
-      </video>
+  <!-- Fast 0.5s Attractive Splash Screen Overlay -->
+  <div id="splashScreen" class="splash-screen active">
+    <div class="splash-bg-blur">
+      <video src="media/splash-video.mp4" autoplay loop muted playsinline class="splash-bg-video"></video>
     </div>
-
-    <div style="position:relative; z-index:2; display:flex; flex-direction:column; align-items:center; text-align:center; padding:24px; max-width:480px;">
-      <div style="width:120px; height:120px; border-radius:30px; background:linear-gradient(135deg, rgba(255,105,180,0.2), rgba(56,189,248,0.2)); border:2px solid rgba(255,255,255,0.15); display:flex; align-items:center; justify-content:center; box-shadow:0 12px 32px rgba(0,0,0,0.6); margin-bottom:24px; animation:splashPulse 2.5s infinite ease-in-out;">
-        <img src="media/title-icon.png" alt="SLD Logo" style="width:84px; height:84px; object-fit:contain;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-        <span style="display:none; font-size:54px;">🪾</span>
-      </div>
-
-      <h1 style="font-size:2.4rem; font-weight:900; background:linear-gradient(135deg, #ff69b4, #38bdf8); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-bottom:8px; letter-spacing:-0.5px;">SLD SYSTEM</h1>
-      <div style="font-size:0.95rem; color:var(--text-muted); font-weight:600; margin-bottom:28px;">Portable Media &amp; Analytics Dashboard</div>
-
-      <!-- Live Loading Progress Bar -->
-      <div style="width:100%; background:rgba(255,255,255,0.08); border-radius:10px; height:8px; overflow:hidden; margin-bottom:16px; border:1px solid rgba(255,255,255,0.05);">
-        <div id="splashProgressBar" style="width:0%; height:100%; background:linear-gradient(90deg, #ff69b4, #38bdf8); transition:width 0.2s ease;"></div>
-      </div>
-
-      <div id="splashStatusText" style="font-size:0.8rem; color:var(--text-secondary); font-family:monospace; margin-bottom:24px;">Initializing IndexedDB Engine...</div>
-
-      <button id="skipSplashBtn" class="btn btn-secondary btn-sm" style="background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.15); color:#fff; font-size:0.8rem; padding:6px 16px; border-radius:20px;">⚡ Enter App Now</button>
+    <div class="splash-content">
+      <img src="media/title-icon.png" class="splash-logo-img" alt="SLD Logo" onerror="this.style.display='none'">
+      <div class="splash-title">SLD</div>
+      <div class="splash-subtitle">Sex, Love, Dreams</div>
     </div>
   </div>
-
-  <style>
-    @keyframes splashPulse {
-      0%, 100% { transform: scale(1); box-shadow: 0 12px 32px rgba(0,0,0,0.6); }
-      50% { transform: scale(1.04); box-shadow: 0 16px 40px rgba(255,105,180,0.3); }
-    }
-  </style>
 
   <!-- Top App Navigation Header -->
   <header class="app-header">
