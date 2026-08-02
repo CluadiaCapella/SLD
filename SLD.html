@@ -2,81 +2,54 @@
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SLD Media Browser &amp; Analytics Dashboard</title>
-  
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
-  <link rel="stylesheet" href="css/styles.css">
-
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>SLD</title>
+  <link rel="icon" type="image/png" href="media/title-icon.png">
   <script>
     (function() {
-      var manifestObj = {
-        "name": "SLD - Sex, Love Dreams",
-        "short_name": "SLD",
-        "description": "Turn thoughts, feelings, and memories into points.",
-        "start_url": "./SLD.html",
-        "display": "standalone",
-        "background_color": "#0f172a",
-        "theme_color": "#0f172a",
-        "icons": [
-          {
-            "src": "./media/title-icon.png",
-            "sizes": "89x89",
-            "type": "image/png",
-            "purpose": "any maskable"
-          }
-        ]
+      var manifestData = {
+        name: "SLD - Sex Love Dreams",
+        short_name: "SLD",
+        start_url: "./SLD.html",
+        display: "standalone",
+        background_color: "#0f172a",
+        theme_color: "#0f172a",
+        icons: [{ src: "media/title-icon.png", sizes: "192x192", type: "image/png" }]
       };
       var link = document.createElement('link');
       link.rel = 'manifest';
       if (window.location.protocol === 'file:') {
-        link.href = 'data:application/manifest+json;charset=utf-8,' + encodeURIComponent(JSON.stringify(manifestObj));
+        link.href = 'data:application/manifest+json;charset=utf-8,' + encodeURIComponent(JSON.stringify(manifestData));
       } else {
         link.href = 'manifest.json';
       }
       document.head.appendChild(link);
     })();
   </script>
+  <meta name="theme-color" content="#0f172a">
+
+  <!-- Google Fonts (Inter) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Cropper.js CSS & JS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
+
+  <!-- JSZip -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+  <!-- Plotly.js -->
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+
+  <!-- Application Stylesheet -->
+  <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-  <!-- System Error & CORS Diagnostics Banner -->
-  <div id="sldDiagnosticsContainer" style="display:none; position:fixed; top:0; left:0; right:0; z-index:999999; background:#7f1d1d; color:#fecaca; border-bottom:2px solid #ef4444; padding:12px 16px; font-family:monospace; font-size:0.85rem; box-shadow:0 4px 12px rgba(0,0,0,0.5);">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-      <span style="font-weight:800; font-size:1rem; color:#fff;">⚠️ SLD SYSTEM DIAGNOSTIC ERROR</span>
-      <button class="btn btn-secondary btn-sm" onclick="document.getElementById('sldDiagnosticsContainer').style.display='none';" style="padding:2px 8px; font-size:0.75rem;">✖ Close</button>
-    </div>
-    <div id="sldDiagnosticsMessage" style="margin-bottom:8px; white-space:pre-wrap; word-break:break-all;"></div>
-    <div style="font-size:0.75rem; color:#fca5a5;">💡 <em>If running directly via file://, CORS restrictions might block web workers or external script loads.</em></div>
-  </div>
-
-  <script>
-    (function() {
-      window.addEventListener('error', function(e) {
-        var errBox = document.getElementById('sldDiagnosticsContainer');
-        var msgBox = document.getElementById('sldDiagnosticsMessage');
-        if (errBox && msgBox) {
-          errBox.style.display = 'block';
-          msgBox.textContent = 'Uncaught Exception: ' + (e.message || 'Script error') + '\nLocation: ' + (e.filename || 'Unknown') + ':' + (e.lineno || 0) + ':' + (e.colno || 0) + '\nStack: ' + (e.error ? e.error.stack : 'N/A');
-        }
-      });
-      window.addEventListener('unhandledrejection', function(e) {
-        var errBox = document.getElementById('sldDiagnosticsContainer');
-        var msgBox = document.getElementById('sldDiagnosticsMessage');
-        if (errBox && msgBox) {
-          errBox.style.display = 'block';
-          msgBox.textContent = 'Unhandled Promise Rejection: ' + (e.reason ? (e.reason.message || e.reason) : 'Unknown Promise Error') + '\nStack: ' + (e.reason && e.reason.stack ? e.reason.stack : 'N/A');
-        }
-      });
-    })();
-  </script>
-
 
   <!-- Fast 0.5s Attractive Splash Screen Overlay -->
-  <div id="splashScreen" class="splash-screen active">
+  <div id="splashScreen" class="splash-screen">
     <div class="splash-bg-blur">
       <video src="media/splash-video.mp4" autoplay loop muted playsinline class="splash-bg-video"></video>
     </div>
@@ -87,205 +60,300 @@
     </div>
   </div>
 
-  <!-- Top App Navigation Header -->
+  <!-- App Header -->
   <header class="app-header">
-    <div class="header-container">
-      <div class="brand">
-        <div class="brand-icon">🪾</div>
-        <div class="brand-title">SLD MEDIA</div>
-      </div>
-
-      <!-- Active Profile Switcher Badge -->
-      <div class="profile-badge-switcher" style="display:flex; align-items:center; gap:8px; background:var(--bg-secondary); border:1px solid var(--border-color); padding:4px 10px; border-radius:var(--radius-lg);">
-        <span style="font-size:0.75rem; color:var(--text-muted); font-weight:700;">PROFILE:</span>
-        <select id="activeProfileSelect" class="select-input btn-sm" style="background:none; border:none; color:var(--text-primary); font-weight:800; font-size:0.85rem; padding:0; cursor:pointer;">
-          <option value="profile-default">Default Profile</option>
-        </select>
-        <button id="openManageProfilesBtn" class="btn btn-secondary btn-sm" style="padding:2px 6px; font-size:0.75rem;" title="Manage User Profiles">⚙️</button>
-      </div>
-
-      <div class="header-search-bar" style="position:relative; flex:1; max-width:320px; margin:0 12px;">
-        <input type="text" id="globalSearchInput" class="input-text btn-sm" placeholder="🔍 Search subjects, events, tags..." style="width:100%;">
-        <div id="globalSearchAutocomplete" class="subject-autocomplete-dropdown" style="display:none; position:absolute; top:100%; left:0; right:0; z-index:10000; background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-md); max-height:300px; overflow-y:auto; box-shadow:var(--shadow-md);"></div>
-      </div>
-
-      <div class="header-actions">
-        <label for="zipFileInput" class="btn btn-accent-blue btn-sm">
-          📦 Import Zip Archive
-        </label>
-        <input type="file" id="zipFileInput" accept=".zip" style="display:none;">
-
-        <button class="btn btn-secondary btn-sm" id="exportDataBackupBtn" title="Export Full Database JSON Backup">
-          💾 Backup DB
-        </button>
-
-        <label for="importDbJsonInput" class="btn btn-secondary btn-sm" title="Restore Database JSON Backup">
-          📥 Restore DB
-        </label>
-        <input type="file" id="importDbJsonInput" accept=".json" style="display:none;">
-
-        <!-- Filter AI Toggle Button -->
-        <button class="btn btn-secondary btn-sm" id="globalAiFilterToggleBtn" title="Toggle AI / Human Media Filter">
-          🤖 AI: All Media
-        </button>
-
-        <!-- Media View Mode Switcher -->
-        <select id="mediaViewModeSelect" class="select-input btn-sm" style="font-size:0.8rem; font-weight:700;">
-          <option value="ratings">⭐ Group by Ratings</option>
-          <option value="groups">🎨 Group by Groups</option>
-          <option value="grid">🧱 Flat Grid</option>
-        </select>
-
-        <!-- Dynamic Sort Cascade Trigger -->
-        <div class="dropdown-container" style="position:relative; display:inline-block;">
-          <button class="btn btn-secondary btn-sm" id="sortCascadeDropdownBtn">
-            🔀 Sort Cascade ▼
-          </button>
-          <div id="sortCascadeMenu" class="dropdown-menu" style="display:none; position:absolute; right:0; top:100%; z-index:1000; background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:12px; min-width:240px; box-shadow:var(--shadow-lg);">
-            <div style="font-size:0.8rem; font-weight:800; color:var(--text-muted); margin-bottom:8px;">3-DEEP CASCADE SORT</div>
-            <div id="sortCascadeList" style="display:flex; flex-direction:column; gap:6px; margin-bottom:10px;"></div>
-            <button class="btn btn-accent-blue btn-sm" id="openSortModalBtn" style="width:100%;">Configure Cascade</button>
-          </div>
-        </div>
-      </div>
+    <div class="brand-container" id="headerBrandLogo" style="cursor:pointer;" title="SLD Home & Splash Screen">
+      <img src="media/title-icon.png" class="brand-logo-img" alt="SLD" style="width:28px; height:28px; object-fit:contain; filter:drop-shadow(0 0 6px rgba(255,105,180,0.5));" onerror="this.onerror=null; this.replaceWith(document.createTextNode('💦'));">
+      <div class="brand-title">SLD</div>
+    </div>
+    <div style="display:flex; align-items:center; gap:12px;">
+      <button class="btn btn-secondary btn-sm" id="globalUndoBtn" title="Undo Last Action">⏮️ Undo</button>
+      <div id="headerGroupFiltersContainer" style="display:flex; gap:4px; align-items:center;"></div>
     </div>
   </header>
 
-  <!-- Main View Container -->
-  <main class="main-content" id="mainContentContainer">
-    <!-- 1. GROUPED MEDIA BROWSER VIEW -->
-    <section id="mediaBrowserView" class="view-page active">
-      <div class="browser-header">
-        <div class="browser-title">
-          <h2 id="browserViewTitle">Media Library</h2>
-          <span class="badge" id="mediaCountBadge">0 files</span>
-        </div>
+  <!-- Main Content Body -->
+  <main class="main-content">
 
-        <div class="browser-controls">
-          <div class="group-filter-pills" id="groupFilterPillsContainer">
-            <!-- Group filter toggle chips inserted by JS -->
-          </div>
+    <!-- 1. MEDIA BROWSER VIEW -->
+    <section id="mediaBrowserView" class="view-page active">
+      <div class="page-header">
+        <div class="page-title-group">
+          <h1>🖼️ Media Collection</h1>
+          <p>Browse, batch tag, and organize media files.</p>
+        </div>
+        <div class="page-actions" style="display:flex; gap:8px; flex-wrap:wrap;">
+          <label class="btn btn-accent-blue" style="cursor:pointer;" title="📷 Add Files / Photos">
+            📷
+            <input type="file" id="mediaFileInput" multiple accept="image/*,video/*" style="display:none;">
+          </label>
+          <label class="btn btn-secondary" id="mediaFolderInputLabel" style="cursor:pointer;" title="📁 Add Folder (Desktop browsers only)">
+            📁
+            <input type="file" id="mediaFolderInput" webkitdirectory directory multiple style="display:none;">
+          </label>
         </div>
       </div>
 
-      <!-- Selection Banner Action Toolbar -->
-      <div id="selectionBanner" class="selection-toolbar" style="display:none;">
-        <span id="selectionCountText" class="font-bold">0 selected</span>
-        <div class="selection-actions">
-          <button class="btn btn-secondary btn-sm" id="selectionUndoBtn" title="Undo recent multi-select action">↩️ Undo</button>
-          <button class="btn btn-secondary btn-sm" id="selectionRedoBtn" title="Redo recent multi-select action">↪️ Redo</button>
+      <!-- Media Toolbar Search, Filter & Sort -->
+      <div class="media-toolbar">
+        <div class="search-filter-group" style="flex-wrap:wrap;">
+          <input type="text" id="mediaSearchInput" class="input-text" placeholder="Search filenames, tags, subjects..." style="flex:1; min-width:140px;">
+          <button class="btn btn-secondary active-sort" id="toggleMediaRatingsBtn" title="⭐ Star Ratings: ON">⭐</button>
+          <button class="btn btn-secondary active-sort" id="toggleMediaGroupBtn" title="📁 Subject Grouping: ON">📁</button>
+          <button class="btn btn-secondary btn-sm" id="aiFilterToggleBtn" title="🖼️ Filter: All Media">🖼️</button>
+          <select id="mediaFilterTagSelect" class="select-input">
+            <option value="all">All Media</option>
+            <option value="hasBlueEvents">📘 SLD Events</option>
+            <option value="star5">⭐⭐⭐⭐⭐ 5 Stars</option>
+            <option value="star4">⭐⭐⭐⭐ 4 Stars</option>
+            <option value="star3">⭐⭐⭐ 3 Stars</option>
+            <option value="star2">⭐⭐ 2 Stars</option>
+            <option value="star1">⭐ 1 Star</option>
+            <option value="star0">☆ 0 Stars (Unrated)</option>
+            <option value="rejected">🚫 Rejected</option>
+            <option value="pink3">🩷🥇 (3 Pink Hearts)</option>
+            <option value="hasSubjects">Has Subject Tags</option>
+            <option value="noSubjects">Does not have Subject Tags</option>
+          </select>
+          <div style="display:inline-flex; align-items:center; gap:6px; background:var(--bg-secondary); border:1px solid var(--border-color); padding:4px 10px; border-radius:var(--radius-md);">
+            <span style="font-size:0.8rem; font-weight:700;">🔍 Size:</span>
+            <input type="range" id="globalThumbSizeSlider" min="50" max="200" step="5" value="200" style="width:70px; cursor:pointer;">
+            <span id="globalThumbSizeVal" style="font-size:0.75rem; font-weight:800; min-width:38px; color:var(--accent-blue);">200px</span>
+          </div>
+        </div>
+        <!-- 3-Deep Cascade Sort Toggle Buttons -->
+        <div id="mediaSortButtonsToolbar" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:10px;">
+          <button type="button" class="btn btn-secondary btn-sm sort-toggle-btn" data-key="date" title="📅 Date Sort">📅</button>
+          <button type="button" class="btn btn-secondary btn-sm sort-toggle-btn" data-key="subject" title="👤 Subject Sort">👤</button>
+          <button type="button" class="btn btn-secondary btn-sm sort-toggle-btn" data-key="totalPts" title="⭐ Total Points Sort">⭐</button>
+          <button type="button" class="btn btn-secondary btn-sm sort-toggle-btn" data-key="pinkPts" title="🩷 Pink Heart Points Sort">🩷</button>
+          <button type="button" class="btn btn-secondary btn-sm sort-toggle-btn" data-key="greyPts" title="🩶 Grey Heart Points Sort">🩶</button>
+          <button type="button" class="btn btn-secondary btn-sm sort-toggle-btn" data-key="bluePts" title="🩵 Blue Heart Points Sort">🩵</button>
+        </div>
+      </div>
 
-          <!-- Group Action Dropdown -->
-          <div class="dropdown-container" style="position:relative; display:inline-block;">
-            <button class="btn btn-secondary btn-sm" id="selAssignGroupBtn">Assign Group ▼</button>
-            <div id="selGroupMenu" class="dropdown-menu" style="display:none; position:absolute; left:0; top:100%; z-index:1000; background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:8px; min-width:180px; box-shadow:var(--shadow-lg);">
-              <div id="selGroupOptionList" style="display:flex; flex-direction:column; gap:4px;"></div>
+      <!-- Sticky Multi-Selection Floating Action Bar with Inline Tagging -->
+      <div id="selectionBanner" class="selection-banner-sticky" style="display:none; flex-direction:column; gap:10px; width:95%; max-width:1100px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; width:100%; flex-wrap:wrap; gap:8px;">
+          <span id="selectedCount" style="font-weight:800; font-size:0.95rem;">0 file(s) selected</span>
+          <div class="selection-actions" style="display:flex; align-items:center; gap:8px;">
+            <button class="btn btn-secondary btn-sm" id="toggleSelectionAiBtn">🤖 AI</button>
+            <div class="dropdown-container" id="mediaBatchMenuContainer" style="position:relative;">
+              <button class="btn btn-secondary btn-sm" id="mediaBatchMenuBtn">•••</button>
+              <div class="dropdown-menu" id="mediaBatchDropdown" style="display:none; position:absolute; right:0; top:100%; z-index:10; background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:6px; min-width:160px; box-shadow:var(--shadow-md);">
+                <button class="btn btn-secondary btn-sm" id="exportSelectedMediaBtn" style="width:100%; text-align:left; margin-bottom:4px;">📥 Export Selected Files</button>
+                <button class="btn btn-danger btn-sm" id="deleteSelectedMediaBtn" style="width:100%; text-align:left;">🗑️ Delete Selected</button>
+              </div>
+            </div>
+            <button class="btn btn-secondary btn-sm" id="clearSelectionBtn">✖ Clear Selection</button>
+          </div>
+        </div>
+
+        <!-- Inline Tagging Fields directly inside Selection Banner -->
+        <div style="display:flex; flex-wrap:wrap; gap:8px; width:100%; align-items:center; background:rgba(0,0,0,0.25); padding:8px; border-radius:var(--radius-md);">
+          <div class="subject-autocomplete-container" style="flex:1; min-width:120px; position:relative;">
+            <input type="text" id="inlineSubjectInput" class="input-text btn-sm" placeholder="+ Subject..." style="width:100%;">
+            <div id="inlineSubjectAutocomplete" class="subject-autocomplete-dropdown"></div>
+          </div>
+
+          <div class="tag-autocomplete-container" style="flex:1; min-width:120px; position:relative;">
+            <input type="text" id="inlineNormalTagInput" class="input-text btn-sm" placeholder="+ Normal Tag..." style="width:100%;">
+            <div id="inlineNormalTagAutocomplete" class="tag-autocomplete-dropdown"></div>
+          </div>
+
+          <div class="date-autocomplete-container" style="flex:1; min-width:110px; position:relative;">
+            <input type="text" id="inlineSldInput" class="input-text btn-sm" placeholder="+ SLD Date..." style="width:100%;">
+            <div id="inlineSldAutocomplete" class="date-autocomplete-dropdown"></div>
+          </div>
+
+          <div class="subject-autocomplete-container" style="flex:1; min-width:150px; position:relative;">
+            <input type="text" id="inlineAlikeInput" class="input-text btn-sm" placeholder="+ 🪞 Alike (Sub::faint)..." style="width:100%;">
+            <div id="inlineAlikeAutocomplete" class="subject-autocomplete-dropdown"></div>
+          </div>
+        </div>
+
+        <div id="selectionInlineTagsChips" style="display:flex; flex-wrap:wrap; gap:6px; width:100%;"></div>
+      </div>
+
+      <!-- Popup Modal for Multi-Selection Tagging & Inspection -->
+      <div id="multiSelectTagsModal" class="modal-backdrop" style="display:none; align-items:flex-start; padding-top:60px;">
+        <div class="modal-card" style="max-width:700px; width:90%; max-height:80vh; display:flex; flex-direction:column;">
+          <div class="modal-header">
+            <h3>🏷️ Batch Tagging & File Details</h3>
+            <button class="btn btn-secondary btn-sm" id="closeMultiSelectTagsBtn">✖ Close</button>
+          </div>
+          <div class="modal-body" style="overflow-y:auto; flex:1;">
+            <div id="selectionTagsPanel"></div>
+            
+            <div style="margin-top:16px; display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:12px;">
+              <div class="form-group">
+                <label class="form-label">+ Add SLD Event Date</label>
+                <div class="date-autocomplete-container">
+                  <input type="text" id="panelSldInput" class="input-text btn-sm" placeholder="e.g. 630 (Enter)..." style="width:100%;">
+                  <div id="panelSldAutocomplete" class="date-autocomplete-dropdown"></div>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">+ Add Subject Tag</label>
+                <div class="subject-autocomplete-container">
+                  <input type="text" id="panelSubjectInput" class="input-text btn-sm" placeholder="Subject name..." style="width:100%;">
+                  <div id="panelSubjectAutocomplete" class="subject-autocomplete-dropdown"></div>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">+ Add Standard Tag</label>
+                <div class="tag-autocomplete-container">
+                  <input type="text" id="panelNormalTagInput" class="input-text btn-sm" placeholder="Tag name..." style="width:100%;">
+                  <div id="panelNormalTagAutocomplete" class="tag-autocomplete-dropdown"></div>
+                </div>
+              </div>
             </div>
           </div>
-
-          <!-- Subject Tag Autocomplete & Badge Applied Area -->
-          <div class="subject-autocomplete-container" style="position:relative; display:inline-block; min-width:180px;">
-            <input type="text" id="selSubjectInput" class="input-text btn-sm" placeholder="+ Tag Subject..." style="width:100%;">
-            <div id="selSubjectAutocomplete" class="subject-autocomplete-dropdown"></div>
-          </div>
-
-          <!-- Event Autocomplete & Date Assignment -->
-          <div class="date-autocomplete-container" style="position:relative; display:inline-block; min-width:180px;">
-            <input type="text" id="selDateTagInput" class="input-text btn-sm" placeholder="+ Assign Date/Event..." style="width:100%;">
-            <div id="selDateTagAutocomplete" class="date-autocomplete-dropdown"></div>
-          </div>
-
-          <!-- Rating Action -->
-          <button class="btn btn-secondary btn-sm" id="selAssignRatingBtn">⭐ Set Rating</button>
-
-          <!-- Quick Tag AI Action Button -->
-          <button class="btn btn-secondary btn-sm" id="selToggleAiBtn">🤖 Tag AI</button>
-
-          <button class="btn btn-danger btn-sm" id="selDeleteBtn">🗑️ Delete Selected</button>
-          <button class="btn btn-secondary btn-sm" id="selClearBtn">Clear Selection</button>
         </div>
       </div>
 
-      <!-- Applied Multi-Select Badges Breakdown Bar -->
-      <div id="selectionTagsSummaryBar" class="selection-tags-summary-bar" style="display:none; background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:8px 12px; margin-bottom:16px;">
-        <div style="font-size:0.75rem; font-weight:800; color:var(--text-muted); margin-bottom:6px;">APPLIED TAGS ON SELECTION (Click to upgrade 1/2 tag or remove):</div>
-        <div id="selectionAppliedBadgesContainer" style="display:flex; flex-wrap:wrap; gap:6px; align-items:center;"></div>
-      </div>
+      <!-- Media Cards Grid -->
+      <div class="media-grid" id="mediaGrid"></div>
 
-      <!-- Dynamic Grouped Media Ratings Container -->
-      <div id="mediaGrid" class="media-browser-container"></div>
+      <!-- Pagination Footer -->
+      <div id="mediaPaginationContainer" class="pagination-footer" style="display:none;">
+        <button class="btn btn-secondary btn-sm" id="prevPageBtn">‹ Previous Page</button>
+        <span id="paginationInfo" class="text-muted" style="font-size:0.85rem;"></span>
+        <button class="btn btn-secondary btn-sm" id="nextPageBtn">Next Page ›</button>
+      </div>
     </section>
 
-    <!-- 2. SUBJECTS LIST VIEW -->
+    <!-- 2. SUBJECTS LIST VIEW (👥 Subjects) -->
     <section id="subjectsView" class="view-page">
       <div class="page-header">
         <div class="page-title-group">
-          <h1>👤 Subject Profiles</h1>
-          <p>Manage individual profiles, custom color groups, and total points.</p>
+          <h1>👥 Subjects</h1>
+          <p>Subject profiles, groups, and rankings.</p>
         </div>
-        <div class="page-actions">
-          <button class="btn btn-secondary" id="openManageGroupsModalBtn">🎨 Manage Color Groups</button>
+        <div class="page-actions" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
           <button class="btn btn-primary" id="openAddSubjectBtn">+ Add Subject</button>
-        </div>
-      </div>
-
-      <div class="subject-tabs-nav">
-        <button class="tab-btn active" id="tabSubjectsListBtn">👤 Subjects (<span id="subjectCountText">0</span>)</button>
-        <button class="tab-btn" id="tabCombinationsBtn">🫂 Subject Combinations (<span id="combinationsCountText">0</span>)</button>
-        <button class="tab-btn" id="tabSubjectAlikeBtn">👯 Subject Alike Matrix</button>
-        <button class="tab-btn" id="tabGroupAlikeBtn">🎨 Group Alike Matrix</button>
-      </div>
-
-      <!-- Section A: Subjects Grid -->
-      <div id="subTabSubjectsContent" class="tab-pane active">
-        <!-- 🏆 SLD Leaderboard Container -->
-        <div id="sldLeaderboard" style="margin-bottom:24px;"></div>
-
-        <div id="subjectCardsGrid" class="subjects-grid"></div>
-      </div>
-
-      <!-- Section B: Subject Combinations Grid -->
-      <div id="subTabCombinationsContent" class="tab-pane" style="display:none;">
-        <div id="combinationsCardsGrid" class="combinations-grid"></div>
-      </div>
-
-      <!-- Section C: Subject Alike Matrix -->
-      <div id="subTabSubjectAlikeContent" class="tab-pane" style="display:none;">
-        <div class="matrix-filter-bar">
-          <label class="form-label" style="margin:0;">Sort Matrix By:</label>
-          <select id="matrixSortSelect" class="select-input btn-sm">
-            <option value="percentage">Highest % Similarity</option>
-            <option value="shared">Most Shared Media Files</option>
+          <select id="batchSubjectGroupSelect" class="select-input btn-sm" style="display:none; font-size:0.85rem;">
+            <option value="">🎨 Change Group for Selected...</option>
           </select>
+          <button class="btn btn-secondary btn-sm" id="batchSubjectTagsBtn" style="display:none;">🏷️ Tags</button>
+          <div class="dropdown-container" id="subjectBatchMenuContainer" style="display:none; position:relative;">
+            <button class="btn btn-secondary btn-sm" id="subjectBatchMenuBtn">•••</button>
+            <div class="dropdown-menu" id="subjectBatchDropdown" style="display:none; position:absolute; right:0; top:100%; z-index:10; background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:6px; min-width:150px; box-shadow:var(--shadow-md);">
+              <button class="btn btn-danger btn-sm" id="batchDeleteSubjectsBtn" style="width:100%; text-align:left;">🗑️ Delete Selected</button>
+            </div>
+          </div>
         </div>
-        <div id="subjectAlikeMatrixContainer"></div>
       </div>
 
-      <!-- Section D: Group Alike Matrix -->
-      <div id="subTabGroupAlikeContent" class="tab-pane" style="display:none;">
-        <div id="groupAlikeMatrixContainer"></div>
+      <!-- Tab Buttons for Subjects vs. Combos -->
+      <div class="tabs-nav" style="display:flex; gap:12px; margin-bottom:20px; border-bottom:2px solid var(--border-color); padding-bottom:8px;">
+        <button class="btn btn-secondary btn-md subject-tab-btn active" data-tab="subjects" style="font-size:1rem; font-weight:800; padding:8px 20px;">👥 Subjects</button>
+        <button class="btn btn-secondary btn-md subject-tab-btn" data-tab="combos" style="font-size:1rem; font-weight:800; padding:8px 20px;">🫂 Combos</button>
+      </div>
+
+      <div class="sorting-toolbar" style="margin-bottom: 20px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; background: var(--bg-card); padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+        <span class="text-muted" style="font-size:0.85rem; font-weight:700;">Sort by:</span>
+        <button class="btn btn-secondary btn-sm subject-sort-btn active" data-sort="name" data-dir="asc">🔤 Name ▲</button>
+        <button class="btn btn-secondary btn-sm subject-sort-btn" data-sort="totalPoints" data-dir="desc">🏆 Total Pts</button>
+        <button class="btn btn-secondary btn-sm subject-sort-btn" data-sort="eventPoints" data-dir="desc">📅 Event Pts</button>
+        <button class="btn btn-secondary btn-sm subject-sort-btn" data-sort="eventDate" data-dir="desc">🗓️ Event Date</button>
+        <button class="btn btn-secondary btn-sm subject-sort-btn" data-sort="pink" data-dir="desc">🩷 Pink Pts</button>
+        <button class="btn btn-secondary btn-sm subject-sort-btn" data-sort="grey" data-dir="desc">🩶 Grey Pts</button>
+        <button class="btn btn-secondary btn-sm subject-sort-btn" data-sort="blue" data-dir="desc">🩵 Blue Pts</button>
+        <span id="subjectSelectionCount" style="margin-left:auto; font-size:0.85rem; font-weight:700; color:var(--accent-pink); display:none;"></span>
+      </div>
+
+      <div class="subjects-container">
+        <!-- Subjects Grid -->
+        <div class="media-grid" id="subjectCardsGrid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px;"></div>
+
+        <!-- 1. Subject Leaderboards Section -->
+        <div id="subjectLeaderboardsSection">
+          <h2 style="margin-top:40px; margin-bottom:16px; font-size:1.4rem; font-weight:800; border-bottom:1px solid var(--border-color); padding-bottom:8px;">🏆 Subject Points Leaderboards</h2>
+          <div class="leaderboard-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:20px;">
+            <div class="leaderboard-card">
+              <h3>📙 Events</h3>
+              <div id="eventPointsLeaderboard" style="display:flex; flex-direction:column; gap:8px;"></div>
+            </div>
+            <div class="leaderboard-card">
+              <h3>📘 Total</h3>
+              <div id="sldLeaderboard" style="display:flex; flex-direction:column; gap:8px;"></div>
+            </div>
+            <div class="leaderboard-card">
+              <h3>🩷</h3>
+              <div id="pinkHeartLeaderboard" style="display:flex; flex-direction:column; gap:8px;"></div>
+            </div>
+            <div class="leaderboard-card">
+              <h3>🩵</h3>
+              <div id="blueHeartLeaderboard" style="display:flex; flex-direction:column; gap:8px;"></div>
+            </div>
+            <div class="leaderboard-card">
+              <h3>🩶</h3>
+              <div id="greyHeartLeaderboard" style="display:flex; flex-direction:column; gap:8px;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Companion Leaderboards Section -->
+        <div id="comboLeaderboardsSection" style="display:none;">
+          <h2 style="margin-top:40px; margin-bottom:16px; font-size:1.4rem; font-weight:800; border-bottom:1px solid var(--border-color); padding-bottom:8px;">⚡ Companion Points Leaderboards</h2>
+          <div class="leaderboard-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:20px;">
+            <div class="leaderboard-card">
+              <h3>📙 Events</h3>
+              <div id="comboEventLb" style="display:flex; flex-direction:column; gap:8px;"></div>
+            </div>
+            <div class="leaderboard-card">
+              <h3>📘 Total</h3>
+              <div id="comboSldLb" style="display:flex; flex-direction:column; gap:8px;"></div>
+            </div>
+            <div class="leaderboard-card">
+              <h3>🩷</h3>
+              <div id="comboPinkLb" style="display:flex; flex-direction:column; gap:8px;"></div>
+            </div>
+            <div class="leaderboard-card">
+              <h3>🩵</h3>
+              <div id="comboBlueLb" style="display:flex; flex-direction:column; gap:8px;"></div>
+            </div>
+            <div class="leaderboard-card">
+              <h3>🩶</h3>
+              <div id="comboGreyLb" style="display:flex; flex-direction:column; gap:8px;"></div>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
-    <!-- 3. INDIVIDUAL SUBJECT DETAILS DRILL-DOWN VIEW -->
+    <!-- 3. SUBJECT DETAILS DRILL-DOWN VIEW -->
     <section id="subjectDetailsView" class="view-page">
       <div id="subjectDetailsContent"></div>
     </section>
 
     <!-- 4. COMBINATION DETAILS DRILL-DOWN VIEW -->
-    <section id="comboDetailsView" class="view-page">
-      <div id="comboDetailsContent"></div>
+    <section id="combinationDetailsView" class="view-page">
+      <div id="combinationDetailsContent"></div>
     </section>
 
-    <!-- 5. 4-TIER SLD SYSTEM LIST VIEW -->
+    <!-- 5. SLD EVENTS LIST VIEW (💦 SLD) -->
     <section id="sldView" class="view-page">
       <div class="page-header">
         <div class="page-title-group">
-          <h1>🪾 4-Tier SLD System</h1>
-          <p>Hierarchical grouping by SLD Date Tags, Trophy Medals, and Heart Rankings.</p>
+          <h1>📘 SLD Events</h1>
+          <p>Recorded SLD dates, file counts, and heart medal distributions.</p>
         </div>
       </div>
-      <div id="sldListContainer" class="sld-tags-grid"></div>
+
+      <!-- Sorting & Filter Toolbar -->
+      <div class="sorting-toolbar" style="margin-bottom: 20px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; background: var(--bg-card); padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+        <span class="text-muted" style="font-size:0.85rem; font-weight:700;">Sort by:</span>
+        <button type="button" class="btn btn-secondary btn-sm sld-sort-btn active" data-sort="date" data-dir="desc">📅 Date ▲</button>
+        <button type="button" class="btn btn-secondary btn-sm sld-sort-btn" data-sort="files" data-dir="desc">📘 Files</button>
+        
+        <div style="margin-left:auto; display:flex; align-items:center; gap:8px; min-width:240px;">
+          <input type="text" id="sldFilterInput" class="input-text btn-sm" placeholder="🔍 Filter SLD by file, subject, tag..." style="width:100%;">
+        </div>
+      </div>
+
+      <div id="sldCardsContainer" style="display:flex; flex-wrap:wrap; gap:20px; align-items:flex-start; width:100%;"></div>
     </section>
 
     <!-- 6. SLD DETAILS DRILL-DOWN VIEW -->
@@ -293,12 +361,12 @@
       <div id="sldDetailsContent"></div>
     </section>
 
-    <!-- 7. EVENTS LIST VIEW -->
+    <!-- 7. EVENTS LIST VIEW (📙 Events) -->
     <section id="eventsView" class="view-page">
       <div class="page-header">
         <div class="page-title-group">
-          <h1>📙 Event Log</h1>
-          <p>Calendar events mapped to dates, action tags, and subjects.</p>
+          <h1>📙 Recorded Events Log</h1>
+          <p>Detailed participant counts, action tags, and event notes.</p>
         </div>
         <div class="page-actions">
           <div class="date-autocomplete-container" style="min-width:240px;">
@@ -312,10 +380,9 @@
         <table class="data-table">
           <thead>
             <tr>
-              <th>Actions</th>
               <th>Event Date</th>
-              <th>Subjects</th>
-              <th>Where</th>
+              <th>Actions</th>
+              <th>Participants</th>
               <th>Media</th>
               <th style="text-align:right;"></th>
             </tr>
@@ -334,51 +401,51 @@
     <section id="statsView" class="view-page">
       <div class="page-header">
         <div class="page-title-group">
-          <h1>📊 Derived Data &amp; Analytics</h1>
+          <h1>📊 Derived Data & Analytics</h1>
           <p>Dynamic charts and accumulation analytics.</p>
         </div>
       </div>
 
-      <div class="stats-overview-grid">
+      <div class="stats-overview-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:16px; margin-bottom:24px;">
         <div class="stat-card">
-          <div class="stat-value" id="statTotal3Pinks">0</div>
-          <div class="stat-label">3-Pink Heart Files</div>
+          <div class="stat-card-title">Total 🩷🥇 3 Pink Hearts</div>
+          <div class="stat-card-number" id="statTotal3Pinks" style="color:var(--accent-pink);">0</div>
         </div>
-        <div class="stat-card" style="grid-column: span 2;">
-          <div class="stat-label" style="margin-bottom:8px;">🩶 Highest Grey Heart Score File</div>
-          <div id="greyLeaderCard" style="display:flex; align-items:center; gap:12px;"></div>
+        <div class="stat-card">
+          <div class="stat-card-title">Highest 🩶 Grey Heart Score</div>
+          <div id="greyLeaderCard" style="display:flex; align-items:center; gap:12px; margin-top:8px;"></div>
         </div>
       </div>
 
-      <div class="chart-card">
-        <h3>🩷 Pink Hearts Cumulative Timeline</h3>
-        <div id="pinkAccumulationChart" style="width:100%; height:320px;"></div>
-      </div>
-
-      <div class="chart-card">
-        <h3>🏆 Subject Leaderboard</h3>
-        <div id="subjectLeaderboardChart" style="width:100%; height:360px;"></div>
-      </div>
-
-      <div class="chart-card">
-        <h3>🫂 Top Combinations Chart</h3>
-        <div id="combinationsChart" style="width:100%; height:360px;"></div>
+      <div class="charts-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap:20px;">
+        <div class="chart-card">
+          <h3>🩷 Pink Heart Accumulation Timeline</h3>
+          <div id="pinkAccumulationChart" style="height:320px;"></div>
+        </div>
+        <div class="chart-card">
+          <h3>🏆 Top 10 Subject Leaderboard</h3>
+          <div id="subjectLeaderboardChart" style="height:320px;"></div>
+        </div>
+        <div class="chart-card full-width">
+          <h3>⚡ Subject Combinations Score</h3>
+          <div id="combinationsChart" style="height:320px;"></div>
+        </div>
       </div>
     </section>
 
-    <!-- 10. APP SETTINGS VIEW -->
+    <!-- 10. SETTINGS VIEW (⚙️ Settings) -->
     <section id="settingsView" class="view-page">
       <div class="page-header">
         <div class="page-title-group">
-          <h1>⚙️ Application Settings</h1>
-          <p>Configure themes, peer-to-peer sync, scoring weights, collections, and user profiles.</p>
+          <h1>⚙️ Settings & System Rules</h1>
+          <p>Scoring, theme preferences, backup archives, and profiles.</p>
         </div>
       </div>
 
-      <div class="settings-sections-grid">
+      <div class="settings-grid" style="display:flex; flex-direction:column; gap:24px; width:100%;">
         <div class="chart-card">
           <h3>🎨 Interface Theme</h3>
-          <div style="margin-top:12px;">
+          <div class="form-group" style="margin-top:12px;">
             <select id="themeSelect" class="select-input" style="width:100%; max-width:300px;">
               <option value="dark">🌙 Dark Mode</option>
               <option value="midnight">🌌 Midnight Mode</option>
@@ -421,14 +488,74 @@
         </div>
 
         <div class="chart-card">
-          <h3>⚡ Action Tags Points Configuration</h3>
-          <p class="text-muted" style="font-size:0.85rem; margin-bottom:12px;">Customize score values awarded per participant for each of the 12 action levels:</p>
-          <div id="actionPointsConfigGrid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap:12px; margin-top:12px;"></div>
+          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+            <h3 style="margin:0;">🪞 Alike Tags & Points Settings</h3>
+            <span class="subject-stat-badge" style="background:rgba(168,85,247,0.15); color:#c084fc; border:1px solid #c084fc; font-size:0.75rem;">🌐 Synced Across Devices</span>
+          </div>
+          <p class="text-muted" style="font-size:0.85rem; margin-top:4px;">Configure percentage points shared to reminded subjects when an Alike tag is attached.</p>
+          <div style="display:flex; flex-wrap:wrap; align-items:center; gap:16px; margin-top:12px;">
+            <div class="form-group" style="display:flex; flex-direction:column;">
+              <label class="form-label" style="font-size:0.8rem; margin-bottom:4px;">Faint Alike Points %</label>
+              <input type="number" id="alikeFaintPctInput" class="input-text btn-sm" value="15" style="width:90px; text-align:center;">
+            </div>
+            <div class="form-group" style="display:flex; flex-direction:column;">
+              <label class="form-label" style="font-size:0.8rem; margin-bottom:4px;">Medium Alike Points %</label>
+              <input type="number" id="alikeMediumPctInput" class="input-text btn-sm" value="30" style="width:90px; text-align:center;">
+            </div>
+            <div class="form-group" style="display:flex; flex-direction:column;">
+              <label class="form-label" style="font-size:0.8rem; margin-bottom:4px;">Strong Alike Points %</label>
+              <input type="number" id="alikeStrongPctInput" class="input-text btn-sm" value="45" style="width:90px; text-align:center;">
+            </div>
+            <div class="form-group" style="display:flex; flex-direction:column;">
+              <label class="form-label" style="font-size:0.8rem; margin-bottom:4px;">Global SLD Points View Mode</label>
+              <select id="globalPointsDisplayModeSelect" class="select-input btn-sm" style="min-width:200px;">
+                <option value="points">Points Only (e.g. 100 pts)</option>
+                <option value="pointsWithAlike">Points (Alikes) (e.g. 100 (15) pts)</option>
+                <option value="pointsPlusAlike">Points + Alikes (e.g. 115 pts)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+            <h3 style="margin:0;">🏷️ Tag Import Metadata & Prefix Rules</h3>
+            <span class="subject-stat-badge" style="background:rgba(168,85,247,0.15); color:#c084fc; border:1px solid #c084fc; font-size:0.75rem;">🌐 Synced Across Devices</span>
+          </div>
+          <p class="text-muted" style="font-size:0.85rem; margin-top:4px;">Define comma-separated prefix symbols to automatically recognize subjects, normal tags, action tags, hearts, and SLD dates when importing media metadata/tags.</p>
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-top:12px;">
+            <div class="form-group">
+              <label class="form-label">Subject Tag Prefixes</label>
+              <input type="text" id="prefixSubjectInput" class="input-text btn-sm" value="🔴,🟠,🟡,🟢,🔵,🟣,🟤,🖤,⚪">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Normal Tag Prefixes</label>
+              <input type="text" id="prefixNormalTagInput" class="input-text btn-sm" value="🧿">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Action Tag Prefixes</label>
+              <input type="text" id="prefixActionTagInput" class="input-text btn-sm" value="🧿">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Heart Points Prefixes</label>
+              <input type="text" id="prefixHeartInput" class="input-text btn-sm" value="🩷,🩵,🩶">
+            </div>
+            <div class="form-group">
+              <label class="form-label">SLD Tag Prefixes</label>
+              <input type="text" id="prefixSldInput" class="input-text btn-sm" value="🪾">
+            </div>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <h3>🖼️ Thumbnail Management</h3>
+          <p class="text-muted" style="font-size:0.85rem; margin-top:4px;">Re-generate top-centered cropped 200x200 thumbnails for all media files. Manual custom thumbnails will not be replaced.</p>
+          <button class="btn btn-secondary btn-sm" id="regenerateThumbnailsBtn" style="margin-top:10px;">🔄 Regenerate All Thumbnails</button>
         </div>
 
         <!-- 🌐 Peer-to-Peer Device Sync Card -->
         <div class="chart-card">
-          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
             <div>
               <h3 style="margin:0;">🌐 Peer-to-Peer Device Sync</h3>
               <p class="text-muted" style="font-size:0.85rem; margin-top:4px;">Connect devices directly over LAN, Wi-Fi, or Tailscale. Sync profiles, settings, tags, events, and media in real time without a server.</p>
@@ -481,242 +608,311 @@
         <!-- 💾 Storage Allowance & Limits Card -->
         <div class="chart-card">
           <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-            <div>
-              <h3 style="margin:0;">💾 Storage Allowance &amp; Device Usage</h3>
-              <p class="text-muted" style="font-size:0.85rem; margin-top:4px;">Monitor IndexedDB quota usage and persistent storage permissions.</p>
-            </div>
-            <span id="storageQuotaStatusBadge" class="subject-stat-badge" style="background:rgba(34,197,94,0.15); color:#22c55e; border:1px solid #22c55e;">🟢 Storage Healthy</span>
+            <h3 style="margin:0;">💾 Device Storage Allowance & Limits</h3>
+            <span class="subject-stat-badge" style="background:rgba(56,189,248,0.15); color:#38bdf8; border:1px solid #38bdf8; font-size:0.75rem;">📱 Device Specific</span>
           </div>
-
-          <div style="margin-top:14px; background:var(--bg-secondary); padding:16px; border-radius:var(--radius-md); border:1px solid var(--border-color);">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; font-size:0.85rem; font-weight:700;">
-              <span>Storage Used: <strong id="storageUsedText">Calculating...</strong></span>
-              <span>Available Quota: <strong id="storageQuotaText">Calculating...</strong></span>
+          <p class="text-muted" style="font-size:0.85rem; margin-top:4px;">Set maximum IndexedDB disk space allowance for background high-resolution media sync on this device.</p>
+          <div style="display:flex; align-items:center; gap:16px; margin-top:12px; flex-wrap:wrap;">
+            <div class="form-group" style="min-width:200px;">
+              <label class="form-label" style="font-size:0.8rem;">Max Media Storage Limit</label>
+              <select id="maxStorageLimitSelect" class="select-input btn-sm">
+                <option value="1">1 GB</option>
+                <option value="2">2 GB</option>
+                <option value="5" selected>5 GB</option>
+                <option value="10">10 GB</option>
+                <option value="50">50 GB</option>
+                <option value="unlimited">Unlimited (No Limit)</option>
+              </select>
             </div>
-            <div style="width:100%; background:var(--bg-card); height:10px; border-radius:5px; overflow:hidden; border:1px solid var(--border-color); margin-bottom:12px;">
-              <div id="storageProgressBar" style="width:0%; height:100%; background:linear-gradient(90deg, #38bdf8, #a855f7); transition:width 0.3s ease;"></div>
+            <div style="flex:1; min-width:220px; background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:10px 14px;">
+              <div style="display:flex; justify-content:space-between; font-size:0.8rem; font-weight:700; margin-bottom:4px;">
+                <span>Disk Usage:</span>
+                <span id="storageUsageText" style="color:var(--accent-pink);">Calculating...</span>
+              </div>
+              <div style="background:rgba(0,0,0,0.3); border-radius:6px; height:8px; overflow:hidden;">
+                <div id="storageUsageBar" style="width:0%; height:100%; background:linear-gradient(90deg, var(--accent-blue), var(--accent-pink)); transition:width 0.3s ease;"></div>
+              </div>
             </div>
-            <button class="btn btn-secondary btn-sm" id="requestPersistentStorageBtn">⚡ Request Persistent Storage Permission</button>
           </div>
         </div>
 
-        <!-- 📂 Collections & Tag Libraries Card -->
+        <!-- 📱 Mobile App Installation & Updates Card -->
         <div class="chart-card">
-          <div style="display:flex; align-items:center; justify-content:space-between;">
-            <h3>📂 Collections &amp; Smart Tag Libraries</h3>
-            <button class="btn btn-primary btn-sm" id="openAddCollectionBtn">+ New Collection</button>
+          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+            <h3 style="margin:0;">📱 Mobile App Installation & Updates</h3>
+            <span id="appEnvironmentBadge" class="subject-stat-badge" style="background:rgba(56,189,248,0.15); color:#38bdf8; border:1px solid #38bdf8; font-size:0.75rem;">📱 Mobile & Desktop PWA V1.2.0</span>
           </div>
-          <p class="text-muted" style="font-size:0.85rem; margin-top:4px; margin-bottom:12px;">Group media files into curated collections and smart rule sets.</p>
-          <div id="collectionsManagerList" style="display:flex; flex-direction:column; gap:8px;"></div>
+          <p class="text-muted" style="font-size:0.85rem; margin-top:4px;">Install SLD directly onto your Android phone, iPhone, or Desktop for offline use, full-screen playback, and fast performance.</p>
+
+          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px; margin-top:12px; background:var(--bg-secondary); padding:14px 16px; border-radius:var(--radius-md); border:1px solid var(--border-color);">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <input type="checkbox" id="autoUpdateToggle" style="width:18px; height:18px; cursor:pointer;" checked>
+              <label for="autoUpdateToggle" style="font-size:0.85rem; font-weight:700; cursor:pointer;">🔄 Automatically update on app launch</label>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+              <button class="btn btn-secondary btn-sm" id="checkForUpdatesBtn">🚀 Check for Updates</button>
+              <button class="btn btn-primary btn-sm" id="installPwaBtn" style="display:inline-block; font-weight:800; padding:6px 14px;">📲 Install App to Phone / Desktop</button>
+            </div>
+          </div>
+
+          <!-- Installation Guide for Android & iOS -->
+          <div style="margin-top:14px; background:rgba(0,0,0,0.3); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:12px 16px; font-size:0.82rem;">
+            <div style="font-weight:800; color:var(--accent-blue); margin-bottom:6px;">📲 How to install on your phone:</div>
+            <ul style="padding-left:18px; line-height:1.6; color:var(--text-secondary);">
+              <li><strong>Android (Chrome/Firefox/Edge)</strong>: Tap <strong>📲 Install App to Phone</strong> above OR open browser menu <strong style="color:#fff;">⋮</strong> → tap <strong style="color:#fff;">"Add to Home screen"</strong> or <strong style="color:#fff;">"Install app"</strong>.</li>
+              <li><strong>iPhone / iPad (Safari)</strong>: Tap Share <strong style="color:#fff;">⎋</strong> → scroll down and tap <strong style="color:#fff;">"Add to Home Screen"</strong>.</li>
+            </ul>
+          </div>
         </div>
 
-        <!-- 👥 User Profiles Manager Card -->
+        <!-- 📜 System Error Logs & Diagnostics Card -->
         <div class="chart-card">
-          <div style="display:flex; align-items:center; justify-content:space-between;">
-            <h3>👥 User Profiles</h3>
-            <button class="btn btn-primary btn-sm" id="openCreateProfileBtn">+ Create Profile</button>
+          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <h3 style="margin:0;">📜 System Error Logs & Diagnostics</h3>
+              <span id="errorLogCountBadge" class="badge" style="background:rgba(239,68,68,0.2); color:#f87171; border:1px solid #ef4444; font-size:0.75rem;">0 errors</span>
+            </div>
+            <span class="subject-stat-badge" style="background:rgba(56,189,248,0.15); color:#38bdf8; border:1px solid #38bdf8; font-size:0.75rem;">📱 Device Specific</span>
           </div>
-          <p class="text-muted" style="font-size:0.85rem; margin-top:4px; margin-bottom:12px;">Switch between separate databases or user workspace profiles.</p>
-          <div id="profilesManagerList" style="display:flex; flex-direction:column; gap:8px;"></div>
+          <p class="text-muted" style="font-size:0.85rem; margin-top:4px;">Automatically captures runtime JavaScript errors, failed promises, and stack tracebacks for easy copy-pasting & debugging.</p>
+
+          <div style="margin-top:12px;">
+            <div id="systemErrorLogsContainer" style="max-height:220px; overflow-y:auto; background:rgba(0,0,0,0.5); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:12px; font-family:monospace; font-size:0.78rem; color:#fca5a5; white-space:pre-wrap; word-break:break-word;">
+              No runtime errors recorded on this device.
+            </div>
+
+            <div style="display:flex; gap:10px; margin-top:10px; flex-wrap:wrap;">
+              <button class="btn btn-secondary btn-sm" id="copyErrorLogsBtn">📋 Copy Error Log</button>
+              <button class="btn btn-danger btn-sm" id="clearErrorLogsBtn">🗑️ Clear Error Log</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <h3>🖼️ Collections Manager</h3>
+          <p class="text-muted" style="font-size:0.85rem; margin-top:4px;">Manage, export, import, duplicate, or drag-and-merge media collections.</p>
+          <div style="display:flex; gap:10px; margin-top:12px; margin-bottom:8px; flex-wrap:wrap;">
+            <button class="btn btn-primary btn-sm" id="createNewCollectionBtn">+ New Collection</button>
+            <button class="btn btn-secondary btn-sm" id="exportCollectionZipBtn">💾 Save Collection Archive (.zip)</button>
+            <label class="btn btn-secondary btn-sm" style="cursor:pointer;">
+              📥 Add Collection Archive (.zip)
+              <input type="file" id="importCollectionFileInput" accept=".zip,.7z" style="display:none;">
+            </label>
+          </div>
+          <p class="text-muted" style="font-size:0.75rem; color:var(--text-muted); margin-bottom:12px;">⚠️ <em>Packaging takes time for large datasets. The download window may take minutes to appear.</em></p>
+          <div id="collectionsListContainer" style="margin-top:12px;"></div>
+        </div>
+
+        <div class="chart-card">
+          <h3>📁 Profile Manager</h3>
+          <p class="text-muted" style="font-size:0.85rem; margin-top:4px;">Backup & import full workspace settings, duplicate, or drag-to-merge profiles.</p>
+          <div style="display:flex; gap:10px; margin-top:12px; margin-bottom:8px; flex-wrap:wrap;">
+            <button class="btn btn-primary btn-sm" id="createNewProfileBtn">+ New Profile</button>
+            <button class="btn btn-secondary btn-sm" id="exportDataSettingsBtn">💾 Backup Profile (.zip)</button>
+            <label class="btn btn-accent-blue btn-sm" style="cursor:pointer;">
+              📥 Import Profile (.zip)
+              <input type="file" id="importDataSettingsFileInput" accept=".zip,.7z,.json" style="display:none;">
+            </label>
+          </div>
+          <p class="text-muted" style="font-size:0.75rem; color:var(--text-muted); margin-bottom:12px;">⚠️ <em>Packaging takes time for large datasets. The download window may take minutes to appear.</em></p>
+          <div id="profilesListContainer" style="margin-top:12px;"></div>
         </div>
       </div>
     </section>
+
+    <!-- Archive Packaging Progress Modal -->
+    <div id="archiveProgressModal" class="modal-backdrop" style="display:none;">
+      <div class="modal-card" style="max-width:450px; width:90%; text-align:center; padding:24px;">
+        <div style="font-size:2.5rem; margin-bottom:12px;" id="archiveProgressSpinner">📦</div>
+        <h3 id="archiveProgressTitle" style="font-weight:800; margin-bottom:8px;">Packaging Archive...</h3>
+        <p class="text-muted" id="archiveProgressMessage" style="font-size:0.85rem; margin-bottom:16px;">Preparing files for packaging. Please wait...</p>
+        <div style="background:var(--bg-secondary); border-radius:var(--radius-md); height:12px; overflow:hidden; border:1px solid var(--border-color); margin-bottom:12px;">
+          <div id="archiveProgressBar" style="width:0%; height:100%; background:linear-gradient(90deg, var(--accent-pink), var(--accent-blue)); transition:width 0.2s ease;"></div>
+        </div>
+        <div id="archiveProgressPercent" style="font-weight:800; font-size:1rem; color:var(--accent-blue);">0%</div>
+        <p class="text-muted" style="font-size:0.75rem; margin-top:12px; margin-bottom:0;">⚠️ Packaging takes time for large datasets. The download prompt will appear once completed.</p>
+      </div>
+    </div>
+
+    <!-- Media Upload Progress Modal -->
+    <div id="uploadProgressModal" class="modal-backdrop" style="display:none; z-index:10000;">
+      <div class="modal-card" style="max-width:450px; width:90%; text-align:center; padding:24px;">
+        <div style="font-size:2.5rem; margin-bottom:12px; animation: pulse 1.5s infinite;">📤</div>
+        <h3 id="uploadProgressTitle" style="font-weight:800; margin-bottom:8px;">Uploading Media Files...</h3>
+        <p class="text-muted" id="uploadProgressMessage" style="font-size:0.85rem; margin-bottom:16px;">Scanning and importing selected files...</p>
+        <div style="background:var(--bg-secondary); border-radius:var(--radius-md); height:14px; overflow:hidden; border:1px solid var(--border-color); margin-bottom:12px;">
+          <div id="uploadProgressBar" style="width:0%; height:100%; background:linear-gradient(90deg, var(--accent-blue), var(--accent-pink)); transition:width 0.15s ease;"></div>
+        </div>
+        <div id="uploadProgressPercent" style="font-weight:800; font-size:1.1rem; color:var(--accent-pink);">0%</div>
+        <p class="text-muted" style="font-size:0.75rem; margin-top:12px; margin-bottom:0;">Processing media & generating thumbnails...</p>
+      </div>
+    </div>
+
+    <!-- 11. TAGS LIST VIEW (🏷️ Tags) -->
+    <section id="tagsView" class="view-page">
+      <div class="page-header">
+        <div class="page-title-group">
+          <h1>🏷️ Tags & Actions</h1>
+          <p>Browse action tags (1-12) and established normal tags.</p>
+        </div>
+      </div>
+
+      <div class="chart-card" style="margin-bottom:24px;">
+        <h3>👄 Zodiacs</h3>
+        <div id="actionTagsContainer" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;"></div>
+      </div>
+
+      <div class="chart-card">
+        <h3>🏷️ Normal Tags</h3>
+        <div id="normalTagsContainer" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;"></div>
+      </div>
+    </section>
+
+    <!-- 12. TAG DETAILS DRILL-DOWN VIEW -->
+    <section id="tagDetailsView" class="view-page">
+      <div id="tagDetailsContent"></div>
+    </section>
+
   </main>
 
   <!-- Bottom Navigation Bar -->
-  <nav class="bottom-nav">
-    <button class="nav-item active" data-view="mediaBrowserView">
+  <nav class="bottom-nav" id="bottomNavBar">
+    <div class="nav-item active" data-view="mediaBrowserView">
       <span class="nav-icon">🖼️</span>
-      <span class="nav-label">Media</span>
-    </button>
-
-    <button class="nav-item" data-view="subjectsView">
-      <span class="nav-icon">👤</span>
-      <span class="nav-label">Subjects</span>
-    </button>
-
-    <button class="nav-item" data-view="sldView">
-      <span class="nav-icon">🪾</span>
-      <span class="nav-label">SLD System</span>
-    </button>
-
-    <button class="nav-item" data-view="eventsView">
+      <span>Browser</span>
+    </div>
+    <div class="nav-item" data-view="eventsView">
       <span class="nav-icon">📙</span>
-      <span class="nav-label">Events</span>
-    </button>
-
-    <button class="nav-item" data-view="statsView">
+      <span>Events</span>
+    </div>
+    <div class="nav-item" data-view="sldView">
+      <span class="nav-icon">📘</span>
+      <span>SLD</span>
+    </div>
+    <div class="nav-item" data-view="subjectsView">
+      <span class="nav-icon">👥</span>
+      <span>Subjects</span>
+    </div>
+    <div class="nav-item" data-view="tagsView">
+      <span class="nav-icon">🏷️</span>
+      <span>Tags</span>
+    </div>
+    <div class="nav-item" data-view="statsView">
       <span class="nav-icon">📊</span>
-      <span class="nav-label">Stats</span>
-    </button>
-
-    <button class="nav-item" data-view="settingsView">
+      <span>Stats</span>
+    </div>
+    <div class="nav-item" data-view="settingsView">
       <span class="nav-icon">⚙️</span>
-      <span class="nav-label">Settings</span>
-    </button>
+      <span>Settings</span>
+    </div>
   </nav>
 
-  <!-- FULLSCREEN LIGHTBOX MODAL -->
+  <!-- MODALS -->
+
+  <!-- Fullscreen Lightbox Modal -->
   <div id="lightboxModal" class="lightbox-modal">
     <div class="lightbox-header">
-      <div style="display:flex; align-items:center; gap:10px;">
-        <button class="btn btn-secondary btn-sm" id="lbCloseBtn">✖ Close (Esc)</button>
-        <span id="lbCounter" style="font-size:0.85rem; font-weight:700; color:var(--text-muted);">0 / 0</span>
-        <button class="btn btn-secondary btn-sm" id="lbDownloadCurrentBtn" title="Download file with rotation changes applied">💾 Download Current</button>
-        <button class="btn btn-secondary btn-sm" id="lbDownloadOriginalBtn" title="Download unedited original file">📥 Download Original</button>
-      </div>
-
-      <div style="display:flex; align-items:center; gap:8px;">
-        <button class="btn btn-secondary btn-sm" id="lbPrevBtn">◀ Prev</button>
-        <button class="btn btn-secondary btn-sm" id="lbNextBtn">Next ▶</button>
+      <div id="lightboxTitle" style="font-weight:700; color:#fff;"></div>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <button class="btn btn-secondary btn-sm" id="lbDownloadOriginalBtn">📥 Download Original</button>
+        <button class="btn btn-secondary btn-sm" id="lbEditThumbnailBtn">✂️ Edit Thumbnail</button>
+        <span id="lightboxCounter" class="text-muted" style="font-size:0.85rem;"></span>
+        <button class="btn btn-secondary btn-sm" id="closeLightboxBtn">✖ Close</button>
       </div>
     </div>
 
-    <div class="lightbox-body">
-      <button class="lb-arrow lb-arrow-left" id="lbArrowLeft">◀</button>
-      <div class="lightbox-media-container" id="lightboxMediaContainer">
-        <!-- Main Image / Video inserted by JS -->
-      </div>
-      <button class="lb-arrow lb-arrow-right" id="lbArrowRight">▶</button>
+    <!-- Non-Destructive Editing Suite Toolbar -->
+    <div class="lightbox-editor-toolbar" id="lightboxEditorToolbar">
+      <button class="btn btn-secondary btn-sm" id="lbRotateLeftBtn">↩️ Rotate Left</button>
+      <button class="btn btn-secondary btn-sm" id="lbRotateRightBtn">↪️ Rotate Right</button>
+      <button class="btn btn-secondary btn-sm" id="lbOpenCropModalBtn">✂️ Crop</button>
+      <button class="btn btn-secondary btn-sm" id="lbAiToggleBtn">🤖 AI</button>
+      <button class="btn btn-secondary btn-sm" id="lbSetAvatarBtn" style="display:none; color:var(--accent-pink); font-weight:700;">👤 Use as Avatar</button>
+      <button class="btn btn-secondary btn-sm" id="lbResetCropBtn" style="display:none; color:#ef4444;">🔄 Clear Crop</button>
+      <button class="btn btn-secondary btn-sm" id="lbToggleVideoClipperBtn" style="display:none;">✂️ Video Clipper (A-B)</button>
     </div>
 
-    <!-- Lightbox Floating Footer Controls & Editing Toolbar -->
+    <!-- Video Clipper Panel -->
+    <div class="video-clipper-panel" id="videoClipperPanel" style="display:none;">
+      <div class="clipper-slider-group">
+        <span class="clipper-handle-label"><strong>Start (A):</strong> <span id="clipStartVal">0.0s</span></span>
+        <input type="range" id="clipStartSlider" min="0" max="100" value="0" step="0.1" style="flex:1;">
+      </div>
+      <div class="clipper-slider-group">
+        <span class="clipper-handle-label"><strong>End (B):</strong> <span id="clipEndVal">10.0s</span></span>
+        <input type="range" id="clipEndSlider" min="0" max="100" value="10" step="0.1" style="flex:1;">
+      </div>
+    </div>
+
+    <div class="lightbox-content-wrapper" id="lightboxContentWrapper">
+      <button class="lightbox-nav-btn prev" id="lbPrevBtn">‹</button>
+      <div class="lightbox-media-container" id="lightboxMediaContainer"></div>
+      <button class="lightbox-nav-btn next" id="lbNextBtn">›</button>
+
+      <!-- Floating Heart Overlay for Fullscreen Mode -->
+      <div class="floating-heart-overlay" id="floatingHeartOverlay" style="display:none;">
+        <button class="heart-toggle-btn btn-sm" id="flPinkBtn">🩷</button>
+        <button class="heart-toggle-btn btn-sm" id="flGreyBtn">🩶</button>
+        <button class="heart-toggle-btn btn-sm" id="flBlueBtn">🩵</button>
+      </div>
+    </div>
+
+    <!-- Categorized Lightbox Footer -->
     <div class="lightbox-footer">
-      <div class="lightbox-toolbar-row">
-        <!-- 🪾 4-Tier SLD Heart Toggle Buttons -->
-        <div style="display:flex; align-items:center; gap:4px; background:rgba(0,0,0,0.5); padding:4px 8px; border-radius:20px; border:1px solid var(--border-color);">
-          <span style="font-size:0.75rem; font-weight:800; margin-right:4px;">🪾 HEARTS:</span>
-          <div id="flHeartBtnGroup" style="display:flex; gap:4px;">
-            <!-- Heart buttons inserted by JS -->
-          </div>
-        </div>
-
-        <!-- Non-Destructive Editing Suite -->
-        <div style="display:flex; align-items:center; gap:6px;">
-          <button class="btn btn-secondary btn-sm" id="lbRotateLeftBtn" title="Rotate Left 90°">↩️</button>
-          <button class="btn btn-secondary btn-sm" id="lbRotateRightBtn" title="Rotate Right 90°">↪️</button>
-          <button class="btn btn-secondary btn-sm" id="lbCropBtn" title="Crop &amp; Save Thumbnail">✂️ Crop</button>
-          <button class="btn btn-secondary btn-sm" id="lbEditThumbBtn" title="Edit Custom Thumbnail">🖼️ Edit Thumb</button>
-        </div>
-      </div>
-
-      <div class="lightbox-tags-row">
-        <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px; width:100%;">
-          <!-- Star Rating Buttons -->
-          <div class="star-rating-picker" id="lbStarRatingPicker"></div>
-
-          <!-- Subject Tags Autocomplete -->
-          <div class="subject-autocomplete-container" style="min-width:200px;">
-            <input type="text" id="lbSubjectInput" class="input-text btn-sm" placeholder="+ Tag Subject..." style="width:100%;">
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:16px;">
+        <!-- Subjects Section -->
+        <div>
+          <div style="font-weight:700; font-size:0.85rem; margin-bottom:6px;">👥 Subjects</div>
+          <div class="subject-autocomplete-container" style="margin-bottom:8px;">
+            <input type="text" id="lbSubjectInput" class="input-text btn-sm" placeholder="+ Add / create subject..." style="width:100%;">
             <div id="lbSubjectAutocomplete" class="subject-autocomplete-dropdown"></div>
           </div>
+          <div id="lbSubjectsContainer"></div>
+        </div>
 
-          <!-- Event Date Tag Autocomplete -->
-          <div class="date-autocomplete-container" style="min-width:200px;">
-            <input type="text" id="lbDateTagInput" class="input-text btn-sm" placeholder="+ Assign Event/Date..." style="width:100%;">
-            <div id="lbDateTagAutocomplete" class="date-autocomplete-dropdown"></div>
+        <!-- SLDs Section -->
+        <div>
+          <div style="font-weight:700; font-size:0.85rem; margin-bottom:6px;">📘 SLDs</div>
+          <div class="date-autocomplete-container" style="margin-bottom:8px;">
+            <input type="text" id="lbSldInput" class="input-text btn-sm" placeholder="+ Add SLD Date (e.g. 630)..." style="width:100%;">
+            <div id="lbSldAutocomplete" class="date-autocomplete-dropdown"></div>
           </div>
-
-          <!-- AI Tag Action Button -->
-          <button class="btn btn-secondary btn-sm" id="lbToggleAiBtn">🤖 Tag AI</button>
-
-          <!-- Current Tags Badges List -->
-          <div id="lbAppliedTagsBadges" style="display:flex; flex-wrap:wrap; gap:4px; align-items:center;"></div>
+          <div id="lbBlueEventsList"></div>
         </div>
-      </div>
-    </div>
-  </div>
 
-  <!-- Custom Thumbnail Cropper Modal -->
-  <div id="cropperModal" class="modal-backdrop">
-    <div class="modal-card" style="max-width:650px;">
-      <div class="modal-header">
-        <h3>✂️ Crop 200x200 Thumbnail</h3>
-        <button class="btn btn-secondary btn-sm" id="closeCropperModalBtn">✖</button>
-      </div>
-      <div class="modal-body" style="text-align:center;">
-        <div style="max-height:450px; overflow:hidden; background:#000; border-radius:var(--radius-md);">
-          <img id="cropperTargetImg" src="" style="max-width:100%; display:block;">
+        <!-- Events Section -->
+        <div>
+          <div style="font-weight:700; font-size:0.85rem; margin-bottom:6px;">📙 Events</div>
+          <select id="lbEventSelect" class="select-input btn-sm" style="width:100%; margin-bottom:8px;">
+            <option value="">+ Assign Existing Event...</option>
+          </select>
+          <div id="lbEventsContainer"></div>
         </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" id="cancelCropBtn">Cancel</button>
-        <button class="btn btn-primary" id="saveCroppedThumbBtn">💾 Save Thumbnail</button>
-      </div>
-    </div>
-  </div>
 
-  <!-- Sort Cascade Configuration Modal -->
-  <div id="sortCascadeModal" class="modal-backdrop">
-    <div class="modal-card" style="max-width:500px;">
-      <div class="modal-header">
-        <h3>🔀 Configure 3-Deep Sort Cascade</h3>
-        <button class="btn btn-secondary btn-sm" id="closeSortModalBtn">✖</button>
-      </div>
-      <div class="modal-body">
-        <div class="form-group">
-          <label class="form-label">Primary Sort Rule (Depth 1)</label>
-          <div style="display:flex; gap:8px;">
-            <select id="sortLevel1Key" class="select-input" style="flex:1;">
-              <option value="date">📅 Import / File Date</option>
-              <option value="rating">⭐ Star Rating</option>
-              <option value="pink">🩷 Pink Hearts</option>
-              <option value="grey">🩶 Grey Hearts</option>
-              <option value="blue">🩵 Blue Hearts</option>
-              <option value="totalPoints">⚡ Total Score Points</option>
-              <option value="filename">🔤 Filename / Title</option>
-              <option value="group">🎨 Subject Group Priority</option>
-            </select>
-            <select id="sortLevel1Dir" class="select-input" style="width:110px;">
-              <option value="desc">Descending</option>
-              <option value="asc">Ascending</option>
-            </select>
+        <!-- Standard Tags Section -->
+        <div>
+          <div style="font-weight:700; font-size:0.85rem; margin-bottom:6px;">🏷️ Tags</div>
+          <div class="tag-autocomplete-container" style="margin-bottom:8px;">
+            <input type="text" id="lbNormalTagInput" class="input-text btn-sm" placeholder="+ Add tag (Enter)..." style="width:100%;">
+            <div id="lbNormalTagAutocomplete" class="tag-autocomplete-dropdown"></div>
           </div>
+          <div id="lbNormalTagsContainer"></div>
         </div>
 
-        <div class="form-group">
-          <label class="form-label">Secondary Tie-Breaker (Depth 2)</label>
-          <div style="display:flex; gap:8px;">
-            <select id="sortLevel2Key" class="select-input" style="flex:1;">
-              <option value="rating">⭐ Star Rating</option>
-              <option value="date">📅 Import / File Date</option>
-              <option value="pink">🩷 Pink Hearts</option>
-              <option value="grey">🩶 Grey Hearts</option>
-              <option value="blue">🩵 Blue Hearts</option>
-              <option value="totalPoints">⚡ Total Score Points</option>
-              <option value="filename">🔤 Filename / Title</option>
-              <option value="group">🎨 Subject Group Priority</option>
-            </select>
-            <select id="sortLevel2Dir" class="select-input" style="width:110px;">
-              <option value="desc">Descending</option>
-              <option value="asc">Ascending</option>
-            </select>
+        <!-- Star Rating Override Section -->
+        <div>
+          <div style="font-weight:700; font-size:0.85rem; margin-bottom:6px;">⭐ Star Rating & Overrides</div>
+          <div id="lbRatingControls" style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-bottom:8px;">
+            <button class="btn btn-secondary btn-sm rating-override-btn" data-rating="-1" title="Mark as Rejected">🚫 Rejected</button>
+            <button class="btn btn-secondary btn-sm rating-override-btn" data-rating="1" title="1 Star">⭐ 1</button>
+            <button class="btn btn-secondary btn-sm rating-override-btn" data-rating="2" title="2 Stars">⭐ 2</button>
+            <button class="btn btn-secondary btn-sm rating-override-btn" data-rating="3" title="3 Stars">⭐ 3</button>
+            <button class="btn btn-secondary btn-sm rating-override-btn" data-rating="4" title="4 Stars">⭐ 4</button>
+            <button class="btn btn-secondary btn-sm rating-override-btn" data-rating="5" title="5 Stars">⭐ 5</button>
+            <button class="btn btn-secondary btn-sm rating-override-btn" data-rating="auto" title="Reset to Auto Calculation">🔄 Auto</button>
           </div>
+          <div id="lbRatingBadgeInfo" style="font-size:0.8rem; font-weight:700; color:var(--text-secondary);"></div>
         </div>
-
-        <div class="form-group">
-          <label class="form-label">Tertiary Tie-Breaker (Depth 3)</label>
-          <div style="display:flex; gap:8px;">
-            <select id="sortLevel3Key" class="select-input" style="flex:1;">
-              <option value="pink">🩷 Pink Hearts</option>
-              <option value="date">📅 Import / File Date</option>
-              <option value="rating">⭐ Star Rating</option>
-              <option value="grey">🩶 Grey Hearts</option>
-              <option value="blue">🩵 Blue Hearts</option>
-              <option value="totalPoints">⚡ Total Score Points</option>
-              <option value="filename">🔤 Filename / Title</option>
-              <option value="group">🎨 Subject Group Priority</option>
-            </select>
-            <select id="sortLevel3Dir" class="select-input" style="width:110px;">
-              <option value="desc">Descending</option>
-              <option value="asc">Ascending</option>
-            </select>
-          </div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" id="cancelSortModalBtn">Cancel</button>
-        <button class="btn btn-primary" id="saveSortCascadeBtn">Apply Sort Order</button>
       </div>
     </div>
   </div>
@@ -743,42 +939,6 @@
         </div>
 
         <div class="form-group">
-          <label class="form-label">📍 Where Location Tags (Optional)</label>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-            <div>
-              <label class="form-label" style="font-size:0.75rem;">🌐 Country / Online</label>
-              <input type="text" id="wizardWhereCountryOnline" class="input-text" list="whereCountryOnlineList" placeholder="e.g. United States, Online..." style="width:100%;">
-              <datalist id="whereCountryOnlineList"></datalist>
-            </div>
-            <div>
-              <label class="form-label" style="font-size:0.75rem;">📱 State / App</label>
-              <input type="text" id="wizardWhereStateApp" class="input-text" list="whereStateAppList" placeholder="e.g. California, Discord..." style="width:100%;">
-              <datalist id="whereStateAppList"></datalist>
-            </div>
-            <div>
-              <label class="form-label" style="font-size:0.75rem;">🏙️ City</label>
-              <input type="text" id="wizardWhereCity" class="input-text" list="whereCityList" placeholder="e.g. Los Angeles..." style="width:100%;">
-              <datalist id="whereCityList"></datalist>
-            </div>
-            <div>
-              <label class="form-label" style="font-size:0.75rem;">📍 Place</label>
-              <input type="text" id="wizardWherePlace" class="input-text" list="wherePlaceList" placeholder="e.g. Sunset Park..." style="width:100%;">
-              <datalist id="wherePlaceList"></datalist>
-            </div>
-            <div>
-              <label class="form-label" style="font-size:0.75rem;">🧭 Zone</label>
-              <input type="text" id="wizardWhereZone" class="input-text" list="whereZoneList" placeholder="e.g. Sector A..." style="width:100%;">
-              <datalist id="whereZoneList"></datalist>
-            </div>
-            <div>
-              <label class="form-label" style="font-size:0.75rem;">📌 GCode</label>
-              <input type="text" id="wizardWhereGCode" class="input-text" list="whereGCodeList" placeholder="e.g. GC12345..." style="width:100%;">
-              <datalist id="whereGCodeList"></datalist>
-            </div>
-          </div>
-        </div>
-
-        <div class="form-group">
           <label class="form-label">Event Notes</label>
           <input type="text" id="wizardNotesInput" class="input-text" placeholder="Description / notes..." style="width:100%;">
         </div>
@@ -794,70 +954,105 @@
   <div id="manageGroupsModal" class="modal-backdrop">
     <div class="modal-card" style="max-width:550px;">
       <div class="modal-header">
-        <h3>🎨 Subject Groups &amp; Color Priority</h3>
+        <h3>🎨 Subject Groups & Color Priority</h3>
         <button class="btn btn-secondary btn-sm" id="closeManageGroupsBtn">✖</button>
       </div>
       <div class="modal-body">
-        <p class="text-muted" style="font-size:0.85rem; margin-bottom:12px;">Order determines color border priority when files contain subjects from multiple groups.</p>
-        <div id="groupsManagerList" style="display:flex; flex-direction:column; gap:8px; margin-bottom:16px;"></div>
+        <p class="text-muted" style="font-size:0.85rem; margin-bottom:12px;">Drag to reorder group color priority. The highest group determines card border color when a file has multiple subjects.</p>
+        <div id="groupsListContainer" style="max-height:300px; overflow-y:auto; margin-bottom:16px;"></div>
 
-        <div style="display:flex; gap:8px; align-items:center; background:var(--bg-secondary); padding:10px; border-radius:var(--radius-md);">
-          <input type="text" id="newCustomGroupNameInput" class="input-text btn-sm" placeholder="+ Add Custom Group Name..." style="flex:1;">
-          <button class="btn btn-primary btn-sm" id="addCustomGroupBtn">Create Group</button>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="newCustomGroupNameInput" class="input-text" placeholder="+ New Custom Group Name..." style="flex:1;">
+          <button class="btn btn-primary" id="addCustomGroupBtn">Add Group</button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Collections Manager Modal -->
-  <div id="createCollectionModal" class="modal-backdrop">
-    <div class="modal-card" style="max-width:500px;">
+  <!-- Avatar Photo Picker Modal -->
+  <div id="avatarPickerModal" class="modal-backdrop">
+    <div class="modal-card" style="max-width:700px;">
       <div class="modal-header">
-        <h3>📂 Create New Collection</h3>
-        <button class="btn btn-secondary btn-sm" id="closeCollectionModalBtn">✖</button>
+        <h3>Select Photo for Avatar Crop</h3>
+        <button class="btn btn-secondary btn-sm" id="closeAvatarPickerBtn">✖</button>
       </div>
       <div class="modal-body">
-        <div class="form-group">
-          <label class="form-label">Collection Name</label>
-          <input type="text" id="collectionNameInput" class="input-text" placeholder="e.g. Summer Favorites, Top Rated" style="width:100%;">
+        <div class="media-grid" id="avatarPickerMediaGrid" style="max-height:400px; overflow-y:auto;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cropper Modal -->
+  <div id="cropperModal" class="modal-backdrop">
+    <div class="modal-card" style="max-width:700px;">
+      <div class="modal-header">
+        <h3 id="cropperModalTitle">Crop Image / Thumbnail</h3>
+        <button class="btn btn-secondary btn-sm" id="closeCropperModalBtn">✖</button>
+      </div>
+      <div class="modal-body">
+        <div id="videoSeekerContainer" style="display:none; margin-bottom:12px; background:var(--bg-primary); padding:12px; border-radius:var(--radius-md);">
+          <label class="form-label" style="display:flex; justify-space-between;">
+            <span>🎞️ Seek Video Frame:</span>
+            <span id="videoCurrentTimeLabel">0.0s</span>
+          </label>
+          <input type="range" id="videoSeekerSlider" min="0" max="100" value="0" step="0.1" style="width:100%;">
+          <video id="cropperHiddenVideo" style="display:none;" preload="auto"></video>
         </div>
-        <div class="form-group">
-          <label class="form-label">Description (Optional)</label>
-          <input type="text" id="collectionDescInput" class="input-text" placeholder="Notes or description..." style="width:100%;">
+
+        <div style="max-height:450px; overflow:hidden;">
+          <img id="cropperImage" src="" style="max-width:100%; display:block;" alt="Crop image">
         </div>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-secondary" id="cancelCollectionModalBtn">Cancel</button>
-        <button class="btn btn-primary" id="saveCollectionBtn">Create Collection</button>
+        <button class="btn btn-secondary" id="cancelCropBtn">Cancel</button>
+        <button class="btn btn-primary" id="saveCropBtn">Save Crop</button>
       </div>
     </div>
   </div>
 
-  <!-- User Profiles Manager Modal -->
-  <div id="createProfileModal" class="modal-backdrop">
-    <div class="modal-card" style="max-width:500px;">
+  <!-- Interactive Crop Framing Modal for Lightbox Viewer -->
+  <div id="lightboxCropModal" class="modal-backdrop">
+    <div class="modal-card" style="max-width:850px;">
       <div class="modal-header">
-        <h3>👥 Create User Profile</h3>
-        <button class="btn btn-secondary btn-sm" id="closeProfileModalBtn">✖</button>
-      </div>
-      <div class="modal-body">
-        <div class="form-group">
-          <label class="form-label">Profile Name</label>
-          <input type="text" id="profileNameInput" class="input-text" placeholder="e.g. Personal Workspace, Project B" style="width:100%;">
+        <h3>✂️ Non-Destructive Crop Framing</h3>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <label style="font-size:0.85rem; font-weight:600;">Ratio:</label>
+          <select id="cropModalRatioSelect" class="select-input btn-sm">
+            <option value="free">Freeform (Resizable)</option>
+            <option value="screen">Screen Ratio</option>
+            <option value="1:1">1:1 Square</option>
+            <option value="4:3">4:3 Standard</option>
+            <option value="16:9">16:9 Widescreen</option>
+            <option value="custom">Custom Ratio...</option>
+          </select>
+          <button class="btn btn-secondary btn-sm" id="closeCropModalBtn">✖</button>
         </div>
       </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" id="cancelProfileModalBtn">Cancel</button>
-        <button class="btn btn-primary" id="saveProfileBtn">Create Profile</button>
+      <div class="modal-body" style="text-align:center;">
+        <div id="cropModalVideoSeeker" style="display:none; margin-bottom:12px; background:var(--bg-primary); padding:10px; border-radius:var(--radius-md);">
+          <span class="text-muted" style="font-size:0.85rem;">Seek Video Frame: <span id="cropVideoTimeLabel">0.5s</span></span>
+          <input type="range" id="cropVideoSeekerSlider" min="0" max="100" value="0.5" step="0.1" style="width:100%;">
+          <video id="cropModalHiddenVideo" style="display:none;"></video>
+        </div>
+        <div style="max-height:55vh; overflow:hidden; display:flex; justify-content:center; align-items:center; background:#000; border-radius:var(--radius-md);">
+          <img id="cropModalImage" src="" style="max-width:100%; display:block;" alt="Crop image preview">
+        </div>
+      </div>
+      <div class="modal-footer" style="justify-content:space-between;">
+        <button class="btn btn-danger" id="cropModalClearBtn">🗑️ Clear Custom Crop</button>
+        <div>
+          <button class="btn btn-secondary" id="cancelCropModalBtn">Cancel</button>
+          <button class="btn btn-primary" id="confirmCropModalBtn">Save Crop Framing</button>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- Leaderboard Drill-Down Modal -->
+  <!-- Full Leaderboard Rank Modal -->
   <div id="leaderboardModal" class="modal-backdrop">
-    <div class="modal-card" style="max-width:650px;">
+    <div class="modal-card" style="max-width:650px; width:90%;">
       <div class="modal-header">
-        <h3 id="leaderboardModalTitle">🏆 Leaderboard Breakdown</h3>
+        <h3 id="leaderboardModalTitle">🏆 Full Leaderboard Rankings</h3>
         <button class="btn btn-secondary btn-sm" id="closeLeaderboardModalBtn">✖</button>
       </div>
       <div class="modal-body" style="max-height:65vh; overflow-y:auto; padding:16px;">
