@@ -23,6 +23,32 @@
     7: 0.8, 8: 1.0, 9: 2.0, 10: 5.0, 11: 5.0, 12: 8.0
   };
 
+  const SUB_ACTION_TAGS = [
+    { id: 'drunk_slutty', name: '🫦 Drunk or Slutty', pts: 0.25, parentAction: 'all' },
+    { id: 'very_rough', name: '👋 Very Rough', pts: 0.15, parentAction: 'all' },
+    { id: 'bareback', name: '🐻❄️ Bareback', pts: 0.30, parentAction: 'all', toggleWith: 'bareback_anal' },
+    { id: 'bareback_anal', name: '🐻 Bareback Anal', pts: 0.50, parentAction: 'all', toggleWith: 'bareback' },
+    { id: 'hat_trick', name: '🎩 Hat Trick', pts: 0.45, parentAction: 'all' },
+    { id: 'gay_les', name: '🏳️‍🌈 Gay or Les', pts: 0.10, parentAction: 'all', isAuto: true },
+    { id: 'stranger', name: '👤 Stranger', pts: 0.50, parentAction: 'all', isAuto: true },
+
+    // Ffm specific sub-tags (Action Code 10)
+    { id: 'ffm_double_suck', name: '💢 Double Suck', pts: 1.0, parentAction: 10 },
+    { id: 'ffm_pyramid', name: '🔺 Pyramid', pts: 1.0, parentAction: 10 },
+    { id: 'ffm_4_hole', name: '⛳ 4 Hole Challenge', pts: 2.0, parentAction: 10, toggleWith: 'ffm_6_hole' },
+    { id: 'ffm_6_hole', name: '🎲 6 Hole Challenge', pts: 3.0, parentAction: 10, toggleWith: 'ffm_4_hole' },
+
+    // Fmm specific sub-tags (Action Code 11)
+    { id: 'fmm_double_suck', name: '🫶 Double Suck', pts: 1.0, parentAction: 11 },
+    { id: 'fmm_double_pen', name: '✌️ Double Pen', pts: 2.0, parentAction: 11 },
+    { id: 'fmm_statue_liberty', name: '🤘 Statue of Liberty', pts: 1.0, parentAction: 11 },
+    { id: 'fmm_two_one_hole', name: '🫰 Two in One Hole', pts: 3.0, parentAction: 11 },
+
+    // Orgy specific sub-tags (Action Code 12)
+    { id: 'orgy_9_hole', name: '🎰 9 Hole Challenge', pts: 5.0, parentAction: 12 },
+    { id: 'orgy_triple_pen', name: '🤟 Triple Penetration', pts: 5.0, parentAction: 12 }
+  ];
+
   const DEFAULT_MEDAL_SETTINGS = {
     goldPts: 1.0, silverPts: 0.3, bronzePts: 0.1,
     maxGold: 1, maxSilver: 2, maxBronze: 5
@@ -324,6 +350,13 @@
       return `${group.emoji}${subject.name}`;
     }
     return subject.name;
+  }
+
+  function getSubjectGenderSymbol(gender) {
+    if (gender === 'Female') return '♀️';
+    if (gender === 'Male') return '♂️';
+    if (gender === 'NB') return '⚧️';
+    return '♀️';
   }
 
   function getMediaHighestPriorityGroupBorderClass(media) {
@@ -3905,6 +3938,7 @@
     const batchDropdown = document.getElementById('subjectBatchDropdown');
     const batchMenuBtn = document.getElementById('subjectBatchMenuBtn');
     const batchDeleteBtn = document.getElementById('batchDeleteSubjectsBtn');
+    const batchGenderBtn = document.getElementById('batchGenderSubjectsBtn');
 
     if (selectedSubjectIds.size > 0) {
       if (batchGrpSelect) {
@@ -3947,6 +3981,13 @@
       };
     }
 
+    if (batchGenderBtn) {
+      batchGenderBtn.onclick = () => {
+        if (batchDropdown) batchDropdown.style.display = 'none';
+        openBatchGenderModal();
+      };
+    }
+
     if (batchDeleteBtn) {
       batchDeleteBtn.onclick = async () => {
         if (batchDropdown) batchDropdown.style.display = 'none';
@@ -3983,7 +4024,40 @@
       };
     });
 
-    // Tab Button Handlers (Subjects vs Combos)
+  function openBatchGenderModal() {
+    if (selectedSubjectIds.size === 0) return;
+    const modal = document.getElementById('batchGenderModal');
+    if (!modal) return;
+
+    document.getElementById('saveBatchGenderBtn').onclick = async () => {
+      const genderVal = document.getElementById('batchGenderSelect')?.value || 'Female';
+      for (const id of selectedSubjectIds) {
+        const s = currentSubjectsList.find(sub => sub.id === id);
+        if (s) {
+          s.gender = genderVal;
+          await db.put('subjects', s);
+        }
+      }
+      selectedSubjectIds.clear();
+      modal.classList.remove('active');
+      modal.style.display = 'none';
+      await loadAppState();
+      renderCurrentView();
+    };
+
+    document.getElementById('closeBatchGenderBtn').onclick = () => {
+      modal.classList.remove('active');
+      modal.style.display = 'none';
+    };
+
+    document.getElementById('cancelBatchGenderBtn').onclick = () => {
+      modal.classList.remove('active');
+      modal.style.display = 'none';
+    };
+
+    modal.classList.add('active');
+    modal.style.display = 'flex';
+  }
     const subLbSection = document.getElementById('subjectLeaderboardsSection');
     const comboLbSection = document.getElementById('comboLeaderboardsSection');
 
@@ -6168,71 +6242,154 @@
     }
   }
 
+  let activeEventSortKey = 'date';
+  let selectedEventCardIds = new Set();
+
   function renderEventsPage(stats) {
-    const tableBody = document.getElementById('eventsTableBody');
+    const gridContainer = document.getElementById('eventsGridContainer');
+    const infoEl = document.getElementById('eventsSelectionInfo');
+
+    if (!gridContainer) return;
+
     if (currentEventsList.length === 0) {
-      tableBody.innerHTML = `<tr><td colspan="6" class="empty-state">No events recorded yet. Type a date in "+ Create Event Date" above.</td></tr>`;
+      gridContainer.innerHTML = `<div class="empty-state" style="grid-column: 1 / -1;">No events recorded yet. Type a date tag in "+ Create Event Date" above to start.</div>`;
+      if (infoEl) infoEl.textContent = '';
       return;
     }
 
-    const sorted = currentEventsList.slice().sort((a, b) => convertDateTagToIso(b.dateTag || '').localeCompare(convertDateTagToIso(a.dateTag || '')));
-    tableBody.innerHTML = sorted.map(evt => {
+    if (infoEl) {
+      infoEl.textContent = selectedEventCardIds.size > 0 ? `Selected Events: ${selectedEventCardIds.size} file(s)` : '';
+    }
+
+    const sorted = currentEventsList.slice().sort((a, b) => {
+      if (activeEventSortKey === 'points') {
+        const ptsA = (a.eventCode ? (currentActionPointsMap[a.eventCode] || 0) : 0.1);
+        const ptsB = (b.eventCode ? (currentActionPointsMap[b.eventCode] || 0) : 0.1);
+        return ptsB - ptsA;
+      } else if (activeEventSortKey === 'water') {
+        const waterA = Object.values(a.subjectCounts || {}).reduce((s, v) => s + (v || 0), 0);
+        const waterB = Object.values(b.subjectCounts || {}).reduce((s, v) => s + (v || 0), 0);
+        return waterB - waterA;
+      } else if (activeEventSortKey === 'subject') {
+        const nameA = Object.keys(a.subjectCounts || {}).map(sId => currentSubjectsList.find(s => s.id === sId)?.name || '').sort().join(', ');
+        const nameB = Object.keys(b.subjectCounts || {}).map(sId => currentSubjectsList.find(s => s.id === sId)?.name || '').sort().join(', ');
+        return nameA.localeCompare(nameB);
+      }
+      return convertDateTagToIso(b.dateTag || '').localeCompare(convertDateTagToIso(a.dateTag || ''));
+    });
+
+    gridContainer.innerHTML = sorted.map(evt => {
+      const isSelected = selectedEventCardIds.has(evt.id);
       const dateStr = evt.dateTag || new Date(evt.date).toLocaleDateString();
       const actionCode = evt.eventCode || 1;
-      const tagBadge = `<span class="tag-chip-bubble action-tag-${actionCode}">${getActionDisplayName(actionCode)}</span>`;
+      const actionPts = currentActionPointsMap[actionCode] || 0.1;
+      const totalWater = Object.values(evt.subjectCounts || {}).reduce((s, v) => s + (v || 0), 0);
 
-      const subjectsHTML = Object.keys(evt.subjectCounts || {}).map(subId => {
-        const sub = currentSubjectsList.find(s => s.id === subId);
+      const assignedMedia = currentMediaList.filter(m => (m.eventIds || []).includes(evt.id));
+      const customCoverMedia = evt.customCoverMediaId ? currentMediaList.find(m => m.id === evt.customCoverMediaId) : null;
+      const coverMedia = customCoverMedia || assignedMedia[0];
+
+      const bgHeaderStyle = coverMedia ? `<img src="${coverMedia.thumbnailUrl || coverMedia.dataUrl}" class="event-card-bg-img" alt="Event Cover">` : `<div class="event-card-bg-img" style="background: linear-gradient(135deg, rgba(236,72,153,0.3), rgba(56,189,248,0.3));"></div>`;
+
+      const subjectAvatarsHTML = Object.keys(evt.subjectCounts || {}).map(subId => {
+        const sub = currentSubjectsList.find(s => s.id === sId);
         const c = evt.subjectCounts[subId] || 0;
         const avatarSrc = sub?.avatarUrl;
-        const groupBorderClass = getSubjectGroup(sub?.groupId)?.cssClass || '';
-        const taggedMedia = currentMediaList.filter(m => m.subjectTags?.includes(subId));
-
-        let thumbHTML = avatarSrc ? `<img src="${avatarSrc}" style="width:50px; height:50px; border-radius:8px; object-fit:cover; display:block;" alt="${sub?.name}">` : (taggedMedia[0] ? renderMediaThumbnailHTML(taggedMedia[0], '', 'width:50px; height:50px; object-fit:cover; border-radius:8px; display:block;') : `<div style="width:50px; height:50px; border-radius:8px; background:var(--bg-secondary); display:flex; align-items:center; justify-content:center; font-size:22px;">👤</div>`);
-
+        const genderSymbol = getSubjectGenderSymbol(sub?.gender);
         return `
-          <div class="evt-subject-thumb-card ${groupBorderClass}" style="position:relative; width:50px; height:50px; border-radius:8px; overflow:hidden; display:inline-block; border:2px solid var(--border-color); flex-shrink:0; cursor:pointer;" title="${getSubjectDisplayName(sub)} - 💦${c}" data-subid="${subId}">
-            ${thumbHTML}
-            <div style="position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,0.85); color:#fff; font-size:0.62rem; font-weight:800; text-align:center; padding:1px 2px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">
-              ${getSubjectDisplayName(sub)} 💦${c}
-            </div>
+          <div style="position:relative; display:inline-flex; align-items:center; cursor:pointer;" title="${genderSymbol} ${getSubjectDisplayName(sub)} - 💦${c}" data-subid="${subId}" class="evt-card-sub-bubble">
+            ${avatarSrc ? `<img src="${avatarSrc}" style="width:34px; height:34px; border-radius:50%; object-fit:cover; border:2px solid var(--border-color);" alt="${sub?.name}">` : `<div style="width:34px; height:34px; border-radius:50%; background:var(--bg-secondary); border:2px solid var(--border-color); display:flex; align-items:center; justify-content:center; font-size:14px;">👤</div>`}
+            <span style="position:absolute; bottom:-4px; right:-4px; background:rgba(0,0,0,0.85); color:#ff69b4; font-size:0.6rem; font-weight:800; padding:1px 4px; border-radius:8px; border:1px solid #ff69b4;">💦${c}</span>
           </div>`;
       }).join('');
 
-      const assignedMedia = currentMediaList.filter(m => (m.eventIds || []).includes(evt.id));
-      const sortedMedia = assignedMedia.slice().sort((a, b) => (stats.mediaStatsMap.get(b.id)?.totalHeartPts || 0) - (stats.mediaStatsMap.get(a.id)?.totalHeartPts || 0));
-      const top5Media = sortedMedia.slice(0, 5);
+      const mediaThumbsRowHTML = assignedMedia.slice(0, 4).map(m => `
+        <div class="sld-mini-thumb-wrap evt-media-thumb" data-mid="${m.id}" style="width:36px; height:36px; border-radius:6px; overflow:hidden; border:1px solid var(--border-color); cursor:pointer;">
+          ${renderMediaThumbnailHTML(m, '', 'width:100%; height:100%; object-fit:cover;')}
+        </div>
+      `).join('');
 
-      const mediaThumbsHTML = top5Media.length > 0 ? `<div class="sld-table-thumb-group">
-        ${top5Media.map(m => `<div class="sld-mini-thumb-wrap evt-media-thumb" data-mid="${m.id}">${renderMediaThumbnailHTML(m, 'sld-mini-thumb')}</div>`).join('')}
-      </div>` : '';
+      const locationTooltipHTML = evt.where ? `
+        <div class="event-where-tooltip-wrap">
+          <span class="badge" style="background:rgba(244,63,94,0.15); color:#f43f5e; border:1px solid #f43f5e; font-size:0.75rem; padding:2px 8px; border-radius:10px;">🌐 ${evt.where.countryOnline || 'Location'}</span>
+          <div class="event-where-tooltip">
+            <div>🌐 Country/Online: <strong>${evt.where.countryOnline || '—'}</strong></div>
+            <div>📱 State/App: <strong>${evt.where.stateApp || '—'}</strong></div>
+            <div>🏙️ City: <strong>${evt.where.city || '—'}</strong></div>
+            <div>📍 Place: <strong>${evt.where.place || '—'}</strong></div>
+            <div>🧭 Zone: <strong>${evt.where.zone || '—'}</strong></div>
+            <div>📌 GCode: <strong>${evt.where.gcode || '—'}</strong></div>
+          </div>
+        </div>` : '';
 
       return `
-        <tr class="event-table-row" data-evtid="${evt.id}">
-          <td>${tagBadge}</td>
-          <td><strong style="cursor:pointer; font-size:1.05rem;">📙 ${formatColoredDateTag(dateStr)}</strong></td>
-          <td>
-            <div style="display:flex; flex-wrap:wrap; gap:6px; align-items:center;">
-              ${subjectsHTML || '<span class="text-muted" style="font-size:0.8rem;">None</span>'}
-            </div>
-          </td>
-          <td>${renderWhereBadgesHTML(evt.where)}</td>
-          <td>${mediaThumbsHTML}</td>
-          <td style="text-align:right;">
-            <div class="dropdown-container" style="position:relative; display:inline-block;">
-              <button class="btn btn-secondary btn-sm evt-menu-btn">•••</button>
-              <div class="dropdown-menu evt-dropdown" style="display:none; position:absolute; right:0; top:100%; z-index:10; background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:6px; min-width:160px; box-shadow:var(--shadow-md);">
-                <button class="btn btn-danger btn-sm delete-evt-btn" data-evtid="${evt.id}" style="width:100%; text-align:left;">🗑️ Delete this Event</button>
+        <div class="event-card ${isSelected ? 'selected' : ''}" data-evtid="${evt.id}">
+          <div class="event-card-header">
+            ${bgHeaderStyle}
+            <div class="event-card-header-overlay">
+              <div class="event-card-title-group">
+                <span class="tag-chip-bubble action-tag-${actionCode}" style="font-size:0.75rem; padding:2px 8px; width:fit-content;">${getActionDisplayName(actionCode)}</span>
+                <strong style="font-size:1.1rem; color:#fff; text-shadow:0 2px 6px rgba(0,0,0,0.8);">📙 ${formatColoredDateTag(dateStr)}</strong>
+              </div>
+              <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
+                <span class="badge" style="background:rgba(0,0,0,0.75); color:#ff69b4; border:1px solid #ff69b4; font-weight:800; font-size:0.8rem;">💦 ${totalWater}</span>
+                <span class="badge" style="background:rgba(0,0,0,0.75); color:#38bdf8; border:1px solid #38bdf8; font-weight:800; font-size:0.75rem;">⚡ ${actionPts} pts</span>
               </div>
             </div>
-          </td>
-        </tr>`;
+          </div>
+
+          <div class="event-card-body">
+            <div style="display:flex; flex-wrap:wrap; gap:6px; align-items:center;">
+              ${subjectAvatarsHTML || '<span class="text-muted" style="font-size:0.8rem;">No subjects added</span>'}
+            </div>
+
+            ${locationTooltipHTML}
+
+            ${assignedMedia.length > 0 ? `<div class="evt-media-thumb-row">${mediaThumbsRowHTML}</div>` : ''}
+
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:auto; padding-top:8px; border-top:1px solid var(--border-color);">
+              <button class="btn btn-secondary btn-sm evt-pick-cover-btn" data-evtid="${evt.id}" title="Pick Cover Thumbnail">🖼️ Cover</button>
+              <div style="display:flex; gap:6px;">
+                <button class="btn btn-secondary btn-sm evt-card-select-btn" data-evtid="${evt.id}">${isSelected ? '✓ Selected' : 'Select'}</button>
+                <button class="btn btn-danger btn-sm evt-card-delete-btn" data-evtid="${evt.id}">🗑️</button>
+              </div>
+            </div>
+          </div>
+        </div>`;
     }).join('');
 
-    tableBody.querySelectorAll('.evt-subject-thumb-card').forEach(card => {
+    // Event Sorting Button Listeners
+    document.querySelectorAll('.evt-sort-btn').forEach(btn => {
+      btn.onclick = () => {
+        activeEventSortKey = btn.getAttribute('data-sort');
+        document.querySelectorAll('.evt-sort-btn').forEach(b => b.classList.toggle('active-sort', b === btn));
+        renderEventsPage(stats);
+      };
+    });
+
+    // Event Card Click -> Open Event Details
+    gridContainer.querySelectorAll('.event-card').forEach(card => {
       card.onclick = (e) => {
+        if (e.target.closest('.evt-pick-cover-btn') || e.target.closest('.evt-card-select-btn') || e.target.closest('.evt-card-delete-btn') || e.target.closest('.evt-media-thumb') || e.target.closest('.evt-card-sub-bubble')) return;
+        activeDetailEventId = card.getAttribute('data-evtid');
+        switchView('eventDetailsView');
+      };
+    });
+
+    // Event Media Thumbnails Click
+    gridContainer.querySelectorAll('.evt-media-thumb').forEach(thumb => {
+      thumb.onclick = (e) => {
         e.stopPropagation();
-        const subId = card.getAttribute('data-subid');
+        const mId = thumb.getAttribute('data-mid');
+        openLightboxById(mId);
+      };
+    });
+
+    // Subject Avatars Click -> Subject Details
+    gridContainer.querySelectorAll('.evt-card-sub-bubble').forEach(b => {
+      b.onclick = (e) => {
+        e.stopPropagation();
+        const subId = b.getAttribute('data-subid');
         if (subId) {
           activeDetailSubjectId = subId;
           switchView('subjectDetailsView');
@@ -6240,38 +6397,28 @@
       };
     });
 
-    tableBody.querySelectorAll('.evt-menu-btn').forEach(btn => {
+    // Custom Cover Thumbnail Picker Button
+    gridContainer.querySelectorAll('.evt-pick-cover-btn').forEach(btn => {
       btn.onclick = (e) => {
         e.stopPropagation();
-        const dropdown = btn.nextElementSibling;
-        const isShown = dropdown.style.display === 'block';
-        document.querySelectorAll('.evt-dropdown').forEach(d => d.style.display = 'none');
-        if (!isShown) dropdown.style.display = 'block';
+        const evtId = btn.getAttribute('data-evtid');
+        openEventCoverPickerModal(evtId);
       };
     });
 
-    document.addEventListener('click', () => {
-      document.querySelectorAll('.evt-dropdown').forEach(d => d.style.display = 'none');
-    });
-
-    tableBody.querySelectorAll('.evt-media-thumb').forEach(thumb => {
-      thumb.onclick = (e) => {
+    // Select Event Card Toggle
+    gridContainer.querySelectorAll('.evt-card-select-btn').forEach(btn => {
+      btn.onclick = (e) => {
         e.stopPropagation();
-        const mId = thumb.getAttribute('data-mid');
-        sldDefaultFullscreen = false;
-        openLightboxById(mId);
+        const evtId = btn.getAttribute('data-evtid');
+        if (selectedEventCardIds.has(evtId)) selectedEventCardIds.delete(evtId);
+        else selectedEventCardIds.add(evtId);
+        renderEventsPage(stats);
       };
     });
 
-    tableBody.querySelectorAll('.event-table-row').forEach(row => {
-      row.onclick = (e) => {
-        if (e.target.closest('.evt-media-thumb') || e.target.closest('.delete-evt-btn')) return;
-        activeDetailEventId = row.getAttribute('data-evtid');
-        switchView('eventDetailsView');
-      };
-    });
-
-    tableBody.querySelectorAll('.delete-evt-btn').forEach(btn => {
+    // Delete Event Button
+    gridContainer.querySelectorAll('.evt-card-delete-btn').forEach(btn => {
       btn.onclick = async (e) => {
         e.stopPropagation();
         const evtId = btn.getAttribute('data-evtid');
@@ -6287,6 +6434,45 @@
         }
       };
     });
+  }
+
+  function openEventCoverPickerModal(evtId) {
+    const evt = currentEventsList.find(item => item.id === evtId);
+    if (!evt) return;
+    const assignedMedia = currentMediaList.filter(m => (m.eventIds || []).includes(evt.id));
+    const grid = document.getElementById('eventThumbPickerGrid');
+    const modal = document.getElementById('eventThumbPickerModal');
+    if (!grid || !modal) return;
+
+    if (assignedMedia.length === 0) {
+      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">No media files attached to this event yet.</div>`;
+    } else {
+      grid.innerHTML = assignedMedia.map(m => `
+        <div class="media-card evt-cover-choice-card" data-mid="${m.id}" style="width:120px; height:120px; cursor:pointer;">
+          ${renderMediaThumbnailHTML(m, '', 'width:100%; height:100%; object-fit:cover;')}
+        </div>
+      `).join('');
+
+      grid.querySelectorAll('.evt-cover-choice-card').forEach(card => {
+        card.onclick = async () => {
+          const mId = card.getAttribute('data-mid');
+          evt.customCoverMediaId = mId;
+          await db.put('events', evt);
+          modal.classList.remove('active');
+          modal.style.display = 'none';
+          await loadAppState();
+          renderCurrentView();
+        };
+      });
+    }
+
+    document.getElementById('closeEventThumbPickerBtn').onclick = () => {
+      modal.classList.remove('active');
+      modal.style.display = 'none';
+    };
+
+    modal.classList.add('active');
+    modal.style.display = 'flex';
   }
 
   function renderEventDetailsPage(stats) {

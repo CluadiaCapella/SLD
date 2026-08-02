@@ -361,12 +361,12 @@
       <div id="sldDetailsContent"></div>
     </section>
 
-    <!-- 7. EVENTS LIST VIEW (📙 Events) -->
+    <!-- 7. EVENTS LIST VIEW (📙 Events Thumbnail Cards Grid) -->
     <section id="eventsView" class="view-page">
       <div class="page-header">
         <div class="page-title-group">
-          <h1>📙 Recorded Events Log</h1>
-          <p>Detailed participant counts, action tags, and event notes.</p>
+          <h1>📙 Recorded Events Cards</h1>
+          <p>Multi-selectable event cards, subject avatars, location badges, and score points.</p>
         </div>
         <div class="page-actions">
           <div class="date-autocomplete-container" style="min-width:240px;">
@@ -376,20 +376,20 @@
         </div>
       </div>
 
-      <div class="table-container">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Event Date</th>
-              <th>Actions</th>
-              <th>Participants</th>
-              <th>Media</th>
-              <th style="text-align:right;"></th>
-            </tr>
-          </thead>
-          <tbody id="eventsTableBody"></tbody>
-        </table>
+      <!-- Events Sorting & Toolbar -->
+      <div class="sorting-toolbar" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px; background:var(--bg-secondary); padding:10px 14px; border-radius:var(--radius-md); border:1px solid var(--border-color);">
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <span style="font-weight:700; font-size:0.85rem; color:var(--text-secondary);">🔀 Sort Events:</span>
+          <button class="btn btn-secondary btn-sm evt-sort-btn active-sort" data-sort="date">📅 Date</button>
+          <button class="btn btn-secondary btn-sm evt-sort-btn" data-sort="points">⚡ Total Points</button>
+          <button class="btn btn-secondary btn-sm evt-sort-btn" data-sort="water">💦 Total 💦</button>
+          <button class="btn btn-secondary btn-sm evt-sort-btn" data-sort="subject">👤 Subject Name</button>
+        </div>
+        <div id="eventsSelectionInfo" style="font-size:0.85rem; font-weight:700; color:var(--accent-pink);"></div>
       </div>
+
+      <!-- Events Cards Container -->
+      <div id="eventsGridContainer" class="events-cards-grid"></div>
     </section>
 
     <!-- 8. EVENT DETAILS DRILL-DOWN VIEW -->
@@ -1084,6 +1084,44 @@
       <div class="modal-footer">
         <button class="btn btn-secondary" id="cancelAddSubjectBtn">Cancel</button>
         <button class="btn btn-primary" id="saveSubjectBtn">Save Subject</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Event Cover Thumbnail Picker Modal -->
+  <div id="eventThumbPickerModal" class="modal-backdrop">
+    <div class="modal-card" style="max-width:650px;">
+      <div class="modal-header">
+        <h3>🖼️ Select Custom Event Thumbnail</h3>
+        <button class="btn btn-secondary btn-sm" id="closeEventThumbPickerBtn">✖</button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted" style="font-size:0.85rem; margin-bottom:12px;">Choose a cover thumbnail from the media files attached to this event:</p>
+        <div id="eventThumbPickerGrid" class="media-grid" style="max-height:400px; overflow-y:auto;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Batch Subject Gender Update Modal -->
+  <div id="batchGenderModal" class="modal-backdrop">
+    <div class="modal-card" style="max-width:450px;">
+      <div class="modal-header">
+        <h3>⚧️ Batch Update Gender for Selected Subjects</h3>
+        <button class="btn btn-secondary btn-sm" id="closeBatchGenderBtn">✖</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">New Gender for Selected Subjects</label>
+          <select id="batchGenderSelect" class="select-input" style="width:100%;">
+            <option value="Female">♀️ Female</option>
+            <option value="Male">♂️ Male</option>
+            <option value="NB">⚧️ Non-Binary (NB)</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="cancelBatchGenderBtn">Cancel</button>
+        <button class="btn btn-primary" id="saveBatchGenderBtn">Apply Gender to All</button>
       </div>
     </div>
   </div>
