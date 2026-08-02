@@ -12,7 +12,35 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
 
-  <link rel="manifest" href="manifest.json">
+  <script>
+    (function() {
+      var manifestObj = {
+        "name": "SLD - Sex, Love Dreams",
+        "short_name": "SLD",
+        "description": "Turn thoughts, feelings, and memories into points.",
+        "start_url": "./SLD.html",
+        "display": "standalone",
+        "background_color": "#0f172a",
+        "theme_color": "#0f172a",
+        "icons": [
+          {
+            "src": "./media/title-icon.png",
+            "sizes": "89x89",
+            "type": "image/png",
+            "purpose": "any maskable"
+          }
+        ]
+      };
+      var link = document.createElement('link');
+      link.rel = 'manifest';
+      if (window.location.protocol === 'file:') {
+        link.href = 'data:application/manifest+json;charset=utf-8,' + encodeURIComponent(JSON.stringify(manifestObj));
+      } else {
+        link.href = 'manifest.json';
+      }
+      document.head.appendChild(link);
+    })();
+  </script>
 </head>
 <body>
   <!-- System Error & CORS Diagnostics Banner -->
