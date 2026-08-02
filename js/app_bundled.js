@@ -6319,8 +6319,8 @@
       `).join('');
 
       const locationTooltipHTML = evt.where ? `
-        <div class="event-where-tooltip-wrap">
-          <span class="badge" style="background:rgba(244,63,94,0.15); color:#f43f5e; border:1px solid #f43f5e; font-size:0.75rem; padding:2px 8px; border-radius:10px;">🌐 ${evt.where.countryOnline || 'Location'}</span>
+        <div class="event-where-tooltip-wrap" style="position:absolute; bottom:8px; left:8px; z-index:3;">
+          <span class="badge" style="background:rgba(0,0,0,0.85); color:#f43f5e; border:1px solid #f43f5e; font-size:0.68rem; padding:2px 6px; border-radius:10px;">🌐 ${evt.where.countryOnline || 'Location'}</span>
           <div class="event-where-tooltip">
             <div>🌐 Country/Online: <strong>${evt.where.countryOnline || '—'}</strong></div>
             <div>📱 State/App: <strong>${evt.where.stateApp || '—'}</strong></div>
@@ -6332,35 +6332,29 @@
         </div>` : '';
 
       return `
-        <div class="event-card ${isSelected ? 'selected' : ''}" data-evtid="${evt.id}">
-          <div class="event-card-header">
-            ${bgHeaderStyle}
-            <div class="event-card-header-overlay">
-              <div class="event-card-title-group">
-                <span class="tag-chip-bubble action-tag-${actionCode}" style="font-size:0.75rem; padding:2px 8px; width:fit-content;">${getActionDisplayName(actionCode)}</span>
-                <strong style="font-size:1.1rem; color:#fff; text-shadow:0 2px 6px rgba(0,0,0,0.8);">📙 ${formatColoredDateTag(dateStr)}</strong>
+        <div class="event-card ${isSelected ? 'selected' : ''}" data-evtid="${evt.id}" style="position:relative; width:200px; height:200px; overflow:hidden; border-radius:var(--radius-md); border:1px solid var(--border-color); cursor:pointer;">
+          ${bgHeaderStyle}
+          <div class="media-card-overlay" style="position:absolute; inset:0; background:linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.85) 100%); display:flex; flex-direction:column; justify-content:space-between; padding:8px; box-sizing:border-box;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:4px; z-index:2;">
+              <div style="display:flex; flex-direction:column; gap:2px; max-width:130px;">
+                <span class="tag-chip-bubble action-tag-${actionCode}" style="font-size:0.65rem; padding:1px 5px; width:fit-content;">${getActionDisplayName(actionCode)}</span>
+                <strong style="font-size:0.85rem; color:#fff; text-shadow:0 1px 4px rgba(0,0,0,0.9); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">📙 ${formatColoredDateTag(dateStr)}</strong>
               </div>
-              <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
-                <span class="badge" style="background:rgba(0,0,0,0.75); color:#ff69b4; border:1px solid #ff69b4; font-weight:800; font-size:0.8rem;">💦 ${totalWater}</span>
-                <span class="badge" style="background:rgba(0,0,0,0.75); color:#38bdf8; border:1px solid #38bdf8; font-weight:800; font-size:0.75rem;">⚡ ${actionPts} pts</span>
+              <div style="display:flex; flex-direction:column; align-items:flex-end; gap:2px;">
+                <span class="badge" style="background:rgba(0,0,0,0.8); color:#ff69b4; border:1px solid #ff69b4; font-weight:800; font-size:0.7rem; padding:1px 5px;">💦 ${totalWater}</span>
+                <span class="badge" style="background:rgba(0,0,0,0.8); color:#38bdf8; border:1px solid #38bdf8; font-weight:800; font-size:0.65rem; padding:1px 4px;">⚡ ${actionPts}</span>
               </div>
             </div>
-          </div>
 
-          <div class="event-card-body">
-            <div style="display:flex; flex-wrap:wrap; gap:6px; align-items:center;">
-              ${subjectAvatarsHTML || '<span class="text-muted" style="font-size:0.8rem;">No subjects added</span>'}
+            <div style="display:flex; flex-wrap:wrap; gap:4px; align-items:center; justify-content:center; z-index:2; margin:auto 0;">
+              ${subjectAvatarsHTML || ''}
             </div>
 
-            ${locationTooltipHTML}
-
-            ${assignedMedia.length > 0 ? `<div class="evt-media-thumb-row">${mediaThumbsRowHTML}</div>` : ''}
-
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:auto; padding-top:8px; border-top:1px solid var(--border-color);">
-              <button class="btn btn-secondary btn-sm evt-pick-cover-btn" data-evtid="${evt.id}" title="Pick Cover Thumbnail">🖼️ Cover</button>
-              <div style="display:flex; gap:6px;">
-                <button class="btn btn-secondary btn-sm evt-card-select-btn" data-evtid="${evt.id}">${isSelected ? '✓ Selected' : 'Select'}</button>
-                <button class="btn btn-danger btn-sm evt-card-delete-btn" data-evtid="${evt.id}">🗑️</button>
+            <div style="display:flex; justify-content:space-between; align-items:flex-end; z-index:2;">
+              ${locationTooltipHTML || '<div></div>'}
+              <div style="display:flex; gap:4px;">
+                <button class="btn btn-secondary btn-sm evt-card-select-btn" data-evtid="${evt.id}" style="font-size:0.65rem; padding:2px 6px;">${isSelected ? '✓' : 'Select'}</button>
+                <button class="btn btn-danger btn-sm evt-card-delete-btn" data-evtid="${evt.id}" style="font-size:0.65rem; padding:2px 6px;">🗑️</button>
               </div>
             </div>
           </div>
@@ -6632,6 +6626,7 @@
           <div id="eventActionPointsInfo" style="margin-top:2px; font-size:0.85rem; font-weight:700; opacity:0.9;">⚡ Action: ${getActionDisplayName(actionCode)} (Pts: ${currentActionPointsMap[actionCode] || 0.1}) | Total 💦: <span class="badge" style="background:rgba(255,105,180,0.3); color:#fff; border:1px solid #fff; font-weight:800; font-size:0.85rem; padding:2px 8px; border-radius:12px;">💦 ${totalEventSldCount}</span></div>
         </div>
         <div style="display:flex; align-items:center; gap:8px;">
+          <button class="btn btn-secondary btn-sm" id="pickCoverPageEventBtn">🖼️ Cover</button>
           <button class="btn btn-secondary btn-sm" id="redatePageEventBtn">📅 Redate Event</button>
           <button class="btn btn-danger btn-sm" id="deletePageEventBtn">🗑️ Delete Event</button>
         </div>
@@ -6716,6 +6711,7 @@
       </div>`;
 
     document.getElementById('backToEventsListBtn').onclick = () => switchView('eventsView');
+    document.getElementById('pickCoverPageEventBtn').onclick = () => openEventCoverPickerModal(evt.id);
 
     renderActionButtonsGrid('evtDetailActionButtonsGrid', actionCode, (selectedCode) => {
       actionCode = selectedCode;
