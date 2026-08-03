@@ -7697,6 +7697,10 @@
   }
 
   function disconnectP2p() {
+    ipConnectionsList.forEach(c => c.status = 'offline');
+    updateNavP2pStatusIndicator();
+  }
+
   /* Event Listeners */
   let aiFilterMode = 'all';
 
