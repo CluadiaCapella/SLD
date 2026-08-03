@@ -79,15 +79,15 @@
     <section id="mediaBrowserView" class="view-page active">
       <div class="page-header">
         <div class="page-title-group">
-          <h1>🖼️ Media Collection</h1>
-          <p>Browse, batch tag, and organize media files.</p>
+          <h1>🖼️ Media Browser</h1>
+          <p></p>
         </div>
         <div class="page-actions" style="display:flex; gap:8px; flex-wrap:wrap;">
           <label class="btn btn-accent-blue" style="cursor:pointer;" title="📷 Add Files / Photos">
             📷
             <input type="file" id="mediaFileInput" multiple accept="image/*,video/*" style="display:none;">
           </label>
-          <label class="btn btn-secondary" id="mediaFolderInputLabel" style="cursor:pointer;" title="📁 Add Folder (Desktop browsers only)">
+          <label class="btn btn-secondary" id="mediaFolderInputLabel" style="cursor:pointer;" title="📁 Add Folder">
             📁
             <input type="file" id="mediaFolderInput" webkitdirectory directory multiple style="display:none;">
           </label>
@@ -98,12 +98,11 @@
       <div class="media-toolbar">
         <div class="search-filter-group" style="flex-wrap:wrap;">
           <input type="text" id="mediaSearchInput" class="input-text" placeholder="Search filenames, tags, subjects..." style="flex:1; min-width:140px;">
-          <button class="btn btn-secondary active-sort" id="toggleMediaRatingsBtn" title="⭐ Star Ratings: ON">⭐</button>
-          <button class="btn btn-secondary active-sort" id="toggleMediaGroupBtn" title="📁 Subject Grouping: ON">📁</button>
-          <button class="btn btn-secondary btn-sm" id="aiFilterToggleBtn" title="🖼️ Filter: All Media">🖼️</button>
-          <select id="mediaFilterTagSelect" class="select-input">
+          <button class="btn btn-secondary active-sort" id="toggleMediaRatingsBtn" title="⭐ Show Star Ratings">⭐</button>
+          <button class="btn btn-secondary active-sort" id="toggleMediaGroupBtn" title="⚪ Show Subject Grouping">⚪</button>
+          <button class="btn btn-secondary active-sort" id="aiFilterToggleBtn" title="🖼️🤖 Show All, Normal Only or AI Only Media">🖼️</button>
+          <select id="mediaFilterTagSelect" class="select-input active-sort">
             <option value="all">All Media</option>
-            <option value="hasBlueEvents">📘 SLD Events</option>
             <option value="star5">⭐⭐⭐⭐⭐ 5 Stars</option>
             <option value="star4">⭐⭐⭐⭐ 4 Stars</option>
             <option value="star3">⭐⭐⭐ 3 Stars</option>
@@ -111,13 +110,13 @@
             <option value="star1">⭐ 1 Star</option>
             <option value="star0">☆ 0 Stars (Unrated)</option>
             <option value="rejected">🚫 Rejected</option>
-            <option value="pink3">🩷🥇 (3 Pink Hearts)</option>
+            <option value="hasBlueEvents">📘 Has SLD Event</option>
             <option value="hasSubjects">Has Subject Tags</option>
-            <option value="noSubjects">Does not have Subject Tags</option>
+            <option value="noSubjects">No Subject Tags</option>
           </select>
           <div style="display:inline-flex; align-items:center; gap:6px; background:var(--bg-secondary); border:1px solid var(--border-color); padding:4px 10px; border-radius:var(--radius-md);">
             <span style="font-size:0.8rem; font-weight:700;">🔍 Size:</span>
-            <input type="range" id="globalThumbSizeSlider" min="50" max="200" step="5" value="200" style="width:70px; cursor:pointer;">
+            <input type="range" id="globalThumbSizeSlider" min="50" max="200" step="5" value="200" style="width:70px;height:25px; cursor:pointer;">
             <span id="globalThumbSizeVal" style="font-size:0.75rem; font-weight:800; min-width:38px; color:var(--accent-blue);">200px</span>
           </div>
         </div>
@@ -125,10 +124,10 @@
         <div id="mediaSortButtonsToolbar" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:10px;">
           <button type="button" class="btn btn-secondary btn-sm sort-toggle-btn" data-key="date" title="📅 Date Sort">📅</button>
           <button type="button" class="btn btn-secondary btn-sm sort-toggle-btn" data-key="subject" title="👤 Subject Sort">👤</button>
-          <button type="button" class="btn btn-secondary btn-sm sort-toggle-btn" data-key="totalPts" title="⭐ Total Points Sort">⭐</button>
-          <button type="button" class="btn btn-secondary btn-sm sort-toggle-btn" data-key="pinkPts" title="🩷 Pink Heart Points Sort">🩷</button>
-          <button type="button" class="btn btn-secondary btn-sm sort-toggle-btn" data-key="greyPts" title="🩶 Grey Heart Points Sort">🩶</button>
-          <button type="button" class="btn btn-secondary btn-sm sort-toggle-btn" data-key="bluePts" title="🩵 Blue Heart Points Sort">🩵</button>
+          <button type="button" class="btn btn-secondary btn-sm sort-toggle-btn" data-key="totalPts" title="📘 Sort">⭐</button>
+          <button type="button" class="btn btn-secondary btn-sm sort-toggle-btn" data-key="pinkPts" title="🩷 Sort">🩷</button>
+          <button type="button" class="btn btn-secondary btn-sm sort-toggle-btn" data-key="greyPts" title="🩶 Sort">🩶</button>
+          <button type="button" class="btn btn-secondary btn-sm sort-toggle-btn" data-key="bluePts" title="🩵 Sort">🩵</button>
         </div>
       </div>
 
@@ -253,13 +252,13 @@
 
       <div class="sorting-toolbar" style="margin-bottom: 20px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; background: var(--bg-card); padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
         <span class="text-muted" style="font-size:0.85rem; font-weight:700;">Sort by:</span>
-        <button class="btn btn-secondary btn-sm subject-sort-btn active" data-sort="name" data-dir="asc">🔤 Name ▲</button>
+        <button class="btn btn-secondary btn-sm subject-sort-btn active" data-sort="name" data-dir="asc">👤 Name ▲</button>
         <button class="btn btn-secondary btn-sm subject-sort-btn" data-sort="totalPoints" data-dir="desc">🏆 Total Pts</button>
-        <button class="btn btn-secondary btn-sm subject-sort-btn" data-sort="eventPoints" data-dir="desc">📅 Event Pts</button>
-        <button class="btn btn-secondary btn-sm subject-sort-btn" data-sort="eventDate" data-dir="desc">🗓️ Event Date</button>
-        <button class="btn btn-secondary btn-sm subject-sort-btn" data-sort="pink" data-dir="desc">🩷 Pink Pts</button>
-        <button class="btn btn-secondary btn-sm subject-sort-btn" data-sort="grey" data-dir="desc">🩶 Grey Pts</button>
-        <button class="btn btn-secondary btn-sm subject-sort-btn" data-sort="blue" data-dir="desc">🩵 Blue Pts</button>
+        <button class="btn btn-secondary btn-sm subject-sort-btn" data-sort="eventPoints" data-dir="desc">📙 Life Pts</button>
+        <button class="btn btn-secondary btn-sm subject-sort-btn" data-sort="eventDate" data-dir="desc">🗓️ Life Date</button>
+        <button class="btn btn-secondary btn-sm subject-sort-btn" data-sort="pink" data-dir="desc">🩷 Pts</button>
+        <button class="btn btn-secondary btn-sm subject-sort-btn" data-sort="grey" data-dir="desc">🩶 Pts</button>
+        <button class="btn btn-secondary btn-sm subject-sort-btn" data-sort="blue" data-dir="desc">🩵 Pts</button>
         <span id="subjectSelectionCount" style="margin-left:auto; font-size:0.85rem; font-weight:700; color:var(--accent-pink); display:none;"></span>
       </div>
 
@@ -272,11 +271,11 @@
           <h2 style="margin-top:40px; margin-bottom:16px; font-size:1.4rem; font-weight:800; border-bottom:1px solid var(--border-color); padding-bottom:8px;">🏆 Subject Points Leaderboards</h2>
           <div class="leaderboard-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:20px;">
             <div class="leaderboard-card">
-              <h3>📙 Events</h3>
+              <h3>📙 Life</h3>
               <div id="eventPointsLeaderboard" style="display:flex; flex-direction:column; gap:8px;"></div>
             </div>
             <div class="leaderboard-card">
-              <h3>📘 Total</h3>
+              <h3>📘 SLD</h3>
               <div id="sldLeaderboard" style="display:flex; flex-direction:column; gap:8px;"></div>
             </div>
             <div class="leaderboard-card">
@@ -299,11 +298,11 @@
           <h2 style="margin-top:40px; margin-bottom:16px; font-size:1.4rem; font-weight:800; border-bottom:1px solid var(--border-color); padding-bottom:8px;">⚡ Companion Points Leaderboards</h2>
           <div class="leaderboard-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:20px;">
             <div class="leaderboard-card">
-              <h3>📙 Events</h3>
+              <h3>📙 Life</h3>
               <div id="comboEventLb" style="display:flex; flex-direction:column; gap:8px;"></div>
             </div>
             <div class="leaderboard-card">
-              <h3>📘 Total</h3>
+              <h3>📘 SLD</h3>
               <div id="comboSldLb" style="display:flex; flex-direction:column; gap:8px;"></div>
             </div>
             <div class="leaderboard-card">
@@ -337,8 +336,8 @@
     <section id="sldView" class="view-page">
       <div class="page-header">
         <div class="page-title-group">
-          <h1>📘 SLD Events</h1>
-          <p>Recorded SLD dates, file counts, and heart medal distributions.</p>
+          <h1>📘 SLDs</h1>
+          <p></p>
         </div>
       </div>
 
@@ -365,8 +364,8 @@
     <section id="eventsView" class="view-page">
       <div class="page-header">
         <div class="page-title-group">
-          <h1>📙 Recorded Events Cards</h1>
-          <p>Multi-selectable event cards, subject avatars, location badges, and score points.</p>
+          <h1>📙 Life Events</h1>
+          <p></p>
         </div>
         <div class="page-actions">
           <div class="date-autocomplete-container" style="min-width:240px;">
@@ -382,7 +381,7 @@
           <span style="font-weight:700; font-size:0.85rem; color:var(--text-secondary);">🔀 Sort Events:</span>
           <button class="btn btn-secondary btn-sm evt-sort-btn active-sort" data-sort="date">📅 Date</button>
           <button class="btn btn-secondary btn-sm evt-sort-btn" data-sort="points">⚡ Total Points</button>
-          <button class="btn btn-secondary btn-sm evt-sort-btn" data-sort="water">💦 Total 💦</button>
+          <button class="btn btn-secondary btn-sm evt-sort-btn" data-sort="water">💦 Total</button>
           <button class="btn btn-secondary btn-sm evt-sort-btn" data-sort="subject">👤 Subject Name</button>
         </div>
         <div id="eventsSelectionInfo" style="font-size:0.85rem; font-weight:700; color:var(--accent-pink);"></div>
@@ -553,50 +552,33 @@
           <button class="btn btn-secondary btn-sm" id="regenerateThumbnailsBtn" style="margin-top:10px;">🔄 Regenerate All Thumbnails</button>
         </div>
 
-        <!-- 🌐 Peer-to-Peer Device Sync Card -->
+        <!-- 🌐 IP Relay Server Peer-to-Peer Device Sync Card -->
         <div class="chart-card">
           <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
             <div>
-              <h3 style="margin:0;">🌐 Peer-to-Peer Device Sync</h3>
-              <p class="text-muted" style="font-size:0.85rem; margin-top:4px;">Connect devices directly over LAN, Wi-Fi, or Tailscale. Sync profiles, settings, tags, events, and media in real time without a server.</p>
+              <h3 style="margin:0;">🌐 IP Relay Server Peer-to-Peer Sync</h3>
+              <p class="text-muted" style="font-size:0.85rem; margin-top:4px;">Connect devices over IP addresses (LAN or Tailscale <code>100.xxx.xxx.xxx</code> addresses allowed). Sync profiles, settings, tags, events, and media directly via an embedded relay connection.</p>
             </div>
-            <span id="p2pSyncStatusBadge" class="subject-stat-badge" style="background:rgba(255,255,255,0.1); color:var(--text-muted); border:1px solid var(--border-color);">⚪ Disconnected</span>
+            <span id="p2pSyncStatusBadge" class="subject-stat-badge" style="background:rgba(56,189,248,0.15); color:#38bdf8; border:1px solid #38bdf8; font-weight:800;">🌐 0 Online</span>
           </div>
 
           <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:16px; margin-top:16px; background:var(--bg-secondary); padding:16px; border-radius:var(--radius-md); border:1px solid var(--border-color);">
             <div>
-              <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
-                <label class="form-label" style="font-size:0.8rem; margin:0;">Your Device Name</label>
-                <span class="subject-stat-badge" style="background:rgba(56,189,248,0.15); color:#38bdf8; border:1px solid #38bdf8; font-size:0.7rem;">📱 Device Specific</span>
-              </div>
-              <input type="text" id="syncDeviceNameInput" class="input-text btn-sm" value="Device 1" placeholder="e.g. MacBook Pro" style="width:100%;">
+              <label class="form-label" style="font-size:0.8rem; margin-bottom:4px;">Connection Name</label>
+              <input type="text" id="syncConnectionNameInput" class="input-text btn-sm" placeholder="e.g. Tailscale Laptop" style="width:100%;">
             </div>
 
             <div>
-              <label class="form-label" style="font-size:0.8rem; margin-bottom:4px;">Generate Pairing Link / Code</label>
-              <button class="btn btn-primary btn-sm" id="generatePairCodeBtn" style="width:100%;">⚡ Generate Pair Code</button>
+              <label class="form-label" style="font-size:0.8rem; margin-bottom:4px;">Peer IP Address (or Host:Port)</label>
+              <input type="text" id="syncIpAddressInput" class="input-text btn-sm" placeholder="e.g. 100.115.92.40:8080" style="width:100%;">
             </div>
 
-            <div>
-              <label class="form-label" style="font-size:0.8rem; margin-bottom:4px;">Connect to Peer Device</label>
-              <div style="display:flex; gap:6px;">
-                <input type="text" id="connectPeerCodeInput" class="input-text btn-sm" placeholder="Paste Pair Code / Key..." style="flex:1;">
-                <button class="btn btn-accent-blue btn-sm" id="connectPeerBtn">🔗 Connect</button>
-              </div>
+            <div style="display:flex; align-items:flex-end;">
+              <button class="btn btn-primary btn-sm" id="addIpConnectionBtn" style="width:100%;">➕ Add IP Connection</button>
             </div>
           </div>
 
-          <!-- Pair Code Display Box -->
-          <div id="pairCodeDisplayArea" style="display:none; margin-top:14px; background:rgba(56,189,248,0.1); border:1px solid #38bdf8; border-radius:var(--radius-md); padding:12px;">
-            <div style="font-size:0.85rem; font-weight:800; color:#7dd3fc; margin-bottom:6px;">📋 Share this Pair Code with your second device:</div>
-            <div style="display:flex; gap:8px; align-items:center;">
-              <input type="text" id="activePairCodeInput" class="input-text btn-sm" readonly style="flex:1; font-family:monospace; font-size:0.8rem; background:rgba(0,0,0,0.5); color:#fff;">
-              <button class="btn btn-secondary btn-sm" id="copyPairCodeBtn">📋 Copy</button>
-            </div>
-            <p class="text-muted" style="font-size:0.75rem; margin-top:6px; margin-bottom:0;">Open SLD on your second device, paste this code under "Connect to Peer Device", and click Connect.</p>
-          </div>
-
-          <!-- Connected Peers List -->
+          <!-- IP Connections List -->
           <div style="margin-top:16px;">
             <h4 style="font-size:0.95rem; font-weight:800; margin-bottom:8px;">📱 Connected Devices</h4>
             <div id="connectedPeersList" style="display:flex; flex-direction:column; gap:8px;">
@@ -762,6 +744,12 @@
         <div id="actionTagsContainer" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;"></div>
       </div>
 
+      <div class="chart-card" style="margin-bottom:24px;">
+        <h3>⚡ Extended Sub-Actions Tags</h3>
+        <p class="text-muted" style="font-size:0.85rem;">Bonus sub-actions and challenges with point modifiers:</p>
+        <div id="subActionTagsContainer" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;"></div>
+      </div>
+
       <div class="chart-card">
         <h3>🏷️ Normal Tags</h3>
         <div id="normalTagsContainer" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;"></div>
@@ -804,6 +792,10 @@
     <div class="nav-item" data-view="settingsView">
       <span class="nav-icon">⚙️</span>
       <span>Settings</span>
+    </div>
+    <div id="navP2pStatusIndicator" class="nav-item" style="cursor:pointer; opacity:0.85;" title="Click to view IP Relay Connections in Settings">
+      <span class="nav-icon" id="navP2pStatusIcon">🌐</span>
+      <span id="navP2pStatusText" style="font-size:0.68rem; font-weight:800; color:#38bdf8;">0 Peers</span>
     </div>
   </nav>
 

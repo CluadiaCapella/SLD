@@ -60,10 +60,6 @@
     { id: 'green', name: '🟢 Green', emoji: '🟢', color: '#22c55e', cssClass: 'group-border-green', isBuiltIn: true },
     { id: 'yellow', name: '🟡 Yellow', emoji: '🟡', color: '#eab308', cssClass: 'group-border-yellow', isBuiltIn: true },
     { id: 'orange', name: '🟠 Orange', emoji: '🟠', color: '#f97316', cssClass: 'group-border-orange', isBuiltIn: true },
-    { id: 'red', name: '🔴 Red', emoji: '🔴', color: '#ef4444', cssClass: 'group-border-red', isBuiltIn: true },
-    { id: 'blue', name: '🔵 Blue', emoji: '🔵', color: '#3b82f6', cssClass: 'group-border-blue', isBuiltIn: true },
-    { id: 'white', name: '⚪ White', emoji: '⚪', color: '#f8fafc', cssClass: 'group-border-white', isBuiltIn: true },
-    { id: 'black', name: '⚫ Black', emoji: '⚫', color: '#64748b', cssClass: 'group-border-black', isBuiltIn: true }
   ];
 
   let currentSubjectGroupsList = DEFAULT_SUBJECT_GROUPS;
@@ -295,7 +291,7 @@
         return true;
       }
 
-      const currentText = groupToRename.name.replace(/^[🟤🟣🟢🟡🟠🔴🔵⚪⚫⭐\s]+/g, '').trim();
+      const currentText = groupToRename.name.replace(/^[🟤🟣🟢🟡🟠⭐\s]+/g, '').trim();
       const newText = prompt(`Enter new text for group "${groupToRename.name}":\n(The emoji/icon "${groupToRename.emoji || '⚪'}" will stay fixed)`, currentText);
       if (newText && newText.trim() && newText.trim() !== currentText) {
         groupToRename.name = `${groupToRename.emoji || '⚪'} ${newText.trim()}`;
@@ -1068,8 +1064,9 @@
 
     const combinationMap = new Map();
     for (const m of mediaList) {
-      const tags = (m.subjectTags || []).slice().sort();
-      if (tags.length >= 2) {
+      const rawTags = (m.subjectTags || []).slice();
+      const tags = Array.from(new Set(rawTags)).sort();
+      if (tags.length >= 2 && tags[0] !== tags[1]) {
         const pts = mediaStatsMap.get(m.id) || { totalHeartPts: 0, pinkPts: 0, greyPts: 0, bluePts: 0 };
         const comboKey = tags.join('::');
         const combo = combinationMap.get(comboKey) || {
@@ -1100,8 +1097,8 @@
 
     for (const e of eventsList) {
       const subCounts = e.subjectCounts || {};
-      const presentIds = Object.keys(subCounts).filter(id => (subCounts[id] || 0) > 0).sort();
-      if (presentIds.length >= 2) {
+      const presentIds = Array.from(new Set(Object.keys(subCounts).filter(id => (subCounts[id] || 0) > 0))).sort();
+      if (presentIds.length >= 2 && presentIds[0] !== presentIds[1]) {
         const comboKey = presentIds.join('::');
         const combo = combinationMap.get(comboKey) || {
           subjectIds: presentIds,
@@ -1502,7 +1499,7 @@
   let sldSortKey = 'date';
   let sldSortDir = 'desc';
 
-  let tagPrefixSettings = { subject: '🔴,🟠,🟡,🟢,🔵,🟣,🟤,🖤,⚪', normal: '🧿', action: '🧿', heart: '🩷,🩵,🩶', sld: '🪾' };
+  let tagPrefixSettings = { subject: '🟠,🟡,🟢,🟣,🟤', normal: '🧿', action: '🧿', heart: '🩷,🩵,🩶', sld: '🪾' };
   let alikeSettings = { faint: 15, medium: 30, strong: 45 };
   let globalPointsDisplayMode = 'points';
 
@@ -2179,10 +2176,10 @@
       date: { emoji: '📅', label: '📅 Date Sort' },
       subject: { emoji: '👤', label: '👤 Subject Sort' },
       totalPts: { emoji: '⭐', label: '⭐ Total Points Sort' },
-      pinkPts: { emoji: '🩷', label: '🩷 Pink Heart Points Sort' },
-      greyPts: { emoji: '🩶', label: '🩶 Grey Heart Points Sort' },
-      bluePts: { emoji: '🩵', label: '🩵 Blue Heart Points Sort' },
-      sldCount: { emoji: '📘', label: '📘 SLD Count Sort' }
+      pinkPts: { emoji: '🩷', label: '🩷 Points Sort' },
+      greyPts: { emoji: '🩶', label: '🩶 Points Sort' },
+      bluePts: { emoji: '🩵', label: '🩵 Points Sort' },
+      sldCount: { emoji: '📘', label: '📘 SLD Points Sort' }
     };
 
     const rankEmojis = ['1️⃣', '2️⃣', '3️⃣'];
@@ -2276,7 +2273,7 @@
     currentMedalSettings = (await db.getSetting('medalSettings')) || DEFAULT_MEDAL_SETTINGS;
     currentSubjectGroupsList = (await db.getSetting('subjectGroups')) || DEFAULT_SUBJECT_GROUPS;
 
-    tagPrefixSettings = (await db.getSetting('tagPrefixSettings')) || { subject: '🔴,🟠,🟡,🟢,🔵,🟣,🟤,🖤,⚪', normal: '🧿', action: '🧿', heart: '🩷,🩵,🩶', sld: '🪾' };
+    tagPrefixSettings = (await db.getSetting('tagPrefixSettings')) || { subject: '🟠,🟡,🟢,🟣,🟤', normal: '🧿', action: '🧿', heart: '🩷,🩵,🩶', sld: '🪾' };
     alikeSettings = (await db.getSetting('alikeSettings')) || { faint: 15, medium: 30, strong: 45 };
     globalPointsDisplayMode = (await db.getSetting('globalPointsDisplayMode')) || 'points';
 
@@ -3926,9 +3923,6 @@
   /* ==========================================================================
      10. SUBJECTS PAGE & GROUPS MANAGER
      ========================================================================== */
-  /* ==========================================================================
-     10. SUBJECTS PAGE & GROUPS MANAGER
-     ========================================================================== */
   function renderSubjectsPage(stats) {
     const gridContainer = document.getElementById('subjectCardsGrid');
     const sldLbContainer = document.getElementById('sldLeaderboard');
@@ -4796,18 +4790,18 @@
             <p class="text-muted" style="font-size:1rem; margin:0;">Total Score: <strong style="color:var(--accent-pink);">${sStat.totalPoints} pts</strong> (📘 ${sStat.heartPoints} SLD + 📙 ${sStat.eventPoints} Events)</p>
 
             <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:6px;">
+              <button class="btn btn-secondary btn-sm" style="height:33px" title="✏️ Rename" id="renameDetailSubjectBtn">✏️</button>
               <select id="detailSubGroupSelect" class="select-input btn-sm" style="font-size:0.85rem;">
                 ${getSubjectGroupOptionsHTML(subject.groupId)}
               </select>
-              <button class="btn btn-secondary btn-sm" id="renameDetailSubjectBtn">✏️ Rename</button>
               
               <!-- 3-Dot Submenu for Delete Subject -->
               <div class="dropdown-container" id="subDetailMenuContainer" style="position:relative; display:inline-block;">
-                <button class="btn btn-secondary btn-sm" id="subDetailMenuBtn">•••</button>
+                <button class="btn btn-secondary btn-sm" style="height:33px;" title="Submenu" id="subDetailMenuBtn">•••</button>
                 <div class="dropdown-menu" id="subDetailDropdown" style="display:none; position:absolute; left:0; top:100%; z-index:10; background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:6px; min-width:160px; box-shadow:var(--shadow-md);">
                   <button class="btn btn-danger btn-sm" id="deleteDetailSubjectBtn" style="width:100%; text-align:left;">🗑️ Delete Subject</button>
                 </div>
-              </div>
+              </div>\\
             </div>
           </div>
         </div>
@@ -5511,6 +5505,7 @@
      ========================================================================== */
   function renderTagsPage() {
     const actionContainer = document.getElementById('actionTagsContainer');
+    const subActionContainer = document.getElementById('subActionTagsContainer');
     const normalContainer = document.getElementById('normalTagsContainer');
 
     const actionCodes = Array.from({ length: 12 }, (_, i) => i + 1);
@@ -5524,6 +5519,15 @@
           <input type="number" step="0.1" min="0" max="100" class="input-text btn-sm action-pts-input" data-code="${code}" value="${currentPts}" style="width:64px; padding:2px 6px; font-size:0.8rem; background:rgba(0,0,0,0.3); border-color:rgba(255,255,255,0.3); color:#fff;">
         </div>`;
     }).join('');
+
+    if (subActionContainer) {
+      subActionContainer.innerHTML = SUB_ACTION_TAGS.map(sat => `
+        <div class="tag-chip-bubble nav-action-chip" style="display:inline-flex; align-items:center; gap:6px; background:rgba(255,105,180,0.15); border:1px solid #ff69b4; color:#fff;">
+          <span style="font-weight:700;">${sat.name}</span>
+          <span class="badge" style="background:rgba(0,0,0,0.4); color:#38bdf8; border:1px solid #38bdf8; font-size:0.75rem; padding:1px 5px;">+${sat.pts} pts</span>
+          ${sat.parentAction !== 'all' ? `<span class="badge" style="background:rgba(255,255,255,0.1); font-size:0.7rem; color:var(--text-muted);">Action #${sat.parentAction}</span>` : ''}
+        </div>`).join('');
+    }
 
     actionContainer.querySelectorAll('.action-chip-name').forEach(chip => {
       chip.onclick = () => {
@@ -6226,7 +6230,7 @@
     if (where.countryOnline) chips.push(`<span class="badge" style="background:rgba(244,63,94,0.15); color:#f43f5e; border:1px solid #f43f5e; font-size:0.75rem; padding:2px 6px; border-radius:6px; margin:2px;">🌐 ${where.countryOnline}</span>`);
     if (where.stateApp) chips.push(`<span class="badge" style="background:rgba(56,189,248,0.15); color:#38bdf8; border:1px solid #38bdf8; font-size:0.75rem; padding:2px 6px; border-radius:6px; margin:2px;">📱 ${where.stateApp}</span>`);
     if (where.city) chips.push(`<span class="badge" style="background:rgba(168,85,247,0.15); color:#a855f7; border:1px solid #a855f7; font-size:0.75rem; padding:2px 6px; border-radius:6px; margin:2px;">🏙️ ${where.city}</span>`);
-    if (where.place) chips.push(`<span class="badge" style="background:rgba(34,197,94,0.15); color:#22c55e; border:1px solid #22c55e; font-size:0.75rem; padding:2px 6px; border-radius:6px; margin:2px;">📍 ${where.place}</span>`);
+    if (where.place) chips.push(`<span class="badge" style="background:rgba(34,197,94,0.15); color:#22c55e; border:1px solid #22c55e; font-size:0.75rem; padding:2px 6px; border-radius:6px; margin:2px;">📍6222 ${where.place}</span>`);
     if (where.zone) chips.push(`<span class="badge" style="background:rgba(234,179,8,0.15); color:#eab308; border:1px solid #eab308; font-size:0.75rem; padding:2px 6px; border-radius:6px; margin:2px;">🧭 ${where.zone}</span>`);
     if (where.gcode) chips.push(`<span class="badge" style="background:rgba(249,115,22,0.15); color:#f97316; border:1px solid #f97316; font-size:0.75rem; padding:2px 6px; border-radius:6px; margin:2px;">📌 ${where.gcode}</span>`);
 
@@ -6318,18 +6322,24 @@
         </div>
       `).join('');
 
-      const locationTooltipHTML = evt.where ? `
-        <div class="event-where-tooltip-wrap" style="position:absolute; bottom:8px; left:8px; z-index:3;">
-          <span class="badge" style="background:rgba(0,0,0,0.85); color:#f43f5e; border:1px solid #f43f5e; font-size:0.68rem; padding:2px 6px; border-radius:10px;">🌐 ${evt.where.countryOnline || 'Location'}</span>
-          <div class="event-where-tooltip">
-            <div>🌐 Country/Online: <strong>${evt.where.countryOnline || '—'}</strong></div>
-            <div>📱 State/App: <strong>${evt.where.stateApp || '—'}</strong></div>
-            <div>🏙️ City: <strong>${evt.where.city || '—'}</strong></div>
-            <div>📍 Place: <strong>${evt.where.place || '—'}</strong></div>
-            <div>🧭 Zone: <strong>${evt.where.zone || '—'}</strong></div>
-            <div>📌 GCode: <strong>${evt.where.gcode || '—'}</strong></div>
-          </div>
-        </div>` : '';
+     const locationTooltipHTML = evt.where ? `
+  <div class="event-where-tooltip-wrap" 
+       style="position:absolute; bottom:8px; left:8px; z-index:3; display:inline-block;"
+       onmouseenter="this.querySelector('.event-where-tooltip').style.display='block'"
+       onmouseleave="this.querySelector('.event-where-tooltip').style.display='none'">
+    <span class="badge" style="background:rgba(0,0,0,0.85); color:#f43f5e; border:1px solid #f43f5e; font-size:0.68rem; padding:2px 6px; border-radius:10px; cursor:pointer;">
+      🌐 ${evt.where.countryOnline || 'Location'}
+    </span>
+    <div class="event-where-tooltip" 
+         style="display:none; position:absolute; bottom:24px; left:0; width:max-content; max-width:170px; background:rgba(15, 23, 42, 0.95); border:1px solid var(--border-color); color:#fff; padding:8px; border-radius:var(--radius-md); font-size:0.7rem; z-index:100; pointer-events:none; box-shadow:0 4px 12px rgba(0,0,0,0.5);">
+      <div>🌐 Country/Online: <strong>${evt.where.countryOnline || '—'}</strong></div>
+      <div>📱 State/App: <strong>${evt.where.stateApp || '—'}</strong></div>
+      <div>🏙️ City: <strong>${evt.where.city || '—'}</strong></div>
+      <div>📍 Place: <strong>${evt.where.place || '—'}</strong></div>
+      <div>🧭 Zone: <strong>${evt.where.zone || '—'}</strong></div>
+      <div>📌 GCode: <strong>${evt.where.gcode || '—'}</strong></div>
+    </div>
+  </div>` : '';
 
       return `
         <div class="event-card ${isSelected ? 'selected' : ''}" data-evtid="${evt.id}" style="position:relative; width:200px; height:200px; overflow:hidden; border-radius:var(--radius-md); border:1px solid var(--border-color); cursor:pointer;">
@@ -6350,10 +6360,9 @@
               ${subjectAvatarsHTML || ''}
             </div>
 
-            <div style="display:flex; justify-content:space-between; align-items:flex-end; z-index:2;">
+            <div style="display:flex; justify-content:space-between; align-items:center; width:100%; z-index:2; margin-top:auto;">
               ${locationTooltipHTML || '<div></div>'}
-              <div style="display:flex; gap:4px;">
-                <button class="btn btn-secondary btn-sm evt-card-select-btn" data-evtid="${evt.id}" style="font-size:0.65rem; padding:2px 6px;">${isSelected ? '✓' : 'Select'}</button>
+              <div style="display:flex; gap:4px; margin-left:auto; z-index:4;">
                 <button class="btn btn-danger btn-sm evt-card-delete-btn" data-evtid="${evt.id}" style="font-size:0.65rem; padding:2px 6px;">🗑️</button>
               </div>
             </div>
@@ -6498,23 +6507,38 @@
       const actionPts = currentActionPointsMap[actionCode] || 0.1;
       const genderSymbol = sub?.gender === 'Male' ? '♂️' : sub?.gender === 'NB' ? '⚧️' : '♀️';
 
-      let avatarElementHTML = avatarSrc ? `<img src="${avatarSrc}" class="subject-avatar-lg ${borderClass}" style="width:70px; height:70px; margin-bottom:8px; border-radius:50%; object-fit:cover; display:block;" alt="${sub?.name}">` : taggedMedia[0] ? renderMediaThumbnailHTML(taggedMedia[0], `subject-avatar-lg ${borderClass}`, 'width:70px; height:70px; border-radius:50%; object-fit:cover;') : `<div class="subject-avatar-lg ${borderClass}" style="width:70px; height:70px; margin-bottom:8px; display:flex; align-items:center; justify-content:center; font-size:32px; border-radius:50%; background:var(--bg-secondary);">👤</div>`;
+      const avatarContainerStyle = "width:75%; height:75%; aspect-ratio:1/1; overflow:hidden; display:flex; align-items:center; justify-content:center; margin-bottom:8px;";
+
+        let avatarElementHTML = avatarSrc ? `
+          <div class="${borderClass}" style="${avatarContainerStyle}">
+            <img src="${avatarSrc}" style="width:100%; height:100%;" alt="${sub?.name}">
+          </div>` 
+          : taggedMedia[0] ? `
+          <div class="${borderClass}" style="${avatarContainerStyle}">
+            ${renderMediaThumbnailHTML(taggedMedia[0], '', 'width:100%; height:100%;')}
+          </div>` 
+          : `
+          <div class="${borderClass}" style="${avatarContainerStyle} background:var(--bg-secondary);">
+            <span style="font-size:70px;">👤</span>
+          </div>`;
 
       return `
         <div id="eventParticipantCard-${subId}" class="subject-card evt-participant-card ${borderClass}" data-subid="${subId}" style="width:190px; padding:14px; display:flex; flex-direction:column; align-items:center; text-align:center; background:var(--bg-secondary); border-radius:var(--radius-lg); border:1px solid var(--border-color); cursor:pointer;" title="Click to view Subject Profile">
           ${avatarElementHTML}
-          <div style="font-weight:800; font-size:1.05rem; margin-bottom:4px; color:var(--text-primary); display:flex; align-items:center; gap:4px;">
+          <div style="font-weight:800; font-size:1.05rem; margin-bottom:4px; color:var(--text-primary); display:flex; align-items:center; gap:4px; z-index:10;">
             <span>${genderSymbol}</span> ${getSubjectDisplayName(sub)}
           </div>
           
-          <div style="margin-top:auto; font-size:0.85rem; display:flex; flex-direction:column; align-items:center; gap:6px; width:100%;">
-            <div class="edit-sld-count-badge" data-subid="${subId}" style="font-weight:800; color:var(--accent-pink); font-size:0.95rem; cursor:pointer; background:rgba(255,105,180,0.2); padding:3px 10px; border-radius:12px; border:1px solid var(--accent-pink); width:100%; box-sizing:border-box;" title="Click to edit 💦 count">💦 Count: <strong>${count}</strong> ✏️</div>
-            <div style="font-weight:700; color:#38bdf8; font-size:0.8rem; margin-bottom:2px;">⚡ Points: <strong>${(count * actionPts).toFixed(1)}</strong></div>
-            <div style="display:flex; gap:6px; align-items:center; justify-content:center; width:100%;">
-              <button class="btn btn-secondary btn-sm evt-sub-dec" data-subid="${subId}" title="Decrease 💦 Count">➖</button>
+          <div style="margin-bottom:auto; font-size:0.65rem; display:flex; flex-direction:column; align-items:center; gap:6px; width:100%;">
+            <div class="" data-subid="${subId}" style="font-weight:800; color:var(--accent-pink); font-size:0.95rem; cursor:pointer; background:rgba(255,105,180,0.2); padding:0px 0px; border-radius:12px; border:1px solid var(--accent-pink); width:98%; box-sizing:border-box; z-index:1;" title="💦 Count">
               <button class="btn btn-secondary btn-sm evt-sub-inc" data-subid="${subId}" title="Increase 💦 Count">➕</button>
-              <button class="btn btn-danger btn-sm remove-evt-sub" data-subid="${subId}" title="Remove Participant">✖</button>
+              <strong>${count}💦 </strong>
+              <button class="btn btn-secondary btn-sm evt-sub-dec" data-subid="${subId}" title="Decrease 💦 Count">➖</button>
             </div>
+            <div style="position:absolute; top:8px; left:8px; z-index:10; font-weight:700; color:#38bdf8; font-size:0.75rem; background:rgba(0,0,0,0.75); border:1px solid #38bdf8; padding:2px 6px; border-radius:8px; backdrop-filter:blur(4px);">
+            ⚡ ${(count * actionPts).toFixed(1)}
+            </div>
+            <button class="btn btn-danger btn-sm remove-evt-sub" data-subid="${subId}" title="Remove Participant" style="position:absolute; top:8px; right:8px; z-index:10; padding:2px 6px; font-size:0.7rem; line-height:1; border-radius:6px;">✖</button>
           </div>
         </div>`;
     }).join('');
@@ -7673,280 +7697,6 @@
   }
 
   function disconnectP2p() {
-    if (rtcDataChannel) rtcDataChannel.close();
-    if (rtcPeerConnection) rtcPeerConnection.close();
-    rtcDataChannel = null;
-    rtcPeerConnection = null;
-    isP2pConnected = false;
-    updateP2pStatusUI('disconnected');
-    renderConnectedPeersUI();
-  }
-
-  function sendP2pMessage(msgObj) {
-    if (rtcDataChannel && rtcDataChannel.readyState === 'open') {
-      rtcDataChannel.send(JSON.stringify(msgObj));
-    }
-  }
-
-  function waitForIceGatheringComplete(pc, maxWaitMs = 2500) {
-    return new Promise((resolve) => {
-      if (pc.iceGatheringState === 'complete') {
-        resolve();
-        return;
-      }
-      let timeoutId = null;
-      const checkState = () => {
-        if (pc.iceGatheringState === 'complete') {
-          if (timeoutId) clearTimeout(timeoutId);
-          pc.removeEventListener('icegatheringstatechange', checkState);
-          resolve();
-        }
-      };
-      pc.addEventListener('icegatheringstatechange', checkState);
-      timeoutId = setTimeout(() => {
-        pc.removeEventListener('icegatheringstatechange', checkState);
-        resolve();
-      }, maxWaitMs);
-    });
-  }
-
-  function sortCandidatesPreferTailscale(candidatesList = []) {
-    return candidatesList.sort((a, b) => {
-      const strA = (typeof a === 'string' ? a : a?.candidate || '').toLowerCase();
-      const strB = (typeof b === 'string' ? b : b?.candidate || '').toLowerCase();
-
-      const isTsA = /\b100\.(6[4-9]|[7-9][0-9]|1[0-1][0-9]|12[0-7])\./.test(strA);
-      const isTsB = /\b100\.(6[4-9]|[7-9][0-9]|1[0-1][0-9]|12[0-7])\./.test(strB);
-
-      if (isTsA && !isTsB) return -1;
-      if (!isTsA && isTsB) return 1;
-      return 0;
-    });
-  }
-
-  async function generatePairCode() {
-    updateP2pStatusUI('connecting', 'Gathering Network Candidates (Step 1)...');
-    rtcPeerConnection = new RTCPeerConnection(RTC_CONFIG);
-    const channel = rtcPeerConnection.createDataChannel('sld-sync-channel');
-    setupDataChannelEvents(channel);
-
-    const candidates = [];
-    rtcPeerConnection.onicecandidate = (e) => {
-      if (e.candidate) candidates.push(e.candidate);
-    };
-
-    const offer = await rtcPeerConnection.createOffer();
-    await rtcPeerConnection.setLocalDescription(offer);
-
-    await waitForIceGatheringComplete(rtcPeerConnection, 2500);
-
-    // Prioritize Tailscale 100.x.y.z candidates at top of list
-    sortCandidatesPreferTailscale(candidates);
-
-    const payload = {
-      offer: rtcPeerConnection.localDescription,
-      candidates,
-      deviceName: document.getElementById('syncDeviceNameInput')?.value || 'Device 1'
-    };
-
-    const encodedCode = btoa(JSON.stringify(payload));
-    const codeArea = document.getElementById('pairCodeDisplayArea');
-    const inputEl = document.getElementById('activePairCodeInput');
-
-    if (codeArea && inputEl) {
-      inputEl.value = encodedCode;
-      codeArea.style.display = 'block';
-    }
-    updateP2pStatusUI('connecting', 'Step 1: Offer Code Generated. Paste on Device 2.');
-  }
-
-  async function connectToPeer(codeStr) {
-    if (!codeStr || !codeStr.trim()) { alert('Please enter a valid Pair Code.'); return; }
-    try {
-      updateP2pStatusUI('connecting', 'Connecting to Peer...');
-      const payload = JSON.parse(atob(codeStr.trim()));
-
-      if (payload.offer) {
-        rtcPeerConnection = new RTCPeerConnection(RTC_CONFIG);
-        rtcPeerConnection.ondatachannel = (e) => setupDataChannelEvents(e.channel);
-
-        const candidates = [];
-        rtcPeerConnection.onicecandidate = (e) => {
-          if (e.candidate) candidates.push(e.candidate);
-        };
-
-        await rtcPeerConnection.setRemoteDescription(new RTCSessionDescription(payload.offer));
-        if (payload.candidates && Array.isArray(payload.candidates)) {
-          sortCandidatesPreferTailscale(payload.candidates);
-          for (const c of payload.candidates) {
-            try {
-              await rtcPeerConnection.addIceCandidate(new RTCIceCandidate(c));
-            } catch (err) {}
-          }
-        }
-
-        const answer = await rtcPeerConnection.createAnswer();
-        await rtcPeerConnection.setLocalDescription(answer);
-
-        await waitForIceGatheringComplete(rtcPeerConnection, 2500);
-
-        sortCandidatesPreferTailscale(candidates);
-
-        const answerPayload = {
-          answer: rtcPeerConnection.localDescription,
-          candidates,
-          deviceName: document.getElementById('syncDeviceNameInput')?.value || 'Device 2'
-        };
-
-        const answerCode = btoa(JSON.stringify(answerPayload));
-        const codeArea = document.getElementById('pairCodeDisplayArea');
-        const inputEl = document.getElementById('activePairCodeInput');
-
-        if (codeArea && inputEl) {
-          inputEl.value = answerCode;
-          codeArea.style.display = 'block';
-          alert('Step 2: Copy this Answer Code back to Device 1 (Phone) to complete pairing!');
-        }
-        updateP2pStatusUI('connecting', 'Step 2: Answer Code Generated. Paste back on Device 1.');
-      } else if (payload.answer) {
-        if (!rtcPeerConnection) {
-          alert('Please click "Generate Pair Code" on this device first before connecting the answer code.');
-          return;
-        }
-        await rtcPeerConnection.setRemoteDescription(new RTCSessionDescription(payload.answer));
-        if (payload.candidates && Array.isArray(payload.candidates)) {
-          sortCandidatesPreferTailscale(payload.candidates);
-          for (const c of payload.candidates) {
-            try {
-              await rtcPeerConnection.addIceCandidate(new RTCIceCandidate(c));
-            } catch (err) {}
-          }
-        }
-        updateP2pStatusUI('connecting', 'Finalizing Connection...');
-      }
-    } catch (err) {
-      console.error('Peer connection error:', err);
-      alert('Error connecting to peer. Please verify the pair code.');
-      updateP2pStatusUI('disconnected');
-    }
-  }
-
-  /* PRIORITY SYNC QUEUE HANDLER */
-  async function triggerPriorityQueueSync() {
-    if (!isP2pConnected) return;
-
-    // Priority 1: Settings, Profiles, Subjects, Groups, Action Maps, Prefixes
-    const subjects = await db.getAll('subjects');
-    const groups = await db.getAll('subjectGroups');
-    const actionPointsMap = await db.getSetting('actionPointsMap');
-    const medalSettings = await db.getSetting('medalSettings');
-
-    sendP2pMessage({
-      type: 'sync_priority_1',
-      payload: { subjects, groups, actionPointsMap, medalSettings }
-    });
-
-    // Priority 2: Events
-    const events = await db.getAll('events');
-    sendP2pMessage({
-      type: 'sync_priority_2',
-      payload: { events }
-    });
-
-    // Priority 3: Media Metadata & Thumbnails (Unified Package)
-    const activeMedia = await db.getActiveMedia();
-    const metadataAndThumbsPackage = activeMedia.map(m => ({
-      id: m.id,
-      profileId: m.profileId,
-      collectionId: m.collectionId,
-      filename: m.filename,
-      type: m.type,
-      thumbnailUrl: m.thumbnailUrl || m.customThumbnail,
-      customThumbnail: m.customThumbnail || null,
-      hash: m.hash,
-      blueBookEvents: m.blueBookEvents || [],
-      subjectTags: m.subjectTags || [],
-      normalTags: m.normalTags || [],
-      viewTransform: m.viewTransform || {}
-    }));
-
-    sendP2pMessage({
-      type: 'sync_priority_3',
-      payload: { media: metadataAndThumbsPackage }
-    });
-
-    // Priority 4: Background High-Res Media File Blobs (Chunked Sequential Transfer)
-    setTimeout(async () => {
-      for (const m of activeMedia) {
-        if (!isP2pConnected) break;
-        if (m.dataUrl) {
-          sendP2pMessage({
-            type: 'sync_priority_4_media_chunk',
-            payload: { id: m.id, dataUrl: m.dataUrl }
-          });
-          await new Promise(r => setTimeout(r, 100));
-        }
-      }
-    }, 1500);
-  }
-
-  async function handleIncomingP2pMessage(msg) {
-    if (!msg || !msg.type) return;
-
-    if (msg.type === 'handshake') {
-      p2pDeviceName = msg.deviceName || 'Sibling Device';
-      updateP2pStatusUI('connected', p2pDeviceName);
-      renderConnectedPeersUI();
-    } else if (msg.type === 'candidate') {
-      if (rtcPeerConnection && msg.candidate) {
-        try { await rtcPeerConnection.addIceCandidate(new RTCIceCandidate(msg.candidate)); } catch (e) {}
-      }
-    } else if (msg.type === 'sync_priority_1') {
-      const { subjects, groups, actionPointsMap, medalSettings } = msg.payload || {};
-      if (subjects) for (const s of subjects) await db.put('subjects', s);
-      if (groups) for (const g of groups) await db.put('subjectGroups', g);
-      if (actionPointsMap) await db.setSetting('actionPointsMap', actionPointsMap);
-      if (medalSettings) await db.setSetting('medalSettings', medalSettings);
-      await loadAppState();
-      renderCurrentView();
-    } else if (msg.type === 'sync_priority_2') {
-      const { events } = msg.payload || {};
-      if (events) for (const e of events) await db.put('events', e);
-      await loadAppState();
-      renderCurrentView();
-    } else if (msg.type === 'sync_priority_3') {
-      const { media } = msg.payload || {};
-      if (media) {
-        for (const metaItem of media) {
-          const existing = await db.get('media', metaItem.id);
-          if (!existing) {
-            await db.put('media', {
-              ...metaItem,
-              dataUrl: metaItem.thumbnailUrl || ''
-            });
-          } else {
-            await db.put('media', {
-              ...existing,
-              ...metaItem,
-              dataUrl: existing.dataUrl || metaItem.thumbnailUrl || ''
-            });
-          }
-        }
-        await loadAppState();
-        renderCurrentView();
-      }
-    } else if (msg.type === 'sync_priority_4_media_chunk') {
-      const { id, dataUrl } = msg.payload || {};
-      if (id && dataUrl) {
-        const existing = await db.get('media', id);
-        if (existing) {
-          existing.dataUrl = dataUrl;
-          await db.put('media', existing);
-        }
-      }
-    }
-  }
-
   /* Event Listeners */
   let aiFilterMode = 'all';
 
@@ -7958,19 +7708,12 @@
     // Download & Export Listeners
     document.getElementById('exportSelectedMediaBtn')?.addEventListener('click', exportSelectedMediaFiles);
 
-    // WebRTC & Storage Listeners
-    document.getElementById('generatePairCodeBtn')?.addEventListener('click', generatePairCode);
-    document.getElementById('connectPeerBtn')?.addEventListener('click', () => {
-      const val = document.getElementById('connectPeerCodeInput')?.value;
-      connectToPeer(val);
+    // IP Relay Connection Manager Listeners
+    document.getElementById('addIpConnectionBtn')?.addEventListener('click', addIpConnection);
+    document.getElementById('refreshIpPingsBtn')?.addEventListener('click', () => {
+      ipConnectionsList.forEach((_, idx) => pingIpConnection(idx));
     });
-    document.getElementById('copyPairCodeBtn')?.addEventListener('click', () => {
-      const input = document.getElementById('activePairCodeInput');
-      if (input && input.value) {
-        navigator.clipboard.writeText(input.value);
-        alert('Pair code copied to clipboard!');
-      }
-    });
+    loadIpConnections();
     document.getElementById('maxStorageLimitSelect')?.addEventListener('change', async (e) => {
       await db.setSetting('maxStorageLimitGb', e.target.value);
       updateStorageGauge();

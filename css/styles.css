@@ -807,14 +807,24 @@ body {
 .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
 
-/* Selection Floating Banner Overlay */
+/* Selection Floating Banner Overlay (Raised above 60px Bottom Navbar) */
 .selection-banner-sticky {
-  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 2500;
-  background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.95));
-  backdrop-filter: blur(12px); border: 1px solid var(--accent-pink); color: #fff;
-  padding: 12px 20px; border-radius: var(--radius-lg); display: flex;
-  justify-space-between; align-items: center; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
-  margin-bottom: 0;
+  position: fixed !important;
+  bottom: calc(75px + env(safe-area-inset-bottom, 0px)) !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  z-index: 25000 !important;
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.95)) !important;
+  backdrop-filter: blur(12px) !important;
+  border: 1px solid var(--accent-pink) !important;
+  color: #fff !important;
+  padding: 12px 20px !important;
+  border-radius: var(--radius-lg) !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8) !important;
+  margin-bottom: 0 !important;
 }
 
 /* Tags & Bubbles */
@@ -1070,35 +1080,6 @@ body {
   flex: 1;
 }
 
-.event-where-tooltip-wrap {
-  position: relative;
-  display: inline-block;
-}
-
-.event-where-tooltip {
-  visibility: hidden;
-  opacity: 0;
-  position: absolute;
-  bottom: 125%;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(15, 23, 42, 0.95);
-  border: 1px solid var(--border-color);
-  color: #fff;
-  padding: 8px 12px;
-  border-radius: var(--radius-md);
-  font-size: 0.75rem;
-  white-space: nowrap;
-  z-index: 100;
-  box-shadow: var(--shadow-lg);
-  transition: opacity 0.2s ease, visibility 0.2s ease;
-  pointer-events: none;
-}
-
-.event-where-tooltip-wrap:hover .event-where-tooltip {
-  visibility: visible;
-  opacity: 1;
-}
 
 .sub-action-chip {
   display: inline-flex;
@@ -1121,6 +1102,20 @@ body {
   border-color: #fff;
   color: #fff;
   box-shadow: 0 0 8px rgba(255,105,180,0.5);
+}
+
+/* Standard 200x200 Combo Cards */
+.subject-card.evt-combo-card,
+#comboCardsGrid .subject-card {
+  width: 200px !important;
+  height: 200px !important;
+  min-width: 200px !important;
+  min-height: 200px !important;
+  max-width: 200px !important;
+  max-height: 200px !important;
+  flex: 0 0 200px !important;
+  border-radius: var(--radius-md) !important;
+  box-sizing: border-box !important;
 }
 
 .modal-card { width: 95% !important; padding: 16px !important; margin: 10px auto !important; }
