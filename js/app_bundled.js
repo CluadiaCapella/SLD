@@ -1897,7 +1897,15 @@
     initPWAandUpdates();
     initSystemErrorLoggerUI();
     initGlobalThumbSizeSlider();
-    renderCurrentView();
+    
+    const retainedView = restoreAppStateFromHashOrStorage();
+
+    window.addEventListener('hashchange', () => {
+      const hView = window.location.hash ? window.location.hash.replace(/^#/, '').trim() : '';
+      if (hView && hView !== currentActiveView) {
+        restoreAppStateFromHashOrStorage();
+      }
+    });
 
     document.getElementById('headerBrandLogo')?.addEventListener('click', () => {
       triggerSplashScreen(() => {
@@ -2310,6 +2318,54 @@
     return `${emoji} ${cleanName || g.name}`;
   }
 
+  function saveAppStateToStorage(viewId) {
+    const stateObj = {
+      viewId: viewId || currentActiveView || 'mediaBrowserView',
+      activeDetailSubjectId,
+      activeDetailComboKey,
+      activeDetailSldDateTag,
+      activeDetailEventId,
+      activeDetailTagName
+    };
+    try {
+      sessionStorage.setItem('sld_retained_page_state', JSON.stringify(stateObj));
+      if (window.location.hash !== '#' + stateObj.viewId) {
+        window.history.replaceState(stateObj, '', '#' + stateObj.viewId);
+      }
+    } catch (e) {}
+  }
+
+  function restoreAppStateFromHashOrStorage() {
+    let savedState = null;
+    try {
+      const stored = sessionStorage.getItem('sld_retained_page_state');
+      if (stored) savedState = JSON.parse(stored);
+    } catch (e) {}
+
+    const rawHash = window.location.hash ? window.location.hash.replace(/^#/, '').trim() : '';
+    const targetView = rawHash || (savedState ? savedState.viewId : 'mediaBrowserView');
+
+    if (savedState) {
+      if (savedState.activeDetailSubjectId) activeDetailSubjectId = savedState.activeDetailSubjectId;
+      if (savedState.activeDetailComboKey) activeDetailComboKey = savedState.activeDetailComboKey;
+      if (savedState.activeDetailSldDateTag) activeDetailSldDateTag = savedState.activeDetailSldDateTag;
+      if (savedState.activeDetailEventId) activeDetailEventId = savedState.activeDetailEventId;
+      if (savedState.activeDetailTagName) activeDetailTagName = savedState.activeDetailTagName;
+    }
+
+    const validViews = [
+      'mediaBrowserView', 'subjectsView', 'subjectDetailsView', 'combinationDetailsView',
+      'sldView', 'sldDetailsView', 'eventsView', 'eventDetailsView', 'tagsView',
+      'tagDetailsView', 'statsView', 'settingsView'
+    ];
+
+    if (validViews.includes(targetView)) {
+      switchView(targetView, true);
+      return targetView;
+    }
+    return 'mediaBrowserView';
+  }
+
   function switchView(viewId, skipPushState = false) {
     currentActiveView = viewId;
     document.querySelectorAll('.nav-item').forEach(el => {
@@ -2319,6 +2375,7 @@
       el.classList.toggle('active', el.id === viewId);
     });
     renderCurrentView();
+    saveAppStateToStorage(viewId);
 
     if (!skipPushState) {
       const stateObj = {
@@ -2331,11 +2388,7 @@
         isLightbox: false
       };
       try {
-        if (window.location.protocol === 'file:') {
-          window.history.pushState(stateObj, '');
-        } else {
-          window.history.pushState(stateObj, '', '#' + viewId);
-        }
+        window.history.pushState(stateObj, '', '#' + viewId);
       } catch (e) {}
     }
   }
