@@ -1,0 +1,78 @@
+/* Media Grid, Card Layout & Group Border Priority Styles */
+.media-grid {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: wrap !important;
+  align-items: flex-start !important;
+  gap: 12px !important;
+  width: 100% !important;
+}
+
+.media-card {
+  position: relative !important;
+  width: var(--thumb-size, 200px) !important;
+  height: var(--thumb-size, 200px) !important;
+  min-width: var(--thumb-size, 200px) !important;
+  min-height: var(--thumb-size, 200px) !important;
+  max-width: var(--thumb-size, 200px) !important;
+  max-height: var(--thumb-size, 200px) !important;
+  flex: 0 0 var(--thumb-size, 200px) !important;
+  border-radius: var(--radius-md) !important;
+  overflow: hidden !important;
+  background: var(--bg-secondary);
+  border: 2px solid transparent;
+  cursor: pointer;
+  box-sizing: border-box !important;
+  transition: all 0.2s ease;
+}
+
+.media-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.media-card.selected { border-color: var(--accent-pink); box-shadow: 0 0 12px rgba(255, 105, 180, 0.5); }
+
+.media-thumbnail, .subject-avatar, .subject-card img, .sld-mini-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover !important;
+  object-position: top center !important;
+}
+
+.subject-avatar-lg {
+  width: 200px !important;
+  height: 200px !important;
+  min-width: 200px !important;
+  min-height: 200px !important;
+  max-width: 200px !important;
+  max-height: 200px !important;
+  border-radius: var(--radius-lg) !important;
+  object-fit: cover !important;
+  object-position: top center !important;
+  border: 3px solid var(--border-color);
+  flex-shrink: 0;
+  box-shadow: var(--shadow-md);
+}
+
+.media-card-overlay {
+  position: absolute; inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 60%);
+  display: flex; flex-direction: column; justify-content: flex-end;
+  padding: calc(var(--thumb-size, 200px) * 0.04 + 2px);
+  opacity: 0.95; transition: opacity 0.2s ease;
+}
+
+.media-card-badges {
+  display: flex; flex-wrap: wrap; gap: 3px;
+}
+.heart-badge {
+  font-size: clamp(0.5rem, calc(var(--thumb-size, 200px) * 0.07), 0.75rem);
+  font-weight: 700;
+  padding: calc(var(--thumb-size, 200px) * 0.01 + 1px) calc(var(--thumb-size, 200px) * 0.02 + 2px);
+  border-radius: var(--radius-sm);
+  background: rgba(0,0,0,0.7);
+}
+
+/* Subject Group Color Priorities */
+.group-border-brown { border-color: #a16207 !important; }
+.group-border-purple { border-color: #a855f7 !important; }
+.group-border-green { border-color: #22c55e !important; }
+.group-border-yellow { border-color: #eab308 !important; }
+.group-border-orange { border-color: #f97316 !important; }

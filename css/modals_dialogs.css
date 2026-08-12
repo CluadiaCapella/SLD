@@ -1,0 +1,33 @@
+/* Modal Backdrops, Dialog Cards & Selection Overlay Styles */
+.modal-backdrop {
+  position: fixed; inset: 0; background: rgba(0, 0, 0, 0.75);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100000; opacity: 0; pointer-events: none; transition: opacity 0.2s ease;
+}
+.modal-backdrop.active { opacity: 1; pointer-events: auto; }
+
+.modal-card {
+  background: var(--bg-secondary); border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color); width: 90%; max-width: 500px;
+  padding: 24px; box-shadow: var(--shadow-lg);
+}
+
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+
+/* Selection Floating Banner Overlay (Raised above 60px Bottom Navbar) */
+.selection-banner {
+  position: fixed; bottom: 85px; left: 50%; transform: translateX(-50%);
+  background: var(--bg-secondary); border: 1px solid var(--accent-pink);
+  border-radius: 30px; padding: 8px 16px; display: flex; align-items: center; gap: 12px;
+  z-index: 5000; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); max-width: 90vw; flex-wrap: wrap;
+}
+
+.tag-chip-bubble {
+  display: inline-flex; align-items: center; padding: 4px 10px;
+  border-radius: 20px; font-size: 0.8rem; font-weight: 600;
+  background: rgba(255, 255, 255, 0.08); border: 1px solid var(--border-color);
+  user-select: none;
+}
+.tag-chip-remove { cursor: pointer; font-weight: bold; font-size: 0.75rem; margin-left: 4px; }
+.subject-tag-pill { display: inline-flex; align-items: center; background: rgba(56, 189, 248, 0.2); color: var(--accent-blue); padding: 2px 6px; border-radius: var(--radius-sm); font-size: 0.75rem; font-weight: 600; }
