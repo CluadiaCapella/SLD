@@ -1,0 +1,95 @@
+/* Leaderboard Cards & Rankings Styles */
+.leaderboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.leaderboard-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.leaderboard-card h3 {
+  font-size: 1.05rem;
+  font-weight: 800;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.leaderboard-card h3:hover {
+  color: var(--accent-pink);
+}
+
+.leaderboard-list-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.leader-avatar-thumb {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: top center;
+  border: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.leader-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  transition: all 0.2s ease;
+  cursor: pointer;
+  gap: 10px;
+}
+
+.leader-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--accent-pink);
+  transform: translateX(2px);
+}
+
+.leader-rank {
+  font-weight: 900;
+  font-size: 0.9rem;
+  color: var(--accent-pink);
+  min-width: 24px;
+}
+
+.leader-info {
+  flex: 1;
+  font-size: 0.875rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.group-drag-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; background: var(--bg-secondary); border-radius: var(--radius-md);
+  margin-bottom: 8px; border: 1px solid var(--border-color); cursor: grab;
+}

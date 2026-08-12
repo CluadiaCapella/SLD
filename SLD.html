@@ -42,12 +42,16 @@
 
   <!-- Plotly.js -->
   <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
-
   <!-- Application Stylesheets -->
   <link rel="stylesheet" href="css/design_tokens.css">
   <link rel="stylesheet" href="css/layout_navigation.css">
   <link rel="stylesheet" href="css/media_browser_grid.css">
   <link rel="stylesheet" href="css/modals_dialogs.css">
+  <link rel="stylesheet" href="css/subject_cards.css">
+  <link rel="stylesheet" href="css/leaderboard_components.css">
+  <link rel="stylesheet" href="css/splash_screen.css">
+  <link rel="stylesheet" href="css/bottom_nav_bar.css">
+  <link rel="stylesheet" href="css/lightbox_viewer.css">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -767,281 +771,12 @@
 
   </main>
 
-  <!-- Bottom Navigation Bar -->
-  <nav class="bottom-nav" id="bottomNavBar">
-    <div class="nav-item active" data-view="mediaBrowserView">
-      <span class="nav-icon">🖼️</span>
-      <span>Browser</span>
-    </div>
-    <div class="nav-item" data-view="eventsView">
-      <span class="nav-icon">📙</span>
-      <span>Events</span>
-    </div>
-    <div class="nav-item" data-view="sldView">
-      <span class="nav-icon">📘</span>
-      <span>SLD</span>
-    </div>
-    <div class="nav-item" data-view="subjectsView">
-      <span class="nav-icon">👥</span>
-      <span>Subjects</span>
-    </div>
-    <div class="nav-item" data-view="tagsView">
-      <span class="nav-icon">🏷️</span>
-      <span>Tags</span>
-    </div>
-    <div class="nav-item" data-view="statsView">
-      <span class="nav-icon">📊</span>
-      <span>Stats</span>
-    </div>
-    <div class="nav-item" data-view="settingsView">
-      <span class="nav-icon">⚙️</span>
-      <span>Settings</span>
-    </div>
-    <div id="navP2pStatusIndicator" class="nav-item" style="cursor:pointer; opacity:0.85;" title="Click to view IP Relay Connections in Settings">
-      <span class="nav-icon" id="navP2pStatusIcon">🌐</span>
-      <span id="navP2pStatusText" style="font-size:0.68rem; font-weight:800; color:#38bdf8;">0 Peers</span>
-    </div>
-  </nav>
-
-  <!-- MODALS -->
-
-  <!-- Fullscreen Lightbox Modal -->
-  <div id="lightboxModal" class="lightbox-modal">
-    <div class="lightbox-header">
-      <div id="lightboxTitle" style="font-weight:700; color:#fff;"></div>
-      <div style="display:flex; align-items:center; gap:12px;">
-        <button class="btn btn-secondary btn-sm" id="lbDownloadOriginalBtn">📥 Download Original</button>
-        <button class="btn btn-secondary btn-sm" id="lbEditThumbnailBtn">✂️ Edit Thumbnail</button>
-        <span id="lightboxCounter" class="text-muted" style="font-size:0.85rem;"></span>
-        <button class="btn btn-secondary btn-sm" id="closeLightboxBtn">✖ Close</button>
-      </div>
-    </div>
-
-    <!-- Non-Destructive Editing Suite Toolbar -->
-    <div class="lightbox-editor-toolbar" id="lightboxEditorToolbar">
-      <button class="btn btn-secondary btn-sm" id="lbRotateBtn">🔄 Rotate</button>
-      <button class="btn btn-secondary btn-sm" id="lbOpenCropModalBtn">✂️ Crop</button>
-      <button class="btn btn-secondary btn-sm" id="lbAiToggleBtn">🤖 AI</button>
-      <button class="btn btn-secondary btn-sm" id="lbSetAvatarBtn" style="display:none; color:var(--accent-pink); font-weight:700;">👤 Use as Avatar</button>
-      <button class="btn btn-secondary btn-sm" id="lbResetCropBtn" style="display:none; color:#ef4444;">🔄 Clear Crop</button>
-      <button class="btn btn-secondary btn-sm" id="lbToggleVideoClipperBtn" style="display:none;">✂️ Video Clipper (A-B)</button>
-    </div>
-
-    <!-- Video Clipper Panel -->
-    <div class="video-clipper-panel" id="videoClipperPanel" style="display:none;">
-      <div class="clipper-slider-group">
-        <span class="clipper-handle-label"><strong>Start (A):</strong> <span id="clipStartVal">0.0s</span></span>
-        <input type="range" id="clipStartSlider" min="0" max="100" value="0" step="0.1" style="flex:1;">
-      </div>
-      <div class="clipper-slider-group">
-        <span class="clipper-handle-label"><strong>End (B):</strong> <span id="clipEndVal">10.0s</span></span>
-        <input type="range" id="clipEndSlider" min="0" max="100" value="10" step="0.1" style="flex:1;">
-      </div>
-    </div>
-
-    <div class="lightbox-content-wrapper" id="lightboxContentWrapper">
-      <button class="lightbox-nav-btn prev" id="lbPrevBtn">‹</button>
-      <div class="lightbox-media-container" id="lightboxMediaContainer"></div>
-      <button class="lightbox-nav-btn next" id="lbNextBtn">›</button>
-
-      <!-- Floating Heart Overlay for Fullscreen Mode -->
-      <div class="floating-heart-overlay" id="floatingHeartOverlay" style="display:none;">
-        <button class="heart-toggle-btn btn-sm" id="flPinkBtn">🩷</button>
-        <button class="heart-toggle-btn btn-sm" id="flGreyBtn">🩶</button>
-        <button class="heart-toggle-btn btn-sm" id="flBlueBtn">🩵</button>
-      </div>
-    </div>
-
-    <!-- Categorized Lightbox Footer -->
-    <div class="lightbox-footer">
-      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:16px;">
-        <!-- Subjects Section -->
-        <div>
-          <div style="font-weight:700; font-size:0.85rem; margin-bottom:6px;">👥 Subjects</div>
-          <div class="subject-autocomplete-container" style="margin-bottom:8px;">
-            <input type="text" id="lbSubjectInput" class="input-text btn-sm" placeholder="+ Add / create subject..." style="width:100%;">
-            <div id="lbSubjectAutocomplete" class="subject-autocomplete-dropdown"></div>
-          </div>
-          <div id="lbSubjectsContainer"></div>
-        </div>
-
-        <!-- SLDs Section -->
-        <div>
-          <div style="font-weight:700; font-size:0.85rem; margin-bottom:6px;">📘 SLDs</div>
-          <div class="date-autocomplete-container" style="margin-bottom:8px;">
-            <input type="text" id="lbSldInput" class="input-text btn-sm" placeholder="+ Add SLD Date (e.g. 630)..." style="width:100%;">
-            <div id="lbSldAutocomplete" class="date-autocomplete-dropdown"></div>
-          </div>
-          <div id="lbBlueEventsList"></div>
-        </div>
-
-        <!-- Events Section -->
-        <div>
-          <div style="font-weight:700; font-size:0.85rem; margin-bottom:6px;">📙 Events</div>
-          <select id="lbEventSelect" class="select-input btn-sm" style="width:100%; margin-bottom:8px;">
-            <option value="">+ Assign Existing Event...</option>
-          </select>
-          <div id="lbEventsContainer"></div>
-        </div>
-
-        <!-- Standard Tags Section -->
-        <div>
-          <div style="font-weight:700; font-size:0.85rem; margin-bottom:6px;">🏷️ Tags</div>
-          <div class="tag-autocomplete-container" style="margin-bottom:8px;">
-            <input type="text" id="lbNormalTagInput" class="input-text btn-sm" placeholder="+ Add tag (Enter)..." style="width:100%;">
-            <div id="lbNormalTagAutocomplete" class="tag-autocomplete-dropdown"></div>
-          </div>
-          <div id="lbNormalTagsContainer"></div>
-        </div>
-
-        <!-- Star Rating Override Section -->
-        <div>
-          <div style="font-weight:700; font-size:0.85rem; margin-bottom:6px;">⭐ Star Rating & Overrides</div>
-          <div id="lbRatingControls" style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-bottom:8px;">
-            <button class="btn btn-secondary btn-sm rating-override-btn" data-rating="-1" title="Mark as Rejected">🚫 Rejected</button>
-            <button class="btn btn-secondary btn-sm rating-override-btn" data-rating="1" title="1 Star">⭐ 1</button>
-            <button class="btn btn-secondary btn-sm rating-override-btn" data-rating="2" title="2 Stars">⭐ 2</button>
-            <button class="btn btn-secondary btn-sm rating-override-btn" data-rating="3" title="3 Stars">⭐ 3</button>
-            <button class="btn btn-secondary btn-sm rating-override-btn" data-rating="4" title="4 Stars">⭐ 4</button>
-            <button class="btn btn-secondary btn-sm rating-override-btn" data-rating="5" title="5 Stars">⭐ 5</button>
-            <button class="btn btn-secondary btn-sm rating-override-btn" data-rating="auto" title="Reset to Auto Calculation">🔄 Auto</button>
-          </div>
-          <div id="lbRatingBadgeInfo" style="font-size:0.8rem; font-weight:700; color:var(--text-secondary);"></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Event Creation Wizard Modal -->
-  <div id="createEventWizardModal" class="modal-backdrop">
-    <div class="modal-card">
-      <div class="modal-header">
-        <h3>Create Event (<span id="wizardDateTagTitle"></span>)</h3>
-      </div>
-      <div class="modal-body">
-        <div class="form-group">
-          <label class="form-label">Participants (Select at least 2 subjects required)</label>
-          <div class="subject-autocomplete-container" style="margin-bottom:10px;">
-            <input type="text" id="wizardSubjectInput" class="input-text" placeholder="+ Search / add subject..." style="width:100%;">
-            <div id="wizardSubjectAutocomplete" class="subject-autocomplete-dropdown"></div>
-          </div>
-          <div id="wizardParticipantsList"></div>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">Action Tag (Select 1 of 12)</label>
-          <div id="wizardActionButtonsGrid" class="action-buttons-grid"></div>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">Event Notes</label>
-          <input type="text" id="wizardNotesInput" class="input-text" placeholder="Description / notes..." style="width:100%;">
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" id="cancelWizardBtn">Cancel</button>
-        <button class="btn btn-primary" id="saveWizardBtn">Create Event</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Subject Groups Manager Modal -->
-  <div id="manageGroupsModal" class="modal-backdrop">
-    <div class="modal-card" style="max-width:550px;">
-      <div class="modal-header">
-        <h3>🎨 Subject Groups & Color Priority</h3>
-        <button class="btn btn-secondary btn-sm" id="closeManageGroupsBtn">✖</button>
-      </div>
-      <div class="modal-body">
-        <p class="text-muted" style="font-size:0.85rem; margin-bottom:12px;">Drag to reorder group color priority. The highest group determines card border color when a file has multiple subjects.</p>
-        <div id="groupsListContainer" style="max-height:300px; overflow-y:auto; margin-bottom:16px;"></div>
-
-        <div style="display:flex; gap:8px;">
-          <input type="text" id="newCustomGroupNameInput" class="input-text" placeholder="+ New Custom Group Name..." style="flex:1;">
-          <button class="btn btn-primary" id="addCustomGroupBtn">Add Group</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Avatar Photo Picker Modal -->
-  <div id="avatarPickerModal" class="modal-backdrop">
-    <div class="modal-card" style="max-width:700px;">
-      <div class="modal-header">
-        <h3>Select Photo for Avatar Crop</h3>
-        <button class="btn btn-secondary btn-sm" id="closeAvatarPickerBtn">✖</button>
-      </div>
-      <div class="modal-body">
-        <div class="media-grid" id="avatarPickerMediaGrid" style="max-height:400px; overflow-y:auto;"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Cropper Modal -->
-  <div id="cropperModal" class="modal-backdrop">
-    <div class="modal-card" style="max-width:700px;">
-      <div class="modal-header">
-        <h3 id="cropperModalTitle">Crop Image / Thumbnail</h3>
-        <button class="btn btn-secondary btn-sm" id="closeCropperModalBtn">✖</button>
-      </div>
-      <div class="modal-body">
-        <div id="videoSeekerContainer" style="display:none; margin-bottom:12px; background:var(--bg-primary); padding:12px; border-radius:var(--radius-md);">
-          <label class="form-label" style="display:flex; justify-space-between;">
-            <span>🎞️ Seek Video Frame:</span>
-            <span id="videoCurrentTimeLabel">0.0s</span>
-          </label>
-          <input type="range" id="videoSeekerSlider" min="0" max="100" value="0" step="0.1" style="width:100%;">
-          <video id="cropperHiddenVideo" style="display:none;" preload="auto"></video>
-        </div>
-
-        <div style="max-height:450px; overflow:hidden;">
-          <img id="cropperImage" src="" style="max-width:100%; display:block;" alt="Crop image">
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" id="cancelCropBtn">Cancel</button>
-        <button class="btn btn-primary" id="saveCropBtn">Save Crop</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Interactive Crop Framing Modal for Lightbox Viewer -->
-  <div id="lightboxCropModal" class="modal-backdrop">
-    <div class="modal-card" style="max-width:850px;">
-      <div class="modal-header">
-        <h3>✂️ Non-Destructive Crop Framing</h3>
-        <div style="display:flex; align-items:center; gap:8px;">
-          <label style="font-size:0.85rem; font-weight:600;">Ratio:</label>
-          <select id="cropModalRatioSelect" class="select-input btn-sm">
-            <option value="free">Freeform (Resizable)</option>
-            <option value="screen">Screen Ratio</option>
-            <option value="1:1">1:1 Square</option>
-            <option value="4:3">4:3 Standard</option>
-            <option value="16:9">16:9 Widescreen</option>
-            <option value="custom">Custom Ratio...</option>
-          </select>
-          <button class="btn btn-secondary btn-sm" id="closeCropModalBtn">✖</button>
-        </div>
-      </div>
-      <div class="modal-body" style="text-align:center;">
-        <div id="cropModalVideoSeeker" style="display:none; margin-bottom:12px; background:var(--bg-primary); padding:10px; border-radius:var(--radius-md);">
-          <span class="text-muted" style="font-size:0.85rem;">Seek Video Frame: <span id="cropVideoTimeLabel">0.5s</span></span>
-          <input type="range" id="cropVideoSeekerSlider" min="0" max="100" value="0.5" step="0.1" style="width:100%;">
-          <video id="cropModalHiddenVideo" style="display:none;"></video>
-        </div>
-        <div style="max-height:55vh; overflow:hidden; display:flex; justify-content:center; align-items:center; background:#000; border-radius:var(--radius-md);">
-          <img id="cropModalImage" src="" style="max-width:100%; display:block;" alt="Crop image preview">
-        </div>
-      </div>
-      <div class="modal-footer" style="justify-content:space-between;">
-        <button class="btn btn-danger" id="cropModalClearBtn">🗑️ Clear Custom Crop</button>
-        <div>
-          <button class="btn btn-secondary" id="cancelCropModalBtn">Cancel</button>
-          <button class="btn btn-primary" id="confirmCropModalBtn">Save Crop Framing</button>
-        </div>
-      </div>
-    </div>
-  </div>
+  <!-- Bottom Navigation Bar & Modals Component Containers -->
+  <div id="bottomNavBarContainer"></div>
+  <div id="lightboxModalContainer"></div>
+  <div id="eventWizardContainer"></div>
+  <div id="manageGroupsContainer"></div>
+  <div id="cropperModalsContainer"></div>
 
   <!-- Full Leaderboard Rank Modal -->
   <div id="leaderboardModal" class="modal-backdrop">
@@ -1170,6 +905,7 @@
   <script src="js/global_undo_engine.js"></script>
   <script src="js/emoji_renderers.js"></script>
   <script src="js/runtime_error_handlers.js"></script>
+  <script src="js/template_loader.js"></script>
   <script src="js/app_bootstrap.js"></script>
   <script src="js/app_bundled.js"></script>
 </body>

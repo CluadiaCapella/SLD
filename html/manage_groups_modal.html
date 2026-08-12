@@ -1,0 +1,18 @@
+<!-- Subject Groups Manager Modal Partial Template -->
+<div id="manageGroupsModal" class="modal-backdrop">
+  <div class="modal-card" style="max-width:550px;">
+    <div class="modal-header">
+      <h3>🎨 Subject Groups & Color Priority</h3>
+      <button class="btn btn-secondary btn-sm" id="closeManageGroupsBtn">✖</button>
+    </div>
+    <div class="modal-body">
+      <p class="text-muted" style="font-size:0.85rem; margin-bottom:12px;">Drag to reorder group color priority. The highest group determines card border color when a file has multiple subjects.</p>
+      <div id="groupsListContainer" style="max-height:300px; overflow-y:auto; margin-bottom:16px;"></div>
+
+      <div style="display:flex; gap:8px;">
+        <input type="text" id="newCustomGroupNameInput" class="input-text" placeholder="+ New Custom Group Name..." style="flex:1;">
+        <button class="btn btn-primary" id="addCustomGroupBtn">Add Group</button>
+      </div>
+    </div>
+  </div>
+</div>

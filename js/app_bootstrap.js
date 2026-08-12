@@ -2,10 +2,17 @@
  * DOMContentLoaded App Bootstrap Coordinator
  */
 
+async function startAppBootstrap() {
+  if (typeof loadHtmlComponents === 'function') {
+    await loadHtmlComponents();
+  }
+  if (typeof initApp === 'function') {
+    initApp();
+  }
+}
+
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    if (typeof initApp === 'function') initApp();
-  });
+  document.addEventListener('DOMContentLoaded', startAppBootstrap);
 } else {
-  if (typeof initApp === 'function') initApp();
+  startAppBootstrap();
 }

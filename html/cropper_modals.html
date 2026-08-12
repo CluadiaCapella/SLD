@@ -1,0 +1,78 @@
+<!-- Avatar Photo Picker Modal -->
+<div id="avatarPickerModal" class="modal-backdrop">
+  <div class="modal-card" style="max-width:700px;">
+    <div class="modal-header">
+      <h3>Select Photo for Avatar Crop</h3>
+      <button class="btn btn-secondary btn-sm" id="closeAvatarPickerBtn">✖</button>
+    </div>
+    <div class="modal-body">
+      <div class="media-grid" id="avatarPickerMediaGrid" style="max-height:400px; overflow-y:auto;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Cropper Modal -->
+<div id="cropperModal" class="modal-backdrop">
+  <div class="modal-card" style="max-width:700px;">
+    <div class="modal-header">
+      <h3 id="cropperModalTitle">Crop Image / Thumbnail</h3>
+      <button class="btn btn-secondary btn-sm" id="closeCropperModalBtn">✖</button>
+    </div>
+    <div class="modal-body">
+      <div id="videoSeekerContainer" style="display:none; margin-bottom:12px; background:var(--bg-primary); padding:12px; border-radius:var(--radius-md);">
+        <label class="form-label" style="display:flex; justify-content:space-between;">
+          <span>🎞️ Seek Video Frame:</span>
+          <span id="videoCurrentTimeLabel">0.0s</span>
+        </label>
+        <input type="range" id="videoSeekerSlider" min="0" max="100" value="0" step="0.1" style="width:100%;">
+        <video id="cropperHiddenVideo" style="display:none;" preload="auto"></video>
+      </div>
+
+      <div style="max-height:450px; overflow:hidden;">
+        <img id="cropperImage" src="" style="max-width:100%; display:block;" alt="Crop image">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="cancelCropBtn">Cancel</button>
+      <button class="btn btn-primary" id="saveCropBtn">Save Crop</button>
+    </div>
+  </div>
+</div>
+
+<!-- Interactive Crop Framing Modal for Lightbox Viewer -->
+<div id="lightboxCropModal" class="modal-backdrop">
+  <div class="modal-card" style="max-width:850px;">
+    <div class="modal-header">
+      <h3>✂️ Non-Destructive Crop Framing</h3>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <label style="font-size:0.85rem; font-weight:600;">Ratio:</label>
+        <select id="cropModalRatioSelect" class="select-input btn-sm">
+          <option value="free">Freeform (Resizable)</option>
+          <option value="screen">Screen Ratio</option>
+          <option value="1:1">1:1 Square</option>
+          <option value="4:3">4:3 Standard</option>
+          <option value="16:9">16:9 Widescreen</option>
+          <option value="custom">Custom Ratio...</option>
+        </select>
+        <button class="btn btn-secondary btn-sm" id="closeCropModalBtn">✖</button>
+      </div>
+    </div>
+    <div class="modal-body" style="text-align:center;">
+      <div id="cropModalVideoSeeker" style="display:none; margin-bottom:12px; background:var(--bg-primary); padding:10px; border-radius:var(--radius-md);">
+        <span class="text-muted" style="font-size:0.85rem;">Seek Video Frame: <span id="cropVideoTimeLabel">0.5s</span></span>
+        <input type="range" id="cropVideoSeekerSlider" min="0" max="100" value="0.5" step="0.1" style="width:100%;">
+        <video id="cropModalHiddenVideo" style="display:none;"></video>
+      </div>
+      <div style="max-height:55vh; overflow:hidden; display:flex; justify-content:center; align-items:center; background:#000; border-radius:var(--radius-md);">
+        <img id="cropModalImage" src="" style="max-width:100%; display:block;" alt="Crop image preview">
+      </div>
+    </div>
+    <div class="modal-footer" style="justify-content:space-between;">
+      <button class="btn btn-danger" id="cropModalClearBtn">🗑️ Clear Custom Crop</button>
+      <div>
+        <button class="btn btn-secondary" id="cancelCropModalBtn">Cancel</button>
+        <button class="btn btn-primary" id="confirmCropModalBtn">Save Crop Framing</button>
+      </div>
+    </div>
+  </div>
+</div>
