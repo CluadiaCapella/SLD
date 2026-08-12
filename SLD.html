@@ -745,7 +745,7 @@
       </div>
 
       <div class="chart-card" style="margin-bottom:24px;">
-        <h3>⚡ Extended Sub-Actions Tags</h3>
+        <h3>⚡ Actions</h3>
         <p class="text-muted" style="font-size:0.85rem;">Bonus sub-actions and challenges with point modifiers:</p>
         <div id="subActionTagsContainer" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;"></div>
       </div>
@@ -815,8 +815,7 @@
 
     <!-- Non-Destructive Editing Suite Toolbar -->
     <div class="lightbox-editor-toolbar" id="lightboxEditorToolbar">
-      <button class="btn btn-secondary btn-sm" id="lbRotateLeftBtn">↩️ Rotate Left</button>
-      <button class="btn btn-secondary btn-sm" id="lbRotateRightBtn">↪️ Rotate Right</button>
+      <button class="btn btn-secondary btn-sm" id="lbRotateBtn">🔄 Rotate</button>
       <button class="btn btn-secondary btn-sm" id="lbOpenCropModalBtn">✂️ Crop</button>
       <button class="btn btn-secondary btn-sm" id="lbAiToggleBtn">🤖 AI</button>
       <button class="btn btn-secondary btn-sm" id="lbSetAvatarBtn" style="display:none; color:var(--accent-pink); font-weight:700;">👤 Use as Avatar</button>
@@ -1119,7 +1118,55 @@
   </div>
 
   <!-- Modular Application Scripts -->
-  <script src="js/src/01_db.js"></script>
+  <script src="js/database.js"></script>
+  <script src="js/common_ui.js"></script>
+  <script src="js/router_views.js"></script>
+  <script src="js/scoring_stats.js"></script>
+  <script src="js/cropper_charts.js"></script>
+  <script src="js/system_error_logger.js"></script>
+  <script src="js/pwa_updates.js"></script>
+  <script src="js/cascade_sort.js"></script>
+  <script src="js/app_init_events.js"></script>
+  <script src="js/media_browser.js"></script>
+  <script src="js/selection_tags_engine.js"></script>
+  <script src="js/selection_inline_renderers.js"></script>
+  <script src="js/lightbox_viewer.js"></script>
+  <script src="js/lightbox_downloads_editing.js"></script>
+  <script src="js/lightbox_metadata_panels.js"></script>
+  <script src="js/subjects_page_view.js"></script>
+  <script src="js/subject_details_view.js"></script>
+  <script src="js/groups_manager.js"></script>
+  <script src="js/avatar_photo_picker.js"></script>
+  <script src="js/combination_details_view.js"></script>
+  <script src="js/tags_page_view.js"></script>
+  <script src="js/tag_details_view.js"></script>
+  <script src="js/sld_list_view.js"></script>
+  <script src="js/sld_details_view.js"></script>
+  <script src="js/events_page_view.js"></script>
+  <script src="js/event_details_view.js"></script>
+  <script src="js/event_creation_wizard.js"></script>
+  <script src="js/stats_page_view.js"></script>
+  <script src="js/settings_page_view.js"></script>
+  <script src="js/autocompletes_ui.js"></script>
+  <script src="js/media_crop_modal.js"></script>
+  <script src="js/splash_screen_manager.js"></script>
+  <script src="js/selection_batch_ui.js"></script>
+  <script src="js/p2p_sync_network.js"></script>
+  <script src="js/media_thumbnails.js"></script>
+  <script src="js/leaderboard_charts.js"></script>
+  <script src="js/system_logger.js"></script>
+  <script src="js/sorting_toolbar.js"></script>
+  <script src="js/navigation_history.js"></script>
+  <script src="js/database_core.js"></script>
+  <script src="js/action_helpers.js"></script>
+  <script src="js/media_exporter.js"></script>
+  <script src="js/pwa_update_manager.js"></script>
+  <script src="js/storage_gauge.js"></script>
+  <script src="js/thumbnail_pipeline.js"></script>
+  <script src="js/global_undo_engine.js"></script>
+  <script src="js/emoji_renderers.js"></script>
+  <script src="js/runtime_error_handlers.js"></script>
+  <script src="js/app_bootstrap.js"></script>
   <script src="js/app_bundled.js"></script>
 </body>
 </html>
