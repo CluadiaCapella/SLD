@@ -90,6 +90,8 @@ function closeLightbox(isPopState = false) {
   if (heartOverlay) heartOverlay.style.display = 'none';
   lightboxIndex = -1;
 
+  updateSelectionStateUI();
+
   if (isAlreadyOpen && !isPopState) {
     if (window.history.state && window.history.state.isLightbox) {
       try {

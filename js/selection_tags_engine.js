@@ -150,20 +150,7 @@ async function removeTagFromAllSelected(type, val, labelStr) {
   showToastNotification(`Removed ${labelStr} from selection`);
 }
 
-function updateSelectionStateUI() {
-  const selectionBanner = document.getElementById('selectionBanner');
-  const selectedCountEl = document.getElementById('selectedCount');
 
-  if (selectedMediaIds.size > 0) {
-    selectionBanner.style.display = 'flex';
-    selectedCountEl.textContent = `${selectedMediaIds.size} file(s) selected`;
-    renderSelectionInlineTags();
-  } else {
-    selectionBanner.style.display = 'none';
-    renderMediaBrowser();
-  }
-  updateUndoRedoButtonsUI();
-}
 
 function setupInlineSelectionTagInputs() {
   const subInput = document.getElementById('inlineSubjectInput');

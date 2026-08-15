@@ -18,7 +18,12 @@ function setupEventListeners() {
 
   document.addEventListener('click', (e) => {
     if (selectedMediaIds.size > 0) {
-      if (!e.target.closest('.media-card') && !e.target.closest('#selectionBanner') && !e.target.closest('#multiSelectTagsModal')) {
+      const isMediaCard = Boolean(e.target.closest('.media-card'));
+      const isSelectionBanner = Boolean(e.target.closest('#selectionBanner'));
+      const isMultiSelectModal = Boolean(e.target.closest('#multiSelectTagsModal'));
+      const isAutocompleteDropdown = Boolean(e.target.closest('.subject-autocomplete-dropdown, .tag-autocomplete-dropdown, .date-autocomplete-dropdown, .autocomplete-dropdown'));
+
+      if (!isMediaCard && !isSelectionBanner && !isMultiSelectModal && !isAutocompleteDropdown) {
         selectedMediaIds.clear();
         updateSelectionStateUI();
       }

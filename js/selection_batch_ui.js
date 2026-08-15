@@ -28,14 +28,18 @@ function updateSelectionStateUI() {
   const selectedCountEl = document.getElementById('selectedCount');
   const lbModal = document.getElementById('lightboxModal');
   const isLbActive = lbModal && (lbModal.classList.contains('active') || lbModal.style.display === 'flex');
+  const isMediaBrowserActive = !currentActiveView || currentActiveView === 'mediaBrowserView';
 
-  if (selectedMediaIds.size > 0 && !isLbActive) {
-    if (selectionBanner) selectionBanner.style.display = 'flex';
+  if (selectedMediaIds.size > 0 && !isLbActive && isMediaBrowserActive) {
+    if (selectionBanner) {
+      selectionBanner.style.display = 'flex';
+      selectionBanner.className = 'selection-banner-sticky';
+    }
     if (selectedCountEl) selectedCountEl.textContent = `${selectedMediaIds.size} file(s) selected`;
     renderSelectionInlineTags();
   } else {
     if (selectionBanner) selectionBanner.style.display = 'none';
-    if (!isLbActive) renderMediaBrowser();
+    if (!isLbActive && isMediaBrowserActive) renderMediaBrowser();
   }
   updateUndoRedoButtonsUI();
 }
