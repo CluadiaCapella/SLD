@@ -18,7 +18,7 @@
         <button type="button" class="btn btn-secondary btn-sm sld-sort-btn" data-sort="files" data-dir="desc">📘 Files</button>
         
         <div style="margin-left:auto; display:flex; align-items:center; gap:8px; min-width:240px;">
-          <input type="text" id="sldFilterInput" class="input-text btn-sm" placeholder="🔍 Filter SLD by file, subject, tag..." style="width:100%;">
+          <input type="text" id="sldFilterInput" class="input-text btn-sm" placeholder="🔍 Filter SLD (e.g. AI+jenny, -bob, >091201)..." style="width:100%;">
         </div>
       </div>
 

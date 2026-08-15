@@ -31,6 +31,7 @@
       </div>
 
       <div class="sorting-toolbar" style="margin-bottom: 20px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; background: var(--bg-card); padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+        <input type="text" id="subjectsSearchInput" class="input-text btn-sm" placeholder="🔍 Search subjects (e.g. jenny+AI, -female)..." style="min-width:180px; flex:1;">
         <span class="text-muted" style="font-size:0.85rem; font-weight:700;">Sort by:</span>
         <button class="btn btn-secondary btn-sm subject-sort-btn active" data-sort="name" data-dir="asc">👤 Name ▲</button>
         <button class="btn btn-secondary btn-sm subject-sort-btn" data-sort="totalPoints" data-dir="desc">🏆 Total Pts</button>

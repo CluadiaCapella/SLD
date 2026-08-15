@@ -561,6 +561,304 @@ function showToastNotification(msg) {
   toast._timer = setTimeout(() => { toast.style.opacity = '0'; }, 3000);
 }
 
+function parseSearchQuery(queryStr) {
+  if (!queryStr || typeof queryStr !== 'string') return [];
+  const s = queryStr.trim();
+  if (!s) return [];
+
+  const rawTerms = [];
+  let currentSign = '+';
+  let currentBuffer = '';
+  let inQuotes = false;
+  let quoteChar = '';
+
+  let i = 0;
+  while (i < s.length) {
+    const ch = s[i];
+
+    if ((ch === '"' || ch === "'") && (!inQuotes || quoteChar === ch)) {
+      inQuotes = !inQuotes;
+      quoteChar = inQuotes ? ch : '';
+      currentBuffer += ch;
+      i++;
+      continue;
+    }
+
+    if (!inQuotes) {
+      if (ch === '+' || ch === '-') {
+        if (currentBuffer && !/[<>=]\s*$/.test(currentBuffer)) {
+          const trimmedBuf = currentBuffer.trim();
+          if (trimmedBuf) {
+            rawTerms.push({ sign: currentSign, term: trimmedBuf });
+            currentBuffer = '';
+          }
+          currentSign = ch;
+          i++;
+          continue;
+        } else if (!currentBuffer) {
+          currentSign = ch;
+          i++;
+          continue;
+        }
+      }
+
+      if (/\s/.test(ch)) {
+        const rem = s.slice(i).trim();
+        if (/^[<>=]=?\s*\d+$/.test(currentBuffer.trim()) && /^(stars?|star|⭐)/i.test(rem)) {
+          currentBuffer += ch;
+          i++;
+          continue;
+        }
+        if (/^[<>=]=?$/.test(currentBuffer.trim())) {
+          currentBuffer += ch;
+          i++;
+          continue;
+        }
+
+        const trimmedBuf = currentBuffer.trim();
+        if (trimmedBuf) {
+          rawTerms.push({ sign: currentSign, term: trimmedBuf });
+          currentBuffer = '';
+          currentSign = '+';
+        }
+        i++;
+        continue;
+      }
+    }
+
+    currentBuffer += ch;
+    i++;
+  }
+
+  const finalTrimmed = currentBuffer.trim();
+  if (finalTrimmed) {
+    rawTerms.push({ sign: currentSign, term: finalTrimmed });
+  }
+
+  const tokens = [];
+  for (const item of rawTerms) {
+    const term = item.term.replace(/^['"]|['"]$/g, '').trim();
+    if (!term) continue;
+
+    const compMatch = term.match(/^([<>]=?|=)\s*(.+)$/);
+    if (compMatch) {
+      const compOp = compMatch[1];
+      const valStr = compMatch[2].trim();
+
+      const starMatch = valStr.match(/^(\d{1,2})\s*(stars?|star|⭐)?$/i);
+      if (starMatch && (starMatch[2] || ( /^\d+$/.test(starMatch[1]) && parseInt(starMatch[1], 10) <= 5))) {
+        tokens.push({
+          sign: item.sign,
+          type: 'star',
+          compOp: compOp,
+          targetNum: parseInt(starMatch[1], 10),
+          raw: item.sign + term
+        });
+      } else {
+        tokens.push({
+          sign: item.sign,
+          type: 'date',
+          compOp: compOp,
+          targetIso: convertDateTagToIso(valStr),
+          raw: item.sign + term
+        });
+      }
+    } else {
+      const starImplicitMatch = term.match(/^(\d{1,2})\s*(stars?|star|⭐)$/i);
+      if (starImplicitMatch) {
+        tokens.push({
+          sign: item.sign,
+          type: 'star',
+          compOp: '=',
+          targetNum: parseInt(starImplicitMatch[1], 10),
+          raw: item.sign + term
+        });
+      } else {
+        tokens.push({
+          sign: item.sign,
+          type: 'text',
+          textVal: term.toLowerCase(),
+          raw: item.sign + term
+        });
+      }
+    }
+  }
+
+  return tokens;
+}
+
+function evalSearchCompNum(actual, compOp, target) {
+  if (compOp === '<') return actual < target;
+  if (compOp === '<=') return actual <= target;
+  if (compOp === '>') return actual > target;
+  if (compOp === '>=') return actual >= target;
+  if (compOp === '=') return actual === target;
+  return actual === target;
+}
+
+function evalSearchCompIso(actualIso, compOp, targetIso) {
+  if (!actualIso) return false;
+  if (compOp === '<') return actualIso < targetIso;
+  if (compOp === '<=') return actualIso <= targetIso;
+  if (compOp === '>') return actualIso > targetIso;
+  if (compOp === '>=') return actualIso >= targetIso;
+  if (compOp === '=') return actualIso.slice(0, 10) === targetIso.slice(0, 10);
+  return actualIso >= targetIso;
+}
+
+function matchesMediaSearchFilter(m, queryTokens) {
+  if (!queryTokens || queryTokens.length === 0) return true;
+
+  for (const token of queryTokens) {
+    let tokenMatches = false;
+
+    if (token.type === 'star') {
+      const starRating = calculateMediaStarRating(m);
+      tokenMatches = evalSearchCompNum(starRating, token.compOp, token.targetNum);
+    } else if (token.type === 'date') {
+      const mediaDateIsos = [];
+      if (m.blueBookEvents && m.blueBookEvents.length > 0) {
+        for (const be of m.blueBookEvents) {
+          if (be.dateTag) mediaDateIsos.push(convertDateTagToIso(be.dateTag));
+        }
+      }
+      if (m.dateTag) mediaDateIsos.push(convertDateTagToIso(m.dateTag));
+      if (m.date) mediaDateIsos.push(convertDateTagToIso(m.date));
+
+      if (mediaDateIsos.length === 0) {
+        tokenMatches = false;
+      } else {
+        tokenMatches = mediaDateIsos.some(iso => evalSearchCompIso(iso, token.compOp, token.targetIso));
+      }
+    } else if (token.type === 'text') {
+      const val = token.textVal;
+      const matchName = (m.filename || '').toLowerCase().includes(val);
+      const matchSubjects = (m.subjectTags || []).some(sId => {
+        const sub = (currentSubjectsList || []).find(s => s.id === sId);
+        return sub && (getSubjectDisplayName(sub).toLowerCase().includes(val) || (sub.name || '').toLowerCase().includes(val));
+      });
+      const matchSld = (m.blueBookEvents || []).some(be => be.dateTag && be.dateTag.toLowerCase().includes(val));
+      const matchNormal = (m.normalTags || []).some(t => t.toLowerCase().includes(val));
+
+      tokenMatches = matchName || matchSubjects || matchSld || matchNormal;
+    }
+
+    if (token.sign === '+' && !tokenMatches) return false;
+    if (token.sign === '-' && tokenMatches) return false;
+  }
+
+  return true;
+}
+
+function matchesEventSearchFilter(evt, queryTokens) {
+  if (!queryTokens || queryTokens.length === 0) return true;
+
+  for (const token of queryTokens) {
+    let tokenMatches = false;
+
+    if (token.type === 'star') {
+      tokenMatches = false;
+    } else if (token.type === 'date') {
+      const evtIso = evt.dateTag ? convertDateTagToIso(evt.dateTag) : (evt.date ? convertDateTagToIso(evt.date) : null);
+      if (!evtIso) {
+        tokenMatches = false;
+      } else {
+        tokenMatches = evalSearchCompIso(evtIso, token.compOp, token.targetIso);
+      }
+    } else if (token.type === 'text') {
+      const val = token.textVal;
+      const matchDate = (evt.dateTag || '').toLowerCase().includes(val);
+      const matchNotes = (evt.notes || '').toLowerCase().includes(val);
+      const matchLoc = (evt.location || '').toLowerCase().includes(val);
+      const matchCode = (evt.zodiacActionCode ? String(evt.zodiacActionCode) : (evt.eventCode ? String(evt.eventCode) : '')).toLowerCase().includes(val);
+      const matchSubs = Object.keys(evt.subjectCounts || {}).some(sId => {
+        const sub = (currentSubjectsList || []).find(s => s.id === sId);
+        return sub && (getSubjectDisplayName(sub).toLowerCase().includes(val) || (sub.name || '').toLowerCase().includes(val));
+      });
+
+      tokenMatches = matchDate || matchNotes || matchLoc || matchCode || matchSubs;
+    }
+
+    if (token.sign === '+' && !tokenMatches) return false;
+    if (token.sign === '-' && tokenMatches) return false;
+  }
+
+  return true;
+}
+
+function matchesSldSearchFilter(sldItem, queryTokens) {
+  if (!queryTokens || queryTokens.length === 0) return true;
+
+  for (const token of queryTokens) {
+    let tokenMatches = false;
+
+    if (token.type === 'star') {
+      const mediaArray = Array.from(sldItem.mediaSet || []).map(mId => (currentMediaList || []).find(m => m.id === mId)).filter(Boolean);
+      tokenMatches = mediaArray.some(m => evalSearchCompNum(calculateMediaStarRating(m), token.compOp, token.targetNum));
+    } else if (token.type === 'date') {
+      const sldIso = sldItem.dateTag ? convertDateTagToIso(sldItem.dateTag) : null;
+      if (!sldIso) {
+        tokenMatches = false;
+      } else {
+        tokenMatches = evalSearchCompIso(sldIso, token.compOp, token.targetIso);
+      }
+    } else if (token.type === 'text') {
+      const val = token.textVal;
+      const sldMatch = (sldItem.dateTag || '').toLowerCase().includes(val);
+      const mediaArray = Array.from(sldItem.mediaSet || []).map(mId => (currentMediaList || []).find(m => m.id === mId)).filter(Boolean);
+      const mediaMatch = mediaArray.some(m => {
+        const nameMatch = (m.filename || '').toLowerCase().includes(val);
+        const subMatch = (m.subjectTags || []).some(sId => {
+          const sub = (currentSubjectsList || []).find(s => s.id === sId);
+          return sub && (getSubjectDisplayName(sub).toLowerCase().includes(val) || (sub.name || '').toLowerCase().includes(val));
+        });
+        const tagMatch = (m.normalTags || []).some(t => t.toLowerCase().includes(val));
+        return nameMatch || subMatch || tagMatch;
+      });
+
+      tokenMatches = sldMatch || mediaMatch;
+    }
+
+    if (token.sign === '+' && !tokenMatches) return false;
+    if (token.sign === '-' && tokenMatches) return false;
+  }
+
+  return true;
+}
+
+function matchesSubjectSearchFilter(sub, queryTokens) {
+  if (!queryTokens || queryTokens.length === 0) return true;
+
+  for (const token of queryTokens) {
+    let tokenMatches = false;
+
+    if (token.type === 'star') {
+      tokenMatches = false;
+    } else if (token.type === 'date') {
+      const subIso = sub.lastEventDate ? convertDateTagToIso(sub.lastEventDate) : null;
+      if (!subIso) {
+        tokenMatches = false;
+      } else {
+        tokenMatches = evalSearchCompIso(subIso, token.compOp, token.targetIso);
+      }
+    } else if (token.type === 'text') {
+      const val = token.textVal;
+      const matchName = (sub.name || '').toLowerCase().includes(val);
+      const matchDisp = getSubjectDisplayName(sub).toLowerCase().includes(val);
+      const matchGroup = (sub.groupId || '').toLowerCase().includes(val);
+      const matchGender = (sub.gender || '').toLowerCase().includes(val);
+      const matchTags = (sub.tags || []).some(t => t.toLowerCase().includes(val));
+
+      tokenMatches = matchName || matchDisp || matchGroup || matchGender || matchTags;
+    }
+
+    if (token.sign === '+' && !tokenMatches) return false;
+    if (token.sign === '-' && tokenMatches) return false;
+  }
+
+  return true;
+}
+
 window.calculateContentHash = calculateContentHash;
 window.renderActionButtonsGrid = renderActionButtonsGrid;
 window.createCompressedThumbnail = createCompressedThumbnail;
@@ -579,3 +877,11 @@ window.getHeartBtnHTML = getHeartBtnHTML;
 window.hideSplashScreen = hideSplashScreen;
 window.triggerSplashScreen = triggerSplashScreen;
 window.showToastNotification = showToastNotification;
+window.parseSearchQuery = parseSearchQuery;
+window.evalSearchCompNum = evalSearchCompNum;
+window.evalSearchCompIso = evalSearchCompIso;
+window.matchesMediaSearchFilter = matchesMediaSearchFilter;
+window.matchesEventSearchFilter = matchesEventSearchFilter;
+window.matchesSldSearchFilter = matchesSldSearchFilter;
+window.matchesSubjectSearchFilter = matchesSubjectSearchFilter;
+

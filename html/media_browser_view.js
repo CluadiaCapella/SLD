@@ -24,7 +24,7 @@
       <!-- Media Toolbar Search, Filter & Sort -->
       <div class="media-toolbar">
         <div class="search-filter-group" style="flex-wrap:wrap;">
-          <input type="text" id="mediaSearchInput" class="input-text" placeholder="Search filenames, tags, subjects..." style="flex:1; min-width:140px;">
+          <input type="text" id="mediaSearchInput" class="input-text" placeholder="Search filenames, tags, subjects (e.g. AI+jenny, -bob, <5 stars, >091201)..." style="flex:1; min-width:140px;">
           <button class="btn btn-secondary active-sort" id="toggleMediaRatingsBtn" title="⭐ Show Star Ratings">⭐</button>
           <button class="btn btn-secondary active-sort" id="toggleMediaGroupBtn" title="⚪ Show Subject Grouping">⚪</button>
           <button class="btn btn-secondary active-sort" id="aiFilterToggleBtn" title="🖼️🤖 Show All, Normal Only or AI Only Media">🖼️</button>

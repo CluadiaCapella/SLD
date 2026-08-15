@@ -63,21 +63,10 @@ function renderSldListPage() {
 
   let sldList = Array.from(sldTagMap.values());
 
-  const filterQuery = (document.getElementById('sldFilterInput')?.value || '').toLowerCase().trim();
-  if (filterQuery) {
-    sldList = sldList.filter(item => {
-      const mediaArray = Array.from(item.mediaSet).map(mId => currentMediaList.find(m => m.id === mId)).filter(Boolean);
-      return mediaArray.some(m => {
-        const nameMatch = (m.filename || '').toLowerCase().includes(filterQuery);
-        const subMatch = (m.subjectTags || []).some(sId => {
-          const sub = currentSubjectsList.find(s => s.id === sId);
-          return sub && getSubjectDisplayName(sub).toLowerCase().includes(filterQuery);
-        });
-        const sldMatch = (item.dateTag || '').toLowerCase().includes(filterQuery);
-        const tagMatch = (m.normalTags || []).some(t => t.toLowerCase().includes(filterQuery));
-        return nameMatch || subMatch || sldMatch || tagMatch;
-      });
-    });
+  const filterQuery = document.getElementById('sldFilterInput')?.value || '';
+  const sldTokens = parseSearchQuery(filterQuery);
+  if (sldTokens.length > 0) {
+    sldList = sldList.filter(item => matchesSldSearchFilter(item, sldTokens));
   }
 
   sldList.sort((a, b) => {

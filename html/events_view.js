@@ -19,7 +19,8 @@
 
       <!-- Events Sorting & Toolbar -->
       <div class="sorting-toolbar" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px; background:var(--bg-secondary); padding:10px 14px; border-radius:var(--radius-md); border:1px solid var(--border-color);">
-        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; flex:1;">
+          <input type="text" id="eventsSearchInput" class="input-text btn-sm" placeholder="🔍 Search events (e.g. jenny+AI, -party, >091201)..." style="min-width:200px; flex:1;">
           <span style="font-weight:700; font-size:0.85rem; color:var(--text-secondary);">🔀 Sort Events:</span>
           <button class="btn btn-secondary btn-sm evt-sort-btn active-sort" data-sort="date">📅 Date</button>
           <button class="btn btn-secondary btn-sm evt-sort-btn" data-sort="points">⚡ Total Points</button>

@@ -92,8 +92,19 @@ function renderEventsPage(stats) {
 
   if (!gridContainer) return;
 
-  if (currentEventsList.length === 0) {
-    gridContainer.innerHTML = `<div class="empty-state" style="grid-column: 1 / -1;">No events recorded yet. Type a date tag in "+ Create Event Date" above to start.</div>`;
+  const searchInput = document.getElementById('eventsSearchInput');
+  if (searchInput && !searchInput.dataset.bound) {
+    searchInput.dataset.bound = 'true';
+    searchInput.oninput = () => renderEventsPage(stats);
+  }
+
+  const searchQuery = document.getElementById('eventsSearchInput')?.value || '';
+  const queryTokens = parseSearchQuery(searchQuery);
+
+  const filteredEvents = currentEventsList.filter(evt => matchesEventSearchFilter(evt, queryTokens));
+
+  if (filteredEvents.length === 0) {
+    gridContainer.innerHTML = `<div class="empty-state" style="grid-column: 1 / -1;">No matching events found.</div>`;
     if (infoEl) infoEl.textContent = '';
     return;
   }
@@ -102,7 +113,7 @@ function renderEventsPage(stats) {
     infoEl.textContent = selectedEventCardIds.size > 0 ? `Selected Events: ${selectedEventCardIds.size} file(s)` : '';
   }
 
-  const sorted = currentEventsList.slice().sort((a, b) => {
+  const sorted = filteredEvents.slice().sort((a, b) => {
     if (activeEventSortKey === 'points') {
       const ptsA = (a.eventCode ? (currentActionPointsMap[a.eventCode] || 0) : 0.1);
       const ptsB = (b.eventCode ? (currentActionPointsMap[b.eventCode] || 0) : 0.1);

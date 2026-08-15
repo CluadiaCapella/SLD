@@ -218,16 +218,26 @@ function renderSubjectsPage(stats) {
     if (subLbSection) subLbSection.style.display = 'block';
     if (comboLbSection) comboLbSection.style.display = 'none';
 
-    if (currentSubjectsList.length === 0) {
+    const searchInput = document.getElementById('subjectsSearchInput');
+    if (searchInput && !searchInput.dataset.bound) {
+      searchInput.dataset.bound = 'true';
+      searchInput.oninput = () => renderSubjectsPage(stats);
+    }
+
+    const searchQuery = document.getElementById('subjectsSearchInput')?.value || '';
+    const queryTokens = parseSearchQuery(searchQuery);
+
+    const filteredSubjects = currentSubjectsList.filter(sub => matchesSubjectSearchFilter(sub, queryTokens));
+
+    if (filteredSubjects.length === 0) {
       gridContainer.innerHTML = `
         <div class="empty-state" style="grid-column: 1 / -1;">
           <div class="empty-state-icon">👥</div>
-          <h3>No Subjects Added</h3>
-          <p>Click "+ Add Subject" to create subject profiles.</p>
+          <h3>No Matching Subjects Found</h3>
         </div>`;
     } else {
       // Sort subjects list
-      const sortedSubjects = currentSubjectsList.slice().sort((a, b) => {
+      const sortedSubjects = filteredSubjects.slice().sort((a, b) => {
         const aStat = (stats?.allSubjectStats || []).find(s => s?.subject?.id === a.id) || { totalPoints: 0, heartPoints: 0, eventPoints: 0, pinkPoints: 0, greyPoints: 0, bluePoints: 0, latestEventDate: null };
         const bStat = (stats?.allSubjectStats || []).find(s => s?.subject?.id === b.id) || { totalPoints: 0, heartPoints: 0, eventPoints: 0, pinkPoints: 0, greyPoints: 0, bluePoints: 0, latestEventDate: null };
 

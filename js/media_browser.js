@@ -33,7 +33,8 @@ function renderMediaBrowser() {
     return;
   }
 
-  const searchQuery = (document.getElementById('mediaSearchInput')?.value || '').toLowerCase();
+  const searchQuery = document.getElementById('mediaSearchInput')?.value || '';
+  const queryTokens = parseSearchQuery(searchQuery);
   const filterTag = document.getElementById('mediaFilterTagSelect')?.value || 'all';
 
   const filtered = currentMediaList.filter(m => {
@@ -52,16 +53,8 @@ function renderMediaBrowser() {
       }
     }
 
-    if (searchQuery) {
-      const matchName = m.filename.toLowerCase().includes(searchQuery);
-      const matchSubjects = (m.subjectTags || []).some(sId => {
-        const sub = currentSubjectsList.find(s => s.id === sId);
-        return sub ? getSubjectDisplayName(sub).toLowerCase().includes(searchQuery) : false;
-      });
-      const matchSld = (m.blueBookEvents || []).some(be => be.dateTag && be.dateTag.toLowerCase().includes(searchQuery));
-      const matchNormal = (m.normalTags || []).some(t => t.toLowerCase().includes(searchQuery));
-
-      if (!matchName && !matchSubjects && !matchSld && !matchNormal) return false;
+    if (queryTokens.length > 0 && !matchesMediaSearchFilter(m, queryTokens)) {
+      return false;
     }
 
     if (filterTag === 'hasBlueEvents' && (!m.blueBookEvents || m.blueBookEvents.length === 0)) return false;
