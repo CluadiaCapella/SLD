@@ -39,7 +39,17 @@ function updateSelectionStateUI() {
     renderSelectionInlineTags();
   } else {
     if (selectionBanner) selectionBanner.style.display = 'none';
-    if (!isLbActive && isMediaBrowserActive) renderMediaBrowser();
+  }
+
+  if (isMediaBrowserActive) {
+    document.querySelectorAll('.media-card').forEach(card => {
+      const id = card.getAttribute('data-id');
+      if (id && selectedMediaIds.has(id)) {
+        card.classList.add('selected');
+      } else {
+        card.classList.remove('selected');
+      }
+    });
   }
   updateUndoRedoButtonsUI();
 }
@@ -133,6 +143,10 @@ function setupLightboxEditingSuite() {
       const media = currentMediaList[lightboxIndex];
       media.viewTransform = media.viewTransform || { rotate: 0 };
       media.viewTransform.rotate = (media.viewTransform.rotate + 90) % 360;
+      if (!media.customThumbnail && typeof createCompressedThumbnailWithRotation === 'function') {
+        const newThumb = await createCompressedThumbnailWithRotation(media.fileType || media.type, media.dataUrl, media.viewTransform.rotate);
+        if (newThumb) media.thumbnailUrl = newThumb;
+      }
       await db.put('media', media);
       applyNonDestructiveTransform(media);
     }

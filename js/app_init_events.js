@@ -16,6 +16,12 @@ function setupEventListeners() {
     });
   });
 
+  document.getElementById('clearSelectionBtn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    selectedMediaIds.clear();
+    updateSelectionStateUI();
+  });
+
   document.addEventListener('click', (e) => {
     if (selectedMediaIds.size > 0) {
       const isMediaCard = Boolean(e.target.closest('.media-card'));
@@ -285,6 +291,8 @@ async function initApp() {
   initGlobalThumbSizeSlider();
   
   restoreAppStateFromHashOrStorage();
+  selectedMediaIds.clear();
+  updateSelectionStateUI();
   renderCurrentView();
 }
 

@@ -96,6 +96,10 @@ function setupLightboxEditingSuite() {
       const media = currentMediaList[lightboxIndex];
       media.viewTransform = media.viewTransform || { rotate: 0 };
       media.viewTransform.rotate = (media.viewTransform.rotate - 90) % 360;
+      if (!media.customThumbnail && typeof createCompressedThumbnailWithRotation === 'function') {
+        const newThumb = await createCompressedThumbnailWithRotation(media.fileType || media.type, media.dataUrl, media.viewTransform.rotate);
+        if (newThumb) media.thumbnailUrl = newThumb;
+      }
       await db.put('media', media);
       applyNonDestructiveTransform(media);
     }
@@ -106,6 +110,10 @@ function setupLightboxEditingSuite() {
       const media = currentMediaList[lightboxIndex];
       media.viewTransform = media.viewTransform || { rotate: 0 };
       media.viewTransform.rotate = (media.viewTransform.rotate + 90) % 360;
+      if (!media.customThumbnail && typeof createCompressedThumbnailWithRotation === 'function') {
+        const newThumb = await createCompressedThumbnailWithRotation(media.fileType || media.type, media.dataUrl, media.viewTransform.rotate);
+        if (newThumb) media.thumbnailUrl = newThumb;
+      }
       await db.put('media', media);
       applyNonDestructiveTransform(media);
     }

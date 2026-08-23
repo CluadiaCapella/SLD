@@ -142,7 +142,6 @@ function renderMediaBrowser() {
             ${subjectPills}
           </div>
         </div>
-        ${selectedMediaIds.size > 0 ? `<button class="card-viewer-btn" data-id="${m.id}" title="View Media">👁️</button>` : ''}
       </div>`;
   };
 
@@ -239,16 +238,8 @@ function renderMediaBrowser() {
 
   gridContainer.querySelectorAll('.media-card').forEach(card => {
     const id = card.getAttribute('data-id');
-    const viewerBtn = card.querySelector('.card-viewer-btn');
     let pressTimer = null;
     let isLongPressTriggered = false;
-
-    if (viewerBtn) {
-      viewerBtn.onclick = (e) => {
-        e.stopPropagation();
-        openLightboxById(id);
-      };
-    }
 
     card.querySelectorAll('.nav-sub-pill').forEach(pill => {
       pill.onclick = (e) => {
@@ -260,27 +251,40 @@ function renderMediaBrowser() {
       };
     });
 
-    const startPress = () => {
-      isLongPressTriggered = false;
-      pressTimer = setTimeout(() => {
-        isLongPressTriggered = true;
-        if (!selectedMediaIds.has(id)) selectedMediaIds.add(id);
-        card.classList.add('selected');
-        updateSelectionStateUI();
-      }, 200);
+    const cancelPress = () => {
+      if (pressTimer) {
+        clearTimeout(pressTimer);
+        pressTimer = null;
+      }
     };
 
-    const cancelPress = () => { if (pressTimer) clearTimeout(pressTimer); };
+    const startPress = () => {
+      isLongPressTriggered = false;
+      cancelPress();
+      pressTimer = setTimeout(() => {
+        isLongPressTriggered = true;
+        if (!selectedMediaIds.has(id)) {
+          selectedMediaIds.add(id);
+        }
+        card.classList.add('selected');
+        updateSelectionStateUI();
+      }, 600);
+    };
 
     card.addEventListener('mousedown', startPress);
-    card.addEventListener('touchstart', startPress);
+    card.addEventListener('touchstart', startPress, { passive: true });
     card.addEventListener('mouseup', cancelPress);
     card.addEventListener('mouseleave', cancelPress);
     card.addEventListener('touchend', cancelPress);
+    card.addEventListener('touchcancel', cancelPress);
 
     card.onclick = (e) => {
-      if (e.target.classList.contains('card-viewer-btn') || e.target.classList.contains('nav-sub-pill')) return;
-      if (isLongPressTriggered) { isLongPressTriggered = false; return; }
+      if (e.target.closest('.nav-sub-pill')) return;
+
+      if (isLongPressTriggered) {
+        isLongPressTriggered = false;
+        return;
+      }
 
       if (selectedMediaIds.size > 0) {
         if (selectedMediaIds.has(id)) {

@@ -5,6 +5,7 @@
 let lightboxSourceContext = null;
 
 async function openLightboxById(mediaId, skipPushState = false, sourceContext = null) {
+  if (selectedMediaIds.size > 0) return;
   lightboxSourceContext = sourceContext;
   let idx = currentMediaList.findIndex(m => m.id === mediaId);
   if (idx < 0 && mediaId) {
@@ -22,6 +23,7 @@ async function openLightboxById(mediaId, skipPushState = false, sourceContext = 
 }
 
 function openLightbox(index, skipPushState = false) {
+  if (selectedMediaIds.size > 0) return;
   if (index < 0 || index >= currentMediaList.length) return;
   lightboxIndex = index;
   const modal = document.getElementById('lightboxModal');
