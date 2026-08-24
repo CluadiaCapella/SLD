@@ -5,6 +5,12 @@
 let isAutoUpdateEnabled = true;
 let hasCheckedUpdatesThisSession = false;
 
+function isAppEnvironment() {
+  return window.location.protocol === 'file:' ||
+         navigator.userAgent.includes('Android') ||
+         window.cordova !== undefined;
+}
+
 async function initPWAandUpdates() {
   const savedAutoUpdate = await db.getSetting('autoUpdateEnabled');
   if (savedAutoUpdate !== undefined) {
@@ -25,7 +31,7 @@ async function initPWAandUpdates() {
     checkBtn.onclick = () => checkForAppUpdates(true);
   }
 
-  if ('serviceWorker' in navigator) {
+  if ('serviceWorker' in navigator && !isAppEnvironment()) {
     try {
       const reg = await navigator.serviceWorker.register('./sw.js');
       reg.addEventListener('updatefound', () => {
@@ -74,7 +80,13 @@ async function checkForAppUpdates(userTriggered = false) {
     const currentLocalVersion = (await db.getSetting('appVersion')) || '1.0.0';
 
     if (currentLocalVersion !== data.version) {
-      showUpdateAvailableBanner(data.version, data.apkUrl);
+      if (isAppEnvironment()) {
+        showUpdateAvailableBanner(data.version, data.apkUrl);
+      } else if (userTriggered) {
+        if (confirm(`Update Available (v${data.version}). Refresh now?`)) {
+          performOtaHotUpdate(data.version);
+        }
+      }
     } else {
       if (userTriggered) {
         showToastNotification(`Your app is up to date! (v${data.version})`);
@@ -88,7 +100,7 @@ async function checkForAppUpdates(userTriggered = false) {
 }
 
 async function performOtaHotUpdate(newVersion) {
-  showToastNotification('🚀 Updating web assets...');
+  showToastNotification('🚀 Updating app assets...');
   try {
     if ('caches' in window) {
       const keys = await caches.keys();
@@ -100,25 +112,27 @@ async function performOtaHotUpdate(newVersion) {
         await reg.unregister();
       }
     }
-    await db.setSetting('appVersion', newVersion);
-    showToastNotification('✅ App updated successfully! Reloading...');
+    if (newVersion) {
+      await db.setSetting('appVersion', newVersion);
+    }
+    showToastNotification('✅ App updated! Reloading...');
     setTimeout(() => {
       window.location.reload(true);
-    }, 800);
+    }, 600);
   } catch (e) {
     window.location.reload(true);
   }
 }
 
 async function handleNewVersionDetected(newVer = '') {
-  if (isAutoUpdateEnabled) {
-    performOtaHotUpdate(newVer);
-  } else {
+  if (isAppEnvironment()) {
     showUpdateAvailableBanner(newVer);
   }
 }
 
 function showUpdateAvailableBanner(newVer = '', apkUrl = '') {
+  if (!isAppEnvironment()) return;
+
   let banner = document.getElementById('appUpdateBanner');
   if (!banner) {
     banner = document.createElement('div');
@@ -132,12 +146,9 @@ function showUpdateAvailableBanner(newVer = '', apkUrl = '') {
     document.body.appendChild(banner);
   }
 
-  const directApkLink = apkUrl || 'https://raw.githubusercontent.com/CluadiaCapella/SLD/main/SLD.apk';
-
   banner.innerHTML = `
-    <span>🚀 New Update Available! ${newVer ? '(v' + newVer + ')' : ''}</span>
-    <button class="btn btn-secondary btn-sm" id="otaHotUpdateBtn" style="background:#fff; color:#000; font-weight:800; border:none; padding:4px 10px; border-radius:12px; cursor:pointer;">⚡ Hot Reload</button>
-    <a href="${directApkLink}" target="_blank" download="SLD.apk" class="btn btn-primary btn-sm" style="background:#10b981; color:#fff; font-weight:800; text-decoration:none; padding:4px 10px; border-radius:12px;">📥 Direct APK</a>
+    <span>🚀 ${newVer ? 'v' + newVer + ' ' : ''}Update Available</span>
+    <button class="btn btn-secondary btn-sm" id="otaHotUpdateBtn" style="background:#fff; color:#000; font-weight:800; border:none; padding:6px 14px; border-radius:14px; cursor:pointer;">Update Available, Refresh</button>
     <button style="background:none; border:none; color:#fff; cursor:pointer; font-weight:bold; font-size:1.1rem; margin-left:4px;" onclick="this.parentElement.remove()">✖</button>
   `;
 
