@@ -1302,16 +1302,27 @@ function updateBroadcastingUI() {
   }
 }
 
+const WS_RELAY_URLS = [
+  'wss://piehost.com/websocket/sld-presence-v1',
+  'wss://free.websocket.in/v3/sld-presence-channel-v1?apiKey=public'
+];
+let currentWsRelayIdx = 0;
+
 function initGlobalWebSocketPresenceRelay() {
   if (!isBroadcastingEnabled) return;
   if (globalPresenceWs && (globalPresenceWs.readyState === WebSocket.CONNECTING || globalPresenceWs.readyState === WebSocket.OPEN)) {
     return;
   }
 
+  const targetWsUrl = WS_RELAY_URLS[currentWsRelayIdx];
+  logP2pDiagnostic(`Connecting WebSocket presence relay: ${targetWsUrl}`, 'info');
+
   try {
-    globalPresenceWs = new WebSocket('wss://free.websocket.in/v3/sld-presence-channel-v1?apiKey=public');
+    globalPresenceWs = new WebSocket(targetWsUrl);
 
     globalPresenceWs.onopen = () => {
+      logP2pDiagnostic('WebSocket Presence Relay connected!', 'success');
+      updateDiagnosticsDashboardUI();
       broadcastGlobalPresenceWs();
     };
 
@@ -1320,17 +1331,25 @@ function initGlobalWebSocketPresenceRelay() {
         if (typeof evt.data === 'string') {
           const msg = JSON.parse(evt.data);
           if (msg && msg.type === 'PRESENCE_ANNOUNCE' && msg.code && msg.code !== myDeviceShortCode) {
-            await registerDiscoveredDevice(msg.code, msg.name);
+            logP2pDiagnostic(`Received presence packet from SLD-${msg.code} (${msg.name || 'Remote'})`, 'success');
+            await registerDiscoveredDevice(msg.code, msg.name, msg.peerId);
           }
         }
       } catch (e) {}
     };
 
-    globalPresenceWs.onerror = () => {};
-    globalPresenceWs.onclose = () => {
-      setTimeout(initGlobalWebSocketPresenceRelay, 5000);
+    globalPresenceWs.onerror = () => {
+      logP2pDiagnostic(`WebSocket Relay ${targetWsUrl} error. Trying fallback broker...`, 'warn');
     };
-  } catch (e) {}
+
+    globalPresenceWs.onclose = () => {
+      updateDiagnosticsDashboardUI();
+      currentWsRelayIdx = (currentWsRelayIdx + 1) % WS_RELAY_URLS.length;
+      setTimeout(initGlobalWebSocketPresenceRelay, 4000);
+    };
+  } catch (e) {
+    logP2pDiagnostic(`WebSocket Relay Error: ${e.message}`, 'error');
+  }
 }
 
 function broadcastGlobalPresenceWs() {
@@ -1347,20 +1366,32 @@ function broadcastGlobalPresenceWs() {
 }
 
 function sendPairRequestToDevice(conn) {
-  const targetPeerId = conn.peerId || sanitizePeerId(conn.ip);
+  let targetPeerId = conn.peerId;
+  if (!targetPeerId || targetPeerId.includes('100-') || targetPeerId.includes('192-')) {
+    if (conn.shortCode) {
+      targetPeerId = sanitizePeerId(conn.shortCode);
+    } else if (conn.ip && /^\d+$/.test(conn.ip)) {
+      targetPeerId = sanitizePeerId(conn.ip);
+    }
+  }
+
+  logP2pDiagnostic(`Connecting WebRTC to target peer ID: ${targetPeerId} (device: ${conn.name})`, 'info');
 
   const doConnect = () => {
-    if (!localPeer || localPeer.destroyed) return;
+    if (!localPeer || localPeer.destroyed) {
+      logP2pDiagnostic('localPeer socket not ready yet during connection attempt.', 'warn');
+      return;
+    }
     try {
       const peerConn = localPeer.connect(targetPeerId, { reliable: true });
       setupPeerConnectionHandlers(peerConn);
 
       peerConn.on('open', () => {
+        logP2pDiagnostic(`WebRTC DataChannel connected with ${conn.name} (${targetPeerId})!`, 'success');
         peerConn.send({
           type: 'PAIR_REQUEST',
-          fromName: p2pDeviceName || 'Remote Device',
-          fromIp: conn.ip,
-          fromUrl: conn.url || formatPeerUrl(conn.ip),
+          fromIp: myDeviceShortCode || '',
+          fromName: p2pDeviceName || 'This Device',
           fromPeerId: myDevicePeerId
         });
       });
