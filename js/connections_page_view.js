@@ -56,6 +56,30 @@ async function renderConnectionsPage() {
     };
   }
 
+  const copyDiagBtn = document.getElementById('copyDiagLogsBtn');
+  if (copyDiagBtn && !copyDiagBtn.dataset.bound) {
+    copyDiagBtn.dataset.bound = 'true';
+    copyDiagBtn.onclick = () => {
+      const consoleEl = document.getElementById('diagConsoleLog');
+      if (consoleEl) {
+        const text = consoleEl.innerText || consoleEl.textContent;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(() => {
+            if (typeof showToastNotification === 'function') showToastNotification('📋 Diagnostics log copied to clipboard!');
+          });
+        } else {
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+          if (typeof showToastNotification === 'function') showToastNotification('📋 Diagnostics log copied to clipboard!');
+        }
+      }
+    };
+  }
+
   const clearDiagBtn = document.getElementById('clearDiagLogsBtn');
   if (clearDiagBtn && !clearDiagBtn.dataset.bound) {
     clearDiagBtn.dataset.bound = 'true';

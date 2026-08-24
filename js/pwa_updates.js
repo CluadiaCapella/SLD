@@ -4,7 +4,16 @@
 
 let hasCheckedUpdatesThisSession = false;
 
+async function updateNavVersionTag() {
+  const tag = document.getElementById('navVersionTag');
+  if (tag) {
+    const ver = (await db.getSetting('appVersion')) || '260824.0259';
+    tag.textContent = `v${ver}`;
+  }
+}
+
 async function initPWAandUpdates() {
+  updateNavVersionTag();
   checkForAppUpdates(false);
 }
 
@@ -22,6 +31,7 @@ async function checkForAppUpdates(userTriggered = false) {
 
       if (!storedVersion) {
         await db.setSetting('appVersion', data.version);
+        updateNavVersionTag();
         return;
       }
 
@@ -68,6 +78,7 @@ async function applyBackgroundOtaUpdate(newVersion) {
     }
 
     await db.setSetting('appVersion', newVersion);
+    updateNavVersionTag();
 
     if (typeof showToastNotification === 'function') {
       showToastNotification('✅ App updated successfully!');
@@ -83,3 +94,4 @@ async function applyBackgroundOtaUpdate(newVersion) {
 
 window.initPWAandUpdates = initPWAandUpdates;
 window.checkForAppUpdates = checkForAppUpdates;
+window.updateNavVersionTag = updateNavVersionTag;

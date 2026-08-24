@@ -543,6 +543,8 @@ async function initLocalPeerServer() {
 
       localPeer.on('open', (id) => {
         myDevicePeerId = id;
+        logP2pDiagnostic(`PeerJS socket connected as ${id}`, 'success');
+        updateDiagnosticsDashboardUI();
         const displayEl = document.getElementById('myDeviceCodeDisplay');
         if (displayEl) {
           const shortCode = id.replace(/^sld-device-/, 'SLD-').toUpperCase();
@@ -556,8 +558,17 @@ async function initLocalPeerServer() {
         setupPeerConnectionHandlers(conn);
       });
 
+      localPeer.on('disconnected', () => {
+        logP2pDiagnostic('PeerJS signaling socket disconnected. Reconnecting automatically...', 'warn');
+        updateDiagnosticsDashboardUI();
+        if (localPeer && !localPeer.destroyed) {
+          try { localPeer.reconnect(); } catch(e) {}
+        }
+      });
+
       localPeer.on('error', (err) => {
-        console.warn('Local Peer Warning:', err);
+        logP2pDiagnostic(`PeerJS socket error (${err.type || err})`, 'warn');
+        updateDiagnosticsDashboardUI();
         createHubFallbackPeer();
       });
     } catch (e) {

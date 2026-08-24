@@ -35,8 +35,9 @@
       <div style="background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:var(--radius-lg); padding:16px; margin-top:20px;">
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
           <h4 style="margin:0; font-size:0.95rem; font-weight:800; color:var(--text-primary);">🔍 Live Network Diagnostics & Logs</h4>
-          <div style="display:flex; gap:8px;">
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
             <button class="btn btn-primary btn-sm" id="runNetworkDiagBtn" style="font-size:0.78rem; font-weight:800;">⚡ Run Diagnostic Test</button>
+            <button class="btn btn-secondary btn-sm" id="copyDiagLogsBtn" style="font-size:0.78rem; font-weight:700;">📋 Copy Log</button>
             <button class="btn btn-secondary btn-sm" id="clearDiagLogsBtn" style="font-size:0.78rem;">🧹 Clear Log</button>
           </div>
         </div>
