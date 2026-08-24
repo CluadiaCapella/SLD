@@ -441,6 +441,53 @@
     </div>
   </div>
 
+  <!-- Device Pairing Request Modal -->
+  <div id="devicePairingModal" class="modal-backdrop" style="display:none; z-index:30000;">
+    <div class="modal-card" style="max-width:440px;">
+      <div class="modal-header">
+        <h3 id="devicePairingTitle">📱 Device Connection Request</h3>
+        <div class="dropdown-container" style="position:relative;">
+          <button class="btn btn-secondary btn-sm" id="devicePairingOptionsBtn">•••</button>
+          <div class="dropdown-menu" id="devicePairingDropdown" style="display:none; position:absolute; right:0; top:100%; z-index:10; background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:6px; min-width:140px; box-shadow:var(--shadow-md);">
+            <button class="btn btn-danger btn-sm" id="devicePairingBlockBtn" style="width:100%; text-align:left;">🚫 Block IP</button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-body" style="padding:16px 0;">
+        <p id="devicePairingMessage" style="font-size:0.95rem; line-height:1.4; color:var(--text-primary); margin:0;">
+          A device would like to connect and sync with this application.
+        </p>
+        <div style="font-size:0.8rem; color:var(--text-muted); font-family:monospace; margin-top:8px;" id="devicePairingIpSubtext"></div>
+      </div>
+      <div class="modal-footer" style="display:flex; gap:10px; justify-content:flex-end;">
+        <button class="btn btn-secondary" id="declineDevicePairingBtn">🔴 No (Decline)</button>
+        <button class="btn btn-primary" id="acceptDevicePairingBtn">🟢 Yes (Accept)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Blocked IPs Manager Modal -->
+  <div id="blockedIpsModal" class="modal-backdrop" style="display:none; z-index:30000;">
+    <div class="modal-card" style="max-width:500px;">
+      <div class="modal-header">
+        <h3>🚫 Blocked IP Addresses</h3>
+        <button class="btn btn-secondary btn-sm" id="closeBlockedIpsModalBtn">✖</button>
+      </div>
+      <div class="modal-body" style="padding:16px 0; display:flex; flex-direction:column; gap:12px;">
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="manualBlockIpInput" class="input-text btn-sm" placeholder="Enter IP address to block (e.g. 100.115.92.40)" style="flex:1;">
+          <button class="btn btn-danger btn-sm" id="manualBlockIpBtn">🚫 Block IP</button>
+        </div>
+        <div id="blockedIpsContainer" style="display:flex; flex-direction:column; gap:8px; max-height:260px; overflow-y:auto; padding-right:4px;">
+          <p class="text-muted" style="font-size:0.85rem;">No IP addresses blocked.</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="doneBlockedIpsModalBtn">Done</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modular Application Scripts -->
   <script src="js/database.js"></script>
   <script src="js/common_ui.js"></script>

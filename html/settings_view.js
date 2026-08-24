@@ -150,7 +150,10 @@
 
           <!-- IP Connections List -->
           <div style="margin-top:16px;">
-            <h4 style="font-size:0.95rem; font-weight:800; margin-bottom:8px;">📱 Connected Devices</h4>
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
+              <h4 style="font-size:0.95rem; font-weight:800; margin:0;">📱 Connected Devices</h4>
+              <button class="btn btn-secondary btn-sm" id="openBlockedIpsModalBtn" style="font-size:0.8rem;">🚫 View / Edit Blocked IPs</button>
+            </div>
             <div id="connectedPeersList" style="display:flex; flex-direction:column; gap:8px;">
               <p class="text-muted" style="font-size:0.8rem; margin:0;">No devices paired currently.</p>
             </div>
