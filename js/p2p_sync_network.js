@@ -194,26 +194,61 @@ function hideDevicePairingModal() {
 let localPeer = null;
 let activePeerConnections = new Map();
 let myDevicePeerId = null;
+let myDeviceShortCode = null;
+let lanBroadcastChannel = null;
 
-function sanitizePeerId(ipOrId) {
-  if (!ipOrUrlClean(ipOrId)) return 'sld-device-unknown';
-  return 'sld-device-' + ipOrUrlClean(ipOrId).replace(/[^a-zA-Z0-9]/g, '-');
+function sanitizePeerId(ipOrCode) {
+  if (!ipOrCode) return 'sld-device-unknown';
+  const clean = ipOrCode.replace(/^https?:\/\//, '').replace(/^SLD-/i, '').split(':')[0].split('/')[0].replace(/[^a-zA-Z0-9]/g, '-').toLowerCase().trim();
+  return 'sld-device-' + clean;
 }
 
 function ipOrUrlClean(input) {
   if (!input) return '';
-  return input.replace(/^https?:\/\//, '').split(':')[0].split('/')[0].trim();
+  return input.replace(/^https?:\/\//, '').replace(/^SLD-/i, '').split(':')[0].split('/')[0].trim().toLowerCase();
 }
 
 async function initLocalPeerServer() {
   if (localPeer && !localPeer.destroyed) return;
 
-  let savedIp = (await db.getSetting('myDeviceIp')) || '';
-  if (!savedIp) {
-    savedIp = 'dev-' + Math.random().toString(36).substring(2, 8);
-    await db.setSetting('myDeviceIp', savedIp);
+  let savedCode = (await db.getSetting('myDeviceShortCode')) || '';
+  if (!savedCode) {
+    savedCode = Math.floor(1000 + Math.random() * 9000).toString();
+    await db.setSetting('myDeviceShortCode', savedCode);
   }
-  myDevicePeerId = sanitizePeerId(savedIp);
+  myDeviceShortCode = savedCode;
+  myDevicePeerId = sanitizePeerId(savedCode);
+
+  const codeEl = document.getElementById('myDeviceCodeDisplay');
+  if (codeEl) {
+    codeEl.textContent = `SLD-${savedCode}`;
+  }
+
+  // Setup BroadcastChannel for zero-config LAN discovery
+  if (typeof BroadcastChannel !== 'undefined' && !lanBroadcastChannel) {
+    try {
+      lanBroadcastChannel = new BroadcastChannel('sld_d2d_lan_channel');
+      lanBroadcastChannel.onmessage = async (evt) => {
+        if (!evt.data) return;
+        if (evt.data.type === 'LAN_HELLO') {
+          const remoteCode = evt.data.code;
+          if (remoteCode && remoteCode !== myDeviceShortCode) {
+            const match = ipConnectionsList.find(c => ipOrUrlClean(c.ip) === ipOrUrlClean(remoteCode));
+            if (match) {
+              match.status = 'online';
+              match.peerId = sanitizePeerId(remoteCode);
+              await db.setSetting('ipConnectionsList', ipConnectionsList);
+              renderIpConnectionsList();
+              updateNavP2pStatusIndicator();
+            }
+          }
+        }
+      };
+      setInterval(() => {
+        lanBroadcastChannel?.postMessage({ type: 'LAN_HELLO', code: myDeviceShortCode });
+      }, 5000);
+    } catch (e) {}
+  }
 
   if (typeof Peer !== 'undefined') {
     try {

@@ -132,15 +132,24 @@
             <span id="p2pSyncStatusBadge" class="subject-stat-badge" style="background:rgba(56,189,248,0.15); color:#38bdf8; border:1px solid #38bdf8; font-weight:800;">📱 0 Connected</span>
           </div>
 
-          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:16px; margin-top:16px; background:var(--bg-secondary); padding:16px; border-radius:var(--radius-md); border:1px solid var(--border-color);">
+          <!-- Your Device Code Banner -->
+          <div style="margin-top:12px; background:rgba(56,189,248,0.08); border:1px solid rgba(56,189,248,0.25); padding:10px 14px; border-radius:var(--radius-md); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+            <div style="font-size:0.85rem; color:var(--text-primary);">
+              <span>📱 Your Device Code: </span>
+              <strong id="myDeviceCodeDisplay" style="font-family:monospace; font-size:1.1rem; color:#38bdf8; letter-spacing:1px; background:rgba(15,23,42,0.6); padding:2px 8px; border-radius:4px; border:1px solid #38bdf8;">Loading...</strong>
+            </div>
+            <span class="text-muted" style="font-size:0.78rem;">Enter this code or IP on your other device to connect instantly.</span>
+          </div>
+
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:16px; margin-top:14px; background:var(--bg-secondary); padding:16px; border-radius:var(--radius-md); border:1px solid var(--border-color);">
             <div>
               <label class="form-label" style="font-size:0.8rem; margin-bottom:4px;">Device Name</label>
               <input type="text" id="syncConnectionNameInput" class="input-text btn-sm" placeholder="e.g. Tailscale Laptop" style="width:100%;">
             </div>
 
             <div>
-              <label class="form-label" style="font-size:0.8rem; margin-bottom:4px;">Device IP Address (Default Port 24913)</label>
-              <input type="text" id="syncIpAddressInput" class="input-text btn-sm" placeholder="e.g. 100.115.92.40 or 192.168.1.50" style="width:100%;">
+              <label class="form-label" style="font-size:0.8rem; margin-bottom:4px;">Device Code or IP Address</label>
+              <input type="text" id="syncIpAddressInput" class="input-text btn-sm" placeholder="e.g. SLD-8492 or 100.115.92.40" style="width:100%;">
             </div>
 
             <div style="display:flex; align-items:flex-end;">
