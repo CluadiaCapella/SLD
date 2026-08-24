@@ -327,6 +327,9 @@ function setupPeerConnectionHandlers(conn) {
           });
         }
         showToastNotification(`🟢 Connected with ${reciprocalConn.name}!`);
+        if (typeof addNotification === 'function') {
+          addNotification('Device Connected', `Device "${reciprocalConn.name}" connected.`, 'success');
+        }
         return;
       }
 
@@ -342,6 +345,9 @@ function setupPeerConnectionHandlers(conn) {
           match.peerId = conn.peer;
           if (data.fromName) match.name = data.fromName;
           showToastNotification(`🟢 Connected with ${match.name}!`);
+          if (typeof addNotification === 'function') {
+            addNotification('Device Connected', `Connected with device "${match.name}".`, 'success');
+          }
         } else if (data.status === 'declined') {
           match.status = 'offline';
           showToastNotification(`🔴 Connection declined by ${match.name}`);
@@ -352,6 +358,16 @@ function setupPeerConnectionHandlers(conn) {
         await db.setSetting('ipConnectionsList', ipConnectionsList);
         renderIpConnectionsList();
         updateNavP2pStatusIndicator();
+      }
+    } else if (data.type === 'SYNC_PERMISSION_UPDATE') {
+      const match = ipConnectionsList.find(c => c.peerId === conn.peer || c.ip.includes(data.fromIp || ''));
+      if (match) {
+        match.remoteAllowSync = data.allowSync === true;
+        await db.setSetting('ipConnectionsList', ipConnectionsList);
+        renderIpConnectionsList();
+        if (typeof addNotification === 'function') {
+          addNotification('Sync Permission Updated', `Device "${match.name}" ${data.allowSync ? 'granted' : 'revoked'} sync permission.`, 'info');
+        }
       }
     } else if (data.type === 'PING') {
       conn.send({ type: 'PONG', fromPeerId: myDevicePeerId });
@@ -381,6 +397,9 @@ function setupPeerConnectionHandlers(conn) {
           await loadAppState();
           renderCurrentView();
           showToastNotification('📥 Received & merged sync payload!');
+          if (typeof addNotification === 'function') {
+            addNotification('Sync Completed', 'Successfully received and merged database payload.', 'success');
+          }
         } catch (err) {
           console.error('Error applying sync payload:', err);
         } finally {
