@@ -2,7 +2,13 @@
  * Connections Page View Subsystem
  */
 
-function renderConnectionsPage() {
+async function renderConnectionsPage() {
+  if (typeof loadIpConnections === 'function' && (!window.myDeviceShortCode || !window.ipConnectionsList)) {
+    await loadIpConnections();
+  } else if (typeof initLocalPeerServer === 'function' && !window.myDeviceShortCode) {
+    await initLocalPeerServer();
+  }
+
   if (typeof renderIpConnectionsList === 'function') {
     renderIpConnectionsList();
   }

@@ -289,6 +289,7 @@ async function initApp() {
   initPWAandUpdates();
   initSystemErrorLoggerUI();
   initGlobalThumbSizeSlider();
+  if (typeof loadIpConnections === 'function') await loadIpConnections();
   if (typeof loadNotifications === 'function') loadNotifications();
   if (typeof setupNotificationsEvents === 'function') setupNotificationsEvents();
 
