@@ -208,6 +208,61 @@ function ipOrUrlClean(input) {
   return input.replace(/^https?:\/\//, '').replace(/^SLD-/i, '').split(':')[0].split('/')[0].trim().toLowerCase();
 }
 
+async function registerDiscoveredDevice(remoteCode, remoteName) {
+  if (!remoteCode || remoteCode === myDeviceShortCode) return;
+  const cleanCode = ipOrUrlClean(remoteCode);
+
+  let match = ipConnectionsList.find(c =>
+    ipOrUrlClean(c.ip) === cleanCode ||
+    ipOrUrlClean(c.url) === cleanCode ||
+    c.peerId === sanitizePeerId(remoteCode)
+  );
+
+  if (!match) {
+    match = {
+      id: 'conn-' + Date.now(),
+      name: remoteName || `Device SLD-${remoteCode}`,
+      ip: remoteCode,
+      url: formatPeerUrl(remoteCode),
+      peerId: sanitizePeerId(remoteCode),
+      status: 'online',
+      allowSync: false,
+      remoteAllowSync: false,
+      lastPing: Date.now()
+    };
+    ipConnectionsList.push(match);
+
+    if (typeof addNotification === 'function') {
+      addNotification('Device Discovered', `Device "${match.name}" auto-discovered on network.`, 'success');
+    }
+  } else {
+    match.status = 'online';
+    match.peerId = sanitizePeerId(remoteCode);
+    if (remoteName && (!match.name || match.name.startsWith('Device SLD-'))) {
+      match.name = remoteName;
+    }
+  }
+
+  await db.setSetting('ipConnectionsList', ipConnectionsList);
+  renderIpConnectionsList();
+  updateNavP2pStatusIndicator();
+
+  let activeConn = activePeerConnections.get(match.peerId);
+  if (!activeConn || !activeConn.open) {
+    sendPairRequestToDevice(match);
+  }
+}
+
+function broadcastLocalPresence() {
+  if (lanBroadcastChannel && myDeviceShortCode) {
+    lanBroadcastChannel.postMessage({
+      type: 'LAN_HELLO',
+      code: myDeviceShortCode,
+      name: p2pDeviceName || 'App Device'
+    });
+  }
+}
+
 async function initLocalPeerServer() {
   if (localPeer && !localPeer.destroyed) return;
 
@@ -224,7 +279,6 @@ async function initLocalPeerServer() {
     codeEl.textContent = `SLD-${savedCode}`;
   }
 
-  // Setup BroadcastChannel for zero-config LAN discovery
   if (typeof BroadcastChannel !== 'undefined' && !lanBroadcastChannel) {
     try {
       lanBroadcastChannel = new BroadcastChannel('sld_d2d_lan_channel');
@@ -232,23 +286,25 @@ async function initLocalPeerServer() {
         if (!evt.data) return;
         if (evt.data.type === 'LAN_HELLO') {
           const remoteCode = evt.data.code;
+          const remoteName = evt.data.name;
           if (remoteCode && remoteCode !== myDeviceShortCode) {
-            const match = ipConnectionsList.find(c => ipOrUrlClean(c.ip) === ipOrUrlClean(remoteCode));
-            if (match) {
-              match.status = 'online';
-              match.peerId = sanitizePeerId(remoteCode);
-              await db.setSetting('ipConnectionsList', ipConnectionsList);
-              renderIpConnectionsList();
-              updateNavP2pStatusIndicator();
-            }
+            await registerDiscoveredDevice(remoteCode, remoteName);
           }
         }
       };
-      setInterval(() => {
-        lanBroadcastChannel?.postMessage({ type: 'LAN_HELLO', code: myDeviceShortCode });
-      }, 5000);
+      setInterval(broadcastLocalPresence, 2000);
+      broadcastLocalPresence();
     } catch (e) {}
   }
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      broadcastLocalPresence();
+      if (ipConnectionsList && ipConnectionsList.length > 0) {
+        ipConnectionsList.forEach((c, idx) => pingIpConnection(idx, true));
+      }
+    }
+  });
 
   if (typeof Peer !== 'undefined') {
     try {
@@ -264,6 +320,7 @@ async function initLocalPeerServer() {
 
       localPeer.on('open', (id) => {
         myDevicePeerId = id;
+        broadcastLocalPresence();
       });
 
       localPeer.on('connection', (conn) => {
