@@ -263,6 +263,88 @@ function broadcastLocalPresence() {
   }
 }
 
+let presenceHubConn = null;
+let hubFallbackPeer = null;
+const hubConnectedClients = new Map();
+
+function initPresenceRoomHub() {
+  if (!localPeer || localPeer.destroyed) return;
+
+  const roomPeerId = 'sld-room-hub-v1';
+  if (myDevicePeerId === roomPeerId) return;
+
+  try {
+    const hubConn = localPeer.connect(roomPeerId, { reliable: true });
+    hubConn.on('open', () => {
+      presenceHubConn = hubConn;
+      hubConn.send({
+        type: 'PRESENCE_ANNOUNCE',
+        code: myDeviceShortCode,
+        name: p2pDeviceName || 'App Device',
+        peerId: myDevicePeerId
+      });
+    });
+
+    hubConn.on('data', async (data) => {
+      if (data && data.type === 'PRESENCE_LIST' && Array.isArray(data.devices)) {
+        for (const dev of data.devices) {
+          if (dev.code && dev.code !== myDeviceShortCode) {
+            await registerDiscoveredDevice(dev.code, dev.name);
+          }
+        }
+      } else if (data && data.type === 'PRESENCE_ANNOUNCE') {
+        if (data.code && data.code !== myDeviceShortCode) {
+          await registerDiscoveredDevice(data.code, data.name);
+        }
+      }
+    });
+
+    hubConn.on('error', () => {
+      createHubFallbackPeer();
+    });
+  } catch (e) {
+    createHubFallbackPeer();
+  }
+}
+
+function createHubFallbackPeer() {
+  if (hubFallbackPeer || typeof Peer === 'undefined') return;
+  try {
+    hubFallbackPeer = new Peer('sld-room-hub-v1', {
+      debug: 0,
+      config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }
+    });
+
+    hubFallbackPeer.on('connection', (clientConn) => {
+      clientConn.on('data', (msg) => {
+        if (msg && msg.type === 'PRESENCE_ANNOUNCE') {
+          hubConnectedClients.set(msg.peerId, { code: msg.code, name: msg.name, peerId: msg.peerId, conn: clientConn });
+
+          const deviceList = Array.from(hubConnectedClients.values()).map(c => ({ code: c.code, name: c.name, peerId: c.peerId }));
+          clientConn.send({ type: 'PRESENCE_LIST', devices: deviceList });
+
+          hubConnectedClients.forEach((client) => {
+            if (client.peerId !== msg.peerId && client.conn.open) {
+              client.conn.send({ type: 'PRESENCE_ANNOUNCE', code: msg.code, name: msg.name, peerId: msg.peerId });
+            }
+          });
+        }
+      });
+
+      clientConn.on('close', () => {
+        for (const [pid, client] of hubConnectedClients.entries()) {
+          if (client.conn === clientConn) {
+            hubConnectedClients.delete(pid);
+            break;
+          }
+        }
+      });
+    });
+
+    hubFallbackPeer.on('error', () => {});
+  } catch (e) {}
+}
+
 async function initLocalPeerServer() {
   if (localPeer && !localPeer.destroyed) return;
 
@@ -300,6 +382,14 @@ async function initLocalPeerServer() {
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) {
       broadcastLocalPresence();
+      if (presenceHubConn && presenceHubConn.open) {
+        presenceHubConn.send({
+          type: 'PRESENCE_ANNOUNCE',
+          code: myDeviceShortCode,
+          name: p2pDeviceName || 'App Device',
+          peerId: myDevicePeerId
+        });
+      }
       if (ipConnectionsList && ipConnectionsList.length > 0) {
         ipConnectionsList.forEach((c, idx) => pingIpConnection(idx, true));
       }
@@ -321,6 +411,7 @@ async function initLocalPeerServer() {
       localPeer.on('open', (id) => {
         myDevicePeerId = id;
         broadcastLocalPresence();
+        initPresenceRoomHub();
       });
 
       localPeer.on('connection', (conn) => {
@@ -329,6 +420,7 @@ async function initLocalPeerServer() {
 
       localPeer.on('error', (err) => {
         console.warn('Local Peer Warning:', err);
+        createHubFallbackPeer();
       });
     } catch (e) {
       console.warn('Failed to initialize Peer server:', e);
