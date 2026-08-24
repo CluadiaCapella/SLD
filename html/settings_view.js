@@ -164,34 +164,7 @@
           </div>
         </div>
 
-        <!-- 📱 Mobile App Installation & Updates Card -->
-        <div class="chart-card">
-          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-            <h3 style="margin:0;">📱 Mobile App Installation & Updates</h3>
-            <span id="appEnvironmentBadge" class="subject-stat-badge" style="background:rgba(56,189,248,0.15); color:#38bdf8; border:1px solid #38bdf8; font-size:0.75rem;">📱 Mobile & Desktop PWA V1.2.0</span>
-          </div>
-          <p class="text-muted" style="font-size:0.85rem; margin-top:4px;">Install SLD directly onto your Android phone, iPhone, or Desktop for offline use, full-screen playback, and fast performance.</p>
 
-          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px; margin-top:12px; background:var(--bg-secondary); padding:14px 16px; border-radius:var(--radius-md); border:1px solid var(--border-color);">
-            <div style="display:flex; align-items:center; gap:10px;">
-              <input type="checkbox" id="autoUpdateToggle" style="width:18px; height:18px; cursor:pointer;" checked>
-              <label for="autoUpdateToggle" style="font-size:0.85rem; font-weight:700; cursor:pointer;">🔄 Automatically update on app launch</label>
-            </div>
-            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-              <button class="btn btn-secondary btn-sm" id="checkForUpdatesBtn">🚀 Check for Updates</button>
-              <button class="btn btn-primary btn-sm" id="installPwaBtn" style="display:inline-block; font-weight:800; padding:6px 14px;">📲 Install App to Phone / Desktop</button>
-            </div>
-          </div>
-
-          <!-- Installation Guide for Android & iOS -->
-          <div style="margin-top:14px; background:rgba(0,0,0,0.3); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:12px 16px; font-size:0.82rem;">
-            <div style="font-weight:800; color:var(--accent-blue); margin-bottom:6px;">📲 How to install on your phone:</div>
-            <ul style="padding-left:18px; line-height:1.6; color:var(--text-secondary);">
-              <li><strong>Android (Chrome/Firefox/Edge)</strong>: Tap <strong>📲 Install App to Phone</strong> above OR open browser menu <strong style="color:#fff;">⋮</strong> → tap <strong style="color:#fff;">"Add to Home screen"</strong> or <strong style="color:#fff;">"Install app"</strong>.</li>
-              <li><strong>iPhone / iPad (Safari)</strong>: Tap Share <strong style="color:#fff;">⎋</strong> → scroll down and tap <strong style="color:#fff;">"Add to Home Screen"</strong>.</li>
-            </ul>
-          </div>
-        </div>
 
         <!-- 📜 System Error Logs & Diagnostics Card -->
         <div class="chart-card">
