@@ -111,6 +111,28 @@ function updateNavP2pStatusIndicator() {
   }
 }
 
+const DEFAULT_P2P_PORT = 24913;
+
+function formatPeerUrl(ipOrUrl) {
+  if (!ipOrUrl) return '';
+  let str = ipOrUrl.trim();
+  if (!str.startsWith('http://') && !str.startsWith('https://')) {
+    str = 'http://' + str;
+  }
+  try {
+    const parsed = new URL(str);
+    if (!parsed.port) {
+      parsed.port = DEFAULT_P2P_PORT.toString();
+    }
+    return parsed.origin;
+  } catch (e) {
+    if (!str.includes(':', 7)) {
+      return `${str}:${DEFAULT_P2P_PORT}`;
+    }
+    return str;
+  }
+}
+
 function renderIpConnectionsList() {
   const container = document.getElementById('connectedPeersList') || document.getElementById('ipConnectionsListContainer');
   if (!container) return;
@@ -122,7 +144,9 @@ function renderIpConnectionsList() {
 
   container.innerHTML = `
     <div style="display:flex; flex-direction:column; gap:8px; width:100%;">
-      ${ipConnectionsList.map((conn, idx) => `
+      ${ipConnectionsList.map((conn, idx) => {
+        const targetUrl = conn.url || formatPeerUrl(conn.ip);
+        return `
         <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-secondary); border:1px solid var(--border-color); padding:10px 14px; border-radius:var(--radius-md);">
           <div>
             <div style="font-weight:800; font-size:0.95rem; color:var(--text-primary); display:flex; align-items:center; gap:8px;">
@@ -131,15 +155,15 @@ function renderIpConnectionsList() {
                 ${conn.status === 'online' ? '🟢 Online' : '🔴 Offline'}
               </span>
             </div>
-            <div style="font-size:0.8rem; color:var(--text-muted); font-family:monospace; margin-top:2px;">🌐 IP: ${conn.ip}</div>
+            <div style="font-size:0.8rem; color:var(--text-muted); font-family:monospace; margin-top:2px;">🌐 Address: ${targetUrl}</div>
           </div>
           <div style="display:flex; gap:6px; align-items:center;">
             <button class="btn btn-secondary btn-sm ping-ip-btn" data-idx="${idx}">⚡ Ping</button>
             <button class="btn btn-primary btn-sm sync-ip-btn" data-idx="${idx}">🔄 Sync</button>
             <button class="btn btn-danger btn-sm remove-ip-btn" data-idx="${idx}">🗑️</button>
           </div>
-        </div>
-      `).join('')}
+        </div>`;
+      }).join('')}
     </div>`;
 
   container.querySelectorAll('.ping-ip-btn').forEach(btn => {
@@ -165,14 +189,17 @@ async function addIpConnection() {
   const nameInput = document.getElementById('syncConnectionNameInput');
   const ipInput = document.getElementById('syncIpAddressInput');
   const name = nameInput ? nameInput.value.trim() : '';
-  const ip = ipInput ? ipInput.value.trim() : '';
+  const rawIp = ipInput ? ipInput.value.trim() : '';
 
-  if (!ip) { alert('Please enter a peer IP address (e.g. 100.115.92.40 or 192.168.1.50:8080).'); return; }
+  if (!rawIp) { alert('Please enter a peer IP address (e.g. 100.115.92.40 or 192.168.1.50).'); return; }
+
+  const formattedUrl = formatPeerUrl(rawIp);
 
   const newConn = {
     id: 'conn-' + Date.now(),
-    name: name || ip,
-    ip: ip,
+    name: name || rawIp,
+    ip: rawIp,
+    url: formattedUrl,
     status: 'online',
     lastPing: Date.now()
   };
@@ -195,7 +222,7 @@ async function pingIpConnection(idx) {
   renderIpConnectionsList();
 
   try {
-    const formattedUrl = conn.ip.startsWith('http') ? conn.ip : `http://${conn.ip}`;
+    const formattedUrl = conn.url || formatPeerUrl(conn.ip);
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 2000);
     await fetch(`${formattedUrl}/api/ping`, { mode: 'no-cors', signal: controller.signal });
@@ -219,7 +246,7 @@ async function syncWithIpConnection(idx) {
   updateNavP2pStatusIndicator();
 
   try {
-    const formattedUrl = conn.ip.startsWith('http') ? conn.ip : `http://${conn.ip}`;
+    const formattedUrl = conn.url || formatPeerUrl(conn.ip);
     const subjects = await db.getAll('subjects');
     const events = await db.getAll('events');
     const activeMedia = await db.getActiveMedia();
@@ -230,9 +257,9 @@ async function syncWithIpConnection(idx) {
       body: JSON.stringify({ subjects, events, media: activeMedia }),
       mode: 'no-cors'
     });
-    alert(`Sync payload sent to ${conn.name} (${conn.ip}).`);
+    alert(`Sync payload sent to ${conn.name} (${formattedUrl}).`);
   } catch (e) {
-    alert(`Sync payload sent to ${conn.name} (${conn.ip}).`);
+    alert(`Sync payload sent to ${conn.name} (${conn.url || conn.ip}).`);
   } finally {
     p2pActiveSyncing = false;
     updateNavP2pStatusIndicator();

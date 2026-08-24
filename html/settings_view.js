@@ -139,8 +139,8 @@
             </div>
 
             <div>
-              <label class="form-label" style="font-size:0.8rem; margin-bottom:4px;">Peer IP Address (or Host:Port)</label>
-              <input type="text" id="syncIpAddressInput" class="input-text btn-sm" placeholder="e.g. 100.115.92.40:8080" style="width:100%;">
+              <label class="form-label" style="font-size:0.8rem; margin-bottom:4px;">Peer IP Address (Default Port 24913)</label>
+              <input type="text" id="syncIpAddressInput" class="input-text btn-sm" placeholder="e.g. 100.115.92.40 or 192.168.1.50" style="width:100%;">
             </div>
 
             <div style="display:flex; align-items:flex-end;">

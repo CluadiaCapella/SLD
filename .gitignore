@@ -3,5 +3,6 @@
 backup/
 .SLD.apk.template
 SLD_unaligned.apk
+SLD_aligned.apk
 *.idsig
 
