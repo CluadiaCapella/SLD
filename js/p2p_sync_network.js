@@ -379,6 +379,8 @@ async function initLocalPeerServer() {
     } catch (e) {}
   }
 
+  initGlobalWebSocketPresenceRelay();
+
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) {
       broadcastLocalPresence();
@@ -884,37 +886,91 @@ async function testDeviceConnection(idx) {
   }
 }
 
-function sendPairRequestToDevice(conn) {
-  const targetPeerId = conn.peerId || sanitizePeerId(conn.ip);
-  if (!localPeer || localPeer.destroyed) {
-    initLocalPeerServer();
+let globalPresenceWs = null;
+
+function initGlobalWebSocketPresenceRelay() {
+  if (globalPresenceWs && (globalPresenceWs.readyState === WebSocket.CONNECTING || globalPresenceWs.readyState === WebSocket.OPEN)) {
+    return;
   }
 
   try {
-    const peerConn = localPeer.connect(targetPeerId, { reliable: true });
-    setupPeerConnectionHandlers(peerConn);
+    globalPresenceWs = new WebSocket('wss://free.websocket.in/v3/sld-presence-channel-v1?apiKey=public');
 
-    peerConn.on('open', () => {
-      peerConn.send({
-        type: 'PAIR_REQUEST',
-        fromName: p2pDeviceName || 'Remote Device',
-        fromIp: conn.ip,
-        fromUrl: conn.url || formatPeerUrl(conn.ip),
-        fromPeerId: myDevicePeerId
+    globalPresenceWs.onopen = () => {
+      broadcastGlobalPresenceWs();
+    };
+
+    globalPresenceWs.onmessage = async (evt) => {
+      try {
+        if (typeof evt.data === 'string') {
+          const msg = JSON.parse(evt.data);
+          if (msg && msg.type === 'PRESENCE_ANNOUNCE' && msg.code && msg.code !== myDeviceShortCode) {
+            await registerDiscoveredDevice(msg.code, msg.name);
+          }
+        }
+      } catch (e) {}
+    };
+
+    globalPresenceWs.onerror = () => {};
+    globalPresenceWs.onclose = () => {
+      setTimeout(initGlobalWebSocketPresenceRelay, 5000);
+    };
+  } catch (e) {}
+}
+
+function broadcastGlobalPresenceWs() {
+  if (globalPresenceWs && globalPresenceWs.readyState === WebSocket.OPEN && myDeviceShortCode) {
+    try {
+      globalPresenceWs.send(JSON.stringify({
+        type: 'PRESENCE_ANNOUNCE',
+        code: myDeviceShortCode,
+        name: p2pDeviceName || 'SLD Device',
+        peerId: myDevicePeerId
+      }));
+    } catch (e) {}
+  }
+}
+
+function sendPairRequestToDevice(conn) {
+  const targetPeerId = conn.peerId || sanitizePeerId(conn.ip);
+
+  const doConnect = () => {
+    if (!localPeer || localPeer.destroyed) return;
+    try {
+      const peerConn = localPeer.connect(targetPeerId, { reliable: true });
+      setupPeerConnectionHandlers(peerConn);
+
+      peerConn.on('open', () => {
+        peerConn.send({
+          type: 'PAIR_REQUEST',
+          fromName: p2pDeviceName || 'Remote Device',
+          fromIp: conn.ip,
+          fromUrl: conn.url || formatPeerUrl(conn.ip),
+          fromPeerId: myDevicePeerId
+        });
       });
-    });
 
-    peerConn.on('error', (err) => {
+      peerConn.on('error', (err) => {
+        conn.status = 'offline';
+        db.setSetting('ipConnectionsList', ipConnectionsList);
+        renderIpConnectionsList();
+        updateNavP2pStatusIndicator();
+      });
+    } catch (e) {
       conn.status = 'offline';
       db.setSetting('ipConnectionsList', ipConnectionsList);
       renderIpConnectionsList();
       updateNavP2pStatusIndicator();
-    });
-  } catch (e) {
-    conn.status = 'offline';
-    db.setSetting('ipConnectionsList', ipConnectionsList);
-    renderIpConnectionsList();
-    updateNavP2pStatusIndicator();
+    }
+  };
+
+  if (!localPeer || localPeer.destroyed) {
+    initLocalPeerServer();
+    setTimeout(doConnect, 1500);
+  } else if (!localPeer.open) {
+    localPeer.once('open', doConnect);
+  } else {
+    doConnect();
   }
 }
 
