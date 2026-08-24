@@ -13,8 +13,9 @@
       </div>
 
       <div style="margin-bottom:16px; background:rgba(56,189,248,0.08); border:1px solid rgba(56,189,248,0.25); padding:12px 16px; border-radius:var(--radius-md); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
-        <div>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
           <span style="font-size:0.88rem; color:var(--text-primary); font-weight:700;">📡 Network Broadcasting: </span>
+          <button class="btn btn-sm" id="toggleBroadcastingBtn" style="background:#22c55e; color:#fff; font-weight:800; border:none; border-radius:14px; padding:4px 12px; cursor:pointer;">📡 ON</button>
           <strong id="myDeviceCodeDisplay" style="font-family:monospace; font-size:0.95rem; color:#38bdf8; padding:4px 10px; border-radius:6px; background:rgba(15,23,42,0.6); border:1px solid #38bdf8;">Broadcasting is trying to activate...</strong>
         </div>
         <span class="text-muted" style="font-size:0.78rem;">Auto-discovers devices on LAN & Tailscale. Data syncing is OFF by default.</span>

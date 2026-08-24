@@ -1138,7 +1138,56 @@ async function testDeviceConnection(idx) {
 
 let globalPresenceWs = null;
 
+let isBroadcastingEnabled = true;
+
+async function setBroadcastingEnabled(enabled) {
+  isBroadcastingEnabled = Boolean(enabled);
+  await db.setSetting('broadcastingEnabled', isBroadcastingEnabled);
+  updateBroadcastingUI();
+
+  if (!isBroadcastingEnabled) {
+    if (globalPresenceWs) {
+      try { globalPresenceWs.close(); } catch(e) {}
+      globalPresenceWs = null;
+    }
+    showToastNotification('🔒 Network broadcasting disabled');
+  } else {
+    initGlobalWebSocketPresenceRelay();
+    broadcastGlobalPresenceWs();
+    showToastNotification('📡 Network broadcasting enabled');
+  }
+}
+
+function updateBroadcastingUI() {
+  const toggleBtn = document.getElementById('toggleBroadcastingBtn');
+  const displayEl = document.getElementById('myDeviceCodeDisplay');
+
+  if (toggleBtn) {
+    if (isBroadcastingEnabled) {
+      toggleBtn.style.background = '#22c55e';
+      toggleBtn.style.color = '#fff';
+      toggleBtn.textContent = '📡 ON';
+    } else {
+      toggleBtn.style.background = 'var(--bg-tertiary)';
+      toggleBtn.style.color = 'var(--text-muted)';
+      toggleBtn.textContent = '🔒 OFF';
+    }
+  }
+
+  if (displayEl) {
+    if (!isBroadcastingEnabled) {
+      displayEl.innerHTML = `<span style="color:var(--text-muted); font-weight:700;">🔒 Broadcasting Disabled</span>`;
+    } else if (localPeer && !localPeer.destroyed && localPeer.id) {
+      const shortCode = localPeer.id.replace(/^sld-device-/, 'SLD-').toUpperCase();
+      displayEl.innerHTML = `<span style="color:#22c55e; font-weight:800;">🟢 Active</span> (${shortCode})`;
+    } else {
+      displayEl.textContent = 'Broadcasting is trying to activate...';
+    }
+  }
+}
+
 function initGlobalWebSocketPresenceRelay() {
+  if (!isBroadcastingEnabled) return;
   if (globalPresenceWs && (globalPresenceWs.readyState === WebSocket.CONNECTING || globalPresenceWs.readyState === WebSocket.OPEN)) {
     return;
   }

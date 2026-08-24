@@ -15,15 +15,18 @@ async function renderConnectionsPage() {
   if (typeof updateNavP2pStatusIndicator === 'function') {
     updateNavP2pStatusIndicator();
   }
+  if (typeof updateBroadcastingUI === 'function') {
+    updateBroadcastingUI();
+  }
 
-  const codeEl = document.getElementById('myDeviceCodeDisplay');
-  if (codeEl) {
-    if (typeof localPeer !== 'undefined' && localPeer && !localPeer.destroyed && localPeer.id) {
-      const shortCode = localPeer.id.replace(/^sld-device-/, 'SLD-').toUpperCase();
-      codeEl.innerHTML = `<span style="color:#22c55e; font-weight:800;">🟢 Active</span> (${shortCode})`;
-    } else {
-      codeEl.textContent = 'Broadcasting is trying to activate...';
-    }
+  const broadcastToggleBtn = document.getElementById('toggleBroadcastingBtn');
+  if (broadcastToggleBtn && !broadcastToggleBtn.dataset.bound) {
+    broadcastToggleBtn.dataset.bound = 'true';
+    broadcastToggleBtn.onclick = () => {
+      if (typeof setBroadcastingEnabled === 'function') {
+        setBroadcastingEnabled(!window.isBroadcastingEnabled);
+      }
+    };
   }
 
   const openDelBtn = document.getElementById('openDeletedDevicesModalBtn');
