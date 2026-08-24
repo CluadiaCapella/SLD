@@ -31,6 +31,36 @@
         </div>
       </div>
 
+      <!-- Live Network Diagnostics Card -->
+      <div style="background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:var(--radius-lg); padding:16px; margin-top:20px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+          <h4 style="margin:0; font-size:0.95rem; font-weight:800; color:var(--text-primary);">🔍 Live Network Diagnostics & Logs</h4>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-primary btn-sm" id="runNetworkDiagBtn" style="font-size:0.78rem; font-weight:800;">⚡ Run Diagnostic Test</button>
+            <button class="btn btn-secondary btn-sm" id="clearDiagLogsBtn" style="font-size:0.78rem;">🧹 Clear Log</button>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:10px; margin-bottom:12px; font-size:0.8rem;">
+          <div style="background:rgba(0,0,0,0.25); padding:8px 12px; border-radius:var(--radius-md); border:1px solid var(--border-color);">
+            <div class="text-muted" style="font-size:0.72rem;">PeerJS Socket:</div>
+            <strong id="diagPeerSocketStatus" style="color:#eab308;">Connecting...</strong>
+          </div>
+          <div style="background:rgba(0,0,0,0.25); padding:8px 12px; border-radius:var(--radius-md); border:1px solid var(--border-color);">
+            <div class="text-muted" style="font-size:0.72rem;">WebSocket Relay:</div>
+            <strong id="diagWsRelayStatus" style="color:#eab308;">Connecting...</strong>
+          </div>
+          <div style="background:rgba(0,0,0,0.25); padding:8px 12px; border-radius:var(--radius-md); border:1px solid var(--border-color);">
+            <div class="text-muted" style="font-size:0.72rem;">Active WebRTC Sockets:</div>
+            <strong id="diagWebRtcActiveCount" style="color:#38bdf8;">0 Active</strong>
+          </div>
+        </div>
+
+        <div id="diagConsoleLog" style="background:rgba(15,23,42,0.85); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:10px 14px; font-family:monospace; font-size:0.78rem; color:#38bdf8; max-height:220px; overflow-y:auto; line-height:1.5;">
+          <div>[INFO] Diagnostics Console ready. Click "⚡ Run Diagnostic Test" for live ICE & WebRTC socket analysis.</div>
+        </div>
+      </div>
+
       <!-- Deleted Devices Modal -->
       <div id="deletedDevicesModal" class="modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:10000; align-items:center; justify-content:center;">
         <div class="modal-content" style="background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:var(--radius-lg); width:90%; max-width:480px; padding:20px;">

@@ -8,6 +8,122 @@ let p2pDeviceName = 'Browser Peer';
 let ipConnectionsList = [];
 let p2pActiveSyncing = false;
 
+function logP2pDiagnostic(msg, level = 'info') {
+  const consoleEl = document.getElementById('diagConsoleLog');
+  if (!consoleEl) return;
+
+  const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  let color = '#38bdf8';
+  let tag = '[INFO]';
+
+  if (level === 'success') { color = '#22c55e'; tag = '[SUCCESS]'; }
+  else if (level === 'warn') { color = '#eab308'; tag = '[WARNING]'; }
+  else if (level === 'error') { color = '#ef4444'; tag = '[ERROR]'; }
+
+  const entry = document.createElement('div');
+  entry.style.marginBottom = '4px';
+  entry.style.lineHeight = '1.4';
+  entry.innerHTML = `<span style="color:var(--text-muted); font-weight:700;">[${timestamp}]</span> <span style="color:${color}; font-weight:800;">${tag}</span> ${msg}`;
+
+  consoleEl.appendChild(entry);
+  consoleEl.scrollTop = consoleEl.scrollHeight;
+}
+
+function updateDiagnosticsDashboardUI() {
+  const peerEl = document.getElementById('diagPeerSocketStatus');
+  const wsEl = document.getElementById('diagWsRelayStatus');
+  const activeEl = document.getElementById('diagWebRtcActiveCount');
+
+  if (peerEl) {
+    if (typeof localPeer !== 'undefined' && localPeer && !localPeer.destroyed && localPeer.id) {
+      peerEl.innerHTML = `<span style="color:#22c55e;">🟢 Open</span> (${localPeer.id.replace(/^sld-device-/, 'SLD-').toUpperCase()})`;
+    } else if (typeof localPeer !== 'undefined' && localPeer && localPeer.disconnected) {
+      peerEl.innerHTML = `<span style="color:#eab308;">🟡 Disconnected</span>`;
+    } else {
+      peerEl.innerHTML = `<span style="color:#ef4444;">🔴 Closed</span>`;
+    }
+  }
+
+  if (wsEl) {
+    if (globalPresenceWs && globalPresenceWs.readyState === WebSocket.OPEN) {
+      wsEl.innerHTML = `<span style="color:#22c55e;">🟢 Connected</span>`;
+    } else if (globalPresenceWs && globalPresenceWs.readyState === WebSocket.CONNECTING) {
+      wsEl.innerHTML = `<span style="color:#eab308;">🟡 Connecting...</span>`;
+    } else {
+      wsEl.innerHTML = `<span style="color:#ef4444;">🔴 Offline</span>`;
+    }
+  }
+
+  if (activeEl) {
+    const activeCount = typeof activePeerConnections !== 'undefined' && activePeerConnections ? activePeerConnections.size : 0;
+    activeEl.textContent = `${activeCount} WebRTC Active`;
+  }
+}
+
+async function runP2pDiagnosticTest() {
+  logP2pDiagnostic('Starting Network & WebRTC Diagnostics Test...', 'info');
+
+  updateDiagnosticsDashboardUI();
+
+  if (globalPresenceWs && globalPresenceWs.readyState === WebSocket.OPEN) {
+    logP2pDiagnostic('WebSocket Presence Relay: Connected & Operational', 'success');
+  } else {
+    logP2pDiagnostic('WebSocket Presence Relay: Offline. Re-initializing socket...', 'warn');
+    initGlobalWebSocketPresenceRelay();
+  }
+
+  if (typeof localPeer !== 'undefined' && localPeer && !localPeer.destroyed && localPeer.id) {
+    logP2pDiagnostic(`PeerJS Signaling Server: Connected as ID ${localPeer.id}`, 'success');
+  } else {
+    logP2pDiagnostic('PeerJS Signaling Server: Not open yet. Attempting local peer restart...', 'warn');
+    initLocalPeerServer();
+  }
+
+  logP2pDiagnostic('Gathering WebRTC STUN & TURN ICE Candidates...', 'info');
+  try {
+    const pc = new RTCPeerConnection({
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: ['turn:eu-0.turn.peerjs.com:3478', 'turn:us-0.turn.peerjs.com:3478'], username: 'peerjs', credential: 'peerjsp' }
+      ]
+    });
+
+    pc.createDataChannel('diag_test');
+    let hostCount = 0;
+    let srflxCount = 0;
+    let relayCount = 0;
+
+    pc.onicecandidate = (e) => {
+      if (e.candidate) {
+        const cand = e.candidate.candidate;
+        if (cand.includes('typ host')) hostCount++;
+        else if (cand.includes('typ srflx')) srflxCount++;
+        else if (cand.includes('typ relay')) relayCount++;
+      } else {
+        logP2pDiagnostic(`ICE Candidate Results: Host=${hostCount}, STUN(srflx)=${srflxCount}, TURN(relay)=${relayCount}`, relayCount > 0 || srflxCount > 0 ? 'success' : 'warn');
+        if (relayCount === 0 && srflxCount === 0) {
+          logP2pDiagnostic('No public ICE candidates gathered. Check router firewall or cellular connection.', 'error');
+        }
+        pc.close();
+      }
+    };
+
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+  } catch (err) {
+    logP2pDiagnostic(`WebRTC ICE Test Error: ${err.message || err}`, 'error');
+  }
+
+  logP2pDiagnostic(`Discovered Devices in List: ${ipConnectionsList.length}`, 'info');
+  ipConnectionsList.forEach(c => {
+    logP2pDiagnostic(`Device "${c.name}" (${c.ip}): status=${c.status}, peerId=${c.peerId}`, c.status === 'online' ? 'success' : 'warn');
+    if (c.status !== 'online') {
+      sendPairRequestToDevice(c);
+    }
+  });
+}
+
 function updateP2pStatusUI(status, text) {
   const badge = document.getElementById('p2pSyncStatusBadge');
   if (!badge) return;

@@ -18,6 +18,9 @@ async function renderConnectionsPage() {
   if (typeof updateBroadcastingUI === 'function') {
     updateBroadcastingUI();
   }
+  if (typeof updateDiagnosticsDashboardUI === 'function') {
+    updateDiagnosticsDashboardUI();
+  }
 
   const broadcastToggleBtn = document.getElementById('toggleBroadcastingBtn');
   if (broadcastToggleBtn && !broadcastToggleBtn.dataset.bound) {
@@ -42,6 +45,23 @@ async function renderConnectionsPage() {
     closeDelBtn.dataset.bound = 'true';
     closeDelBtn.onclick = () => {
       if (typeof closeDeletedDevicesModal === 'function') closeDeletedDevicesModal();
+    };
+  }
+
+  const runDiagBtn = document.getElementById('runNetworkDiagBtn');
+  if (runDiagBtn && !runDiagBtn.dataset.bound) {
+    runDiagBtn.dataset.bound = 'true';
+    runDiagBtn.onclick = () => {
+      if (typeof runP2pDiagnosticTest === 'function') runP2pDiagnosticTest();
+    };
+  }
+
+  const clearDiagBtn = document.getElementById('clearDiagLogsBtn');
+  if (clearDiagBtn && !clearDiagBtn.dataset.bound) {
+    clearDiagBtn.dataset.bound = 'true';
+    clearDiagBtn.onclick = () => {
+      const consoleEl = document.getElementById('diagConsoleLog');
+      if (consoleEl) consoleEl.innerHTML = '<div>[INFO] Log cleared.</div>';
     };
   }
 }
