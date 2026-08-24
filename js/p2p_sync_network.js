@@ -357,8 +357,8 @@ async function initLocalPeerServer() {
   myDevicePeerId = sanitizePeerId(savedCode);
 
   const codeEl = document.getElementById('myDeviceCodeDisplay');
-  if (codeEl) {
-    codeEl.textContent = 'Broadcasting is trying to activate...';
+  if (codeEl && isBroadcastingEnabled) {
+    codeEl.innerHTML = `<span style="color:#22c55e; font-weight:800;">🟢 Active</span> (SLD-${savedCode})`;
   }
 
   if (typeof BroadcastChannel !== 'undefined' && !lanBroadcastChannel) {
