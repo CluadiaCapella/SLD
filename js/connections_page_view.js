@@ -17,16 +17,13 @@ async function renderConnectionsPage() {
   }
 
   const codeEl = document.getElementById('myDeviceCodeDisplay');
-  if (codeEl && typeof myDeviceShortCode !== 'undefined' && myDeviceShortCode) {
-    codeEl.textContent = `SLD-${myDeviceShortCode}`;
-  }
-
-  const addIpBtn = document.getElementById('addIpConnectionBtn');
-  if (addIpBtn && !addIpBtn.dataset.bound) {
-    addIpBtn.dataset.bound = 'true';
-    addIpBtn.onclick = () => {
-      if (typeof addIpConnection === 'function') addIpConnection();
-    };
+  if (codeEl) {
+    if (typeof localPeer !== 'undefined' && localPeer && !localPeer.destroyed && localPeer.id) {
+      const shortCode = localPeer.id.replace(/^sld-device-/, 'SLD-').toUpperCase();
+      codeEl.innerHTML = `<span style="color:#22c55e; font-weight:800;">🟢 Active</span> (${shortCode})`;
+    } else {
+      codeEl.textContent = 'Broadcasting is trying to activate...';
+    }
   }
 
   const openBlockBtn = document.getElementById('openBlockedIpsModalBtn');

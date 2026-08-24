@@ -358,7 +358,7 @@ async function initLocalPeerServer() {
 
   const codeEl = document.getElementById('myDeviceCodeDisplay');
   if (codeEl) {
-    codeEl.textContent = `SLD-${savedCode}`;
+    codeEl.textContent = 'Broadcasting is trying to activate...';
   }
 
   if (typeof BroadcastChannel !== 'undefined' && !lanBroadcastChannel) {
@@ -415,6 +415,11 @@ async function initLocalPeerServer() {
 
       localPeer.on('open', (id) => {
         myDevicePeerId = id;
+        const displayEl = document.getElementById('myDeviceCodeDisplay');
+        if (displayEl) {
+          const shortCode = id.replace(/^sld-device-/, 'SLD-').toUpperCase();
+          displayEl.innerHTML = `<span style="color:#22c55e; font-weight:800;">🟢 Active</span> (${shortCode})`;
+        }
         broadcastLocalPresence();
         initPresenceRoomHub();
       });
@@ -436,6 +441,14 @@ async function initLocalPeerServer() {
 function setupPeerConnectionHandlers(conn) {
   activePeerConnections.set(conn.peer, conn);
 
+  const keepaliveTimer = setInterval(() => {
+    if (conn && conn.open) {
+      try { conn.send({ type: 'KEEPALIVE', fromPeerId: myDevicePeerId }); } catch (e) {}
+    } else {
+      clearInterval(keepaliveTimer);
+    }
+  }, 4000);
+
   conn.on('open', () => {
     conn.send({
       type: 'DISCOVERY_HELLO',
@@ -446,6 +459,17 @@ function setupPeerConnectionHandlers(conn) {
 
   conn.on('data', async (data) => {
     if (!data || typeof data !== 'object') return;
+
+    if (data.type === 'KEEPALIVE') {
+      const match = ipConnectionsList.find(c => c.peerId === conn.peer || c.ip.includes(data.fromPeerId || ''));
+      if (match && match.status !== 'online') {
+        match.status = 'online';
+        await db.setSetting('ipConnectionsList', ipConnectionsList);
+        renderIpConnectionsList();
+        updateNavP2pStatusIndicator();
+      }
+      return;
+    }
 
     if (data.type === 'PAIR_REQUEST' || data.type === 'DISCOVERY_HELLO') {
       const remoteIp = ipOrUrlClean(data.fromIp || data.fromPeerId || '');
@@ -474,6 +498,7 @@ function setupPeerConnectionHandlers(conn) {
           remoteAllowSync: false,
           lastPing: Date.now()
         };
+        appendSyncHistoryLog(reciprocalConn, `Auto-discovered & connected on network.`);
         ipConnectionsList.push(reciprocalConn);
       } else {
         reciprocalConn.status = 'online';
@@ -505,6 +530,7 @@ function setupPeerConnectionHandlers(conn) {
           match.status = 'online';
           match.peerId = conn.peer;
           if (data.fromName) match.name = data.fromName;
+          appendSyncHistoryLog(match, `WebRTC pairing accepted.`);
           showToastNotification(`🟢 Connected with ${match.name}!`);
           if (typeof addNotification === 'function') {
             addNotification('Device Connected', `Connected with device "${match.name}".`, 'success');
@@ -524,10 +550,11 @@ function setupPeerConnectionHandlers(conn) {
       const match = ipConnectionsList.find(c => c.peerId === conn.peer || c.ip.includes(data.fromIp || ''));
       if (match) {
         match.remoteAllowSync = data.allowSync === true;
+        appendSyncHistoryLog(match, `Remote device ${data.allowSync ? 'granted' : 'revoked'} sync permission.`);
         await db.setSetting('ipConnectionsList', ipConnectionsList);
         renderIpConnectionsList();
-        if (typeof addNotification === 'function') {
-          addNotification('Sync Permission Updated', `Device "${match.name}" ${data.allowSync ? 'granted' : 'revoked'} sync permission.`, 'info');
+        if (match.allowSync && match.remoteAllowSync) {
+          performAutoDatabaseSync(match);
         }
       }
     } else if (data.type === 'PING') {
@@ -754,6 +781,46 @@ function formatPeerUrl(ipOrUrl) {
   }
 }
 
+function appendSyncHistoryLog(conn, logMessage) {
+  if (!conn) return;
+  if (!conn.history) conn.history = [];
+  const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  conn.history.unshift({ time: timestamp, msg: logMessage });
+  if (conn.history.length > 25) conn.history.pop();
+}
+
+async function performAutoDatabaseSync(conn) {
+  if (!conn || conn.status !== 'online' || !conn.allowSync || !conn.remoteAllowSync) return;
+
+  let activeConn = activePeerConnections.get(conn.peerId);
+  if (!activeConn || !activeConn.open) return;
+
+  try {
+    p2pActiveSyncing = true;
+    updateNavP2pStatusIndicator();
+
+    const subjects = await db.getAll('subjects');
+    const events = await db.getAll('events');
+    const media = await db.getAll('media');
+
+    activeConn.send({
+      type: 'SYNC_PAYLOAD',
+      payload: { subjects, events, media },
+      fromIp: conn.ip
+    });
+
+    appendSyncHistoryLog(conn, `Auto-synced ${subjects.length} subjects, ${events.length} events, ${media.length} media.`);
+    await db.setSetting('ipConnectionsList', ipConnectionsList);
+    renderIpConnectionsList();
+    showToastNotification(`⚡ Auto-synced data with ${conn.name}!`);
+  } catch (e) {
+    console.warn('Auto sync error:', e);
+  } finally {
+    p2pActiveSyncing = false;
+    updateNavP2pStatusIndicator();
+  }
+}
+
 function renderIpConnectionsList() {
   const container = document.getElementById('connectedPeersList') || document.getElementById('ipConnectionsListContainer');
   if (!container) return;
@@ -764,10 +831,14 @@ function renderIpConnectionsList() {
   }
 
   container.innerHTML = `
-    <div style="display:flex; flex-direction:column; gap:10px; width:100%;">
+    <div style="display:flex; flex-direction:column; gap:12px; width:100%;">
       ${ipConnectionsList.map((conn, idx) => {
         const targetUrl = conn.url || formatPeerUrl(conn.ip);
-        const canSync = conn.allowSync === true;
+        const localSync = conn.allowSync === true;
+        const remoteSync = conn.remoteAllowSync === true;
+        const fullyReadyToSync = localSync && remoteSync;
+        const historyCount = conn.history ? conn.history.length : 0;
+
         let statusBadge = `<span class="badge" style="background:rgba(239,68,68,0.2); color:#ef4444; border:1px solid #ef4444; font-size:0.7rem;">🔴 Disconnected</span>`;
         if (conn.status === 'online') {
           statusBadge = `<span class="badge" style="background:rgba(34,197,94,0.2); color:#22c55e; border:1px solid #22c55e; font-size:0.7rem;">🟢 Connected</span>`;
@@ -777,45 +848,84 @@ function renderIpConnectionsList() {
           statusBadge = `<span class="badge" style="background:rgba(239,68,68,0.3); color:#ef4444; border:1px solid #ef4444; font-size:0.7rem;">🚫 Blocked</span>`;
         }
 
+        let syncPermissionBadge = `<span class="badge" style="background:rgba(255,255,255,0.08); color:var(--text-muted); border:1px solid var(--border-color); font-size:0.7rem;">⚪ Sync Off</span>`;
+        if (fullyReadyToSync) {
+          syncPermissionBadge = `<span class="badge" style="background:rgba(34,197,94,0.2); color:#22c55e; border:1px solid #22c55e; font-size:0.7rem;">🟢 Ready & Auto-Syncing</span>`;
+        } else if (localSync && !remoteSync) {
+          syncPermissionBadge = `<span class="badge" style="background:rgba(234,179,8,0.25); color:#eab308; border:1px solid #eab308; font-size:0.7rem;">🟡 Awaiting other device sync permission</span>`;
+        }
+
         return `
-        <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-secondary); border:1px solid var(--border-color); padding:12px 16px; border-radius:var(--radius-md); flex-wrap:wrap; gap:12px;">
-          <div>
-            <div style="font-weight:800; font-size:0.95rem; color:var(--text-primary); display:flex; align-items:center; gap:8px;">
-              <span>📱 ${conn.name || 'Unnamed Device'}</span>
-              ${statusBadge}
+        <div style="background:var(--bg-secondary); border:1px solid var(--border-color); padding:14px 16px; border-radius:var(--radius-md);">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+            <div>
+              <div style="font-weight:800; font-size:0.95rem; color:var(--text-primary); display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <span>📱 ${conn.name || 'Unnamed Device'}</span>
+                ${statusBadge}
+                ${syncPermissionBadge}
+              </div>
+              <div style="font-size:0.8rem; color:var(--text-muted); font-family:monospace; margin-top:3px;">🌐 Address: ${targetUrl}</div>
             </div>
-            <div style="font-size:0.8rem; color:var(--text-muted); font-family:monospace; margin-top:2px;">🌐 Address: ${targetUrl}</div>
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+              <button class="btn btn-sm sync-toggle-btn" data-idx="${idx}" style="${localSync ? 'background:#22c55e; color:#fff; border:none; font-weight:800;' : 'background:var(--bg-tertiary); color:var(--text-muted); font-weight:800;'}">
+                ${localSync ? '⚡ Sync: ON' : '🔒 Sync: OFF'}
+              </button>
+              <button class="btn btn-danger btn-sm remove-ip-btn" data-idx="${idx}">🗑️</button>
+            </div>
           </div>
-          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-            <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:0.8rem; font-weight:700; user-select:none; color:var(--text-primary);">
-              <span>Allow Syncing</span>
-              <input type="checkbox" class="sync-toggle-checkbox" data-idx="${idx}" ${canSync ? 'checked' : ''} style="width:16px; height:16px; cursor:pointer;">
-            </label>
-            <button class="btn btn-primary btn-sm sync-ip-btn" data-idx="${idx}" ${!canSync || conn.status !== 'online' ? 'disabled' : ''} title="${!canSync ? 'Toggle Allow Syncing ON to enable manual sync' : 'Sync data with device'}">🔄 Sync Now</button>
-            <button class="btn btn-secondary btn-sm test-conn-btn" data-idx="${idx}" title="Test Connection">⚡ Test</button>
-            <button class="btn btn-danger btn-sm remove-ip-btn" data-idx="${idx}">🗑️</button>
+
+          <div style="margin-top:10px; border-top:1px solid var(--border-color); padding-top:8px; display:flex; align-items:center; justify-content:space-between;">
+            <button class="btn btn-link btn-sm toggle-history-btn" data-idx="${idx}" style="font-size:0.78rem; text-decoration:none; padding:0; color:#38bdf8; font-weight:700;">
+              📜 View Sync History (${historyCount}) ▼
+            </button>
+          </div>
+
+          <div id="syncHistoryContainer-${idx}" style="display:none; margin-top:8px; background:rgba(15,23,42,0.6); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:10px 14px; font-family:monospace; font-size:0.78rem; max-height:160px; overflow-y:auto;">
+            ${conn.history && conn.history.length > 0 ?
+              conn.history.map(h => `<div style="margin-bottom:4px; line-height:1.4;"><span style="color:var(--text-muted); font-weight:700;">[${h.time}]</span> ${h.msg}</div>`).join('') :
+              '<div style="color:var(--text-muted);">No sync activity recorded yet.</div>'
+            }
           </div>
         </div>`;
       }).join('')}
     </div>`;
 
-  container.querySelectorAll('.sync-toggle-checkbox').forEach(chk => {
-    chk.onchange = async () => {
-      const idx = parseInt(chk.getAttribute('data-idx'), 10);
-      if (ipConnectionsList[idx]) {
-        ipConnectionsList[idx].allowSync = chk.checked;
+  container.querySelectorAll('.sync-toggle-btn').forEach(btn => {
+    btn.onclick = async () => {
+      const idx = parseInt(btn.getAttribute('data-idx'), 10);
+      const connItem = ipConnectionsList[idx];
+      if (connItem) {
+        connItem.allowSync = !connItem.allowSync;
+        appendSyncHistoryLog(connItem, `Toggled local sync permission ${connItem.allowSync ? 'ON' : 'OFF'}.`);
         await db.setSetting('ipConnectionsList', ipConnectionsList);
         renderIpConnectionsList();
+
+        let activeConn = activePeerConnections.get(connItem.peerId);
+        if (activeConn && activeConn.open) {
+          activeConn.send({
+            type: 'SYNC_PERMISSION_UPDATE',
+            allowSync: connItem.allowSync,
+            fromIp: connItem.ip
+          });
+        }
+
+        if (connItem.allowSync && connItem.remoteAllowSync) {
+          performAutoDatabaseSync(connItem);
+        }
       }
     };
   });
 
-  container.querySelectorAll('.test-conn-btn').forEach(btn => {
-    btn.onclick = () => testDeviceConnection(parseInt(btn.getAttribute('data-idx'), 10));
-  });
-
-  container.querySelectorAll('.sync-ip-btn').forEach(btn => {
-    btn.onclick = () => syncWithIpConnection(parseInt(btn.getAttribute('data-idx'), 10));
+  container.querySelectorAll('.toggle-history-btn').forEach(btn => {
+    btn.onclick = () => {
+      const idx = btn.getAttribute('data-idx');
+      const histEl = document.getElementById(`syncHistoryContainer-${idx}`);
+      if (histEl) {
+        const isHidden = histEl.style.display === 'none';
+        histEl.style.display = isHidden ? 'block' : 'none';
+        btn.textContent = `📜 View Sync History (${ipConnectionsList[idx]?.history ? ipConnectionsList[idx].history.length : 0}) ${isHidden ? '▲' : '▼'}`;
+      }
+    };
   });
 
   container.querySelectorAll('.remove-ip-btn').forEach(btn => {
