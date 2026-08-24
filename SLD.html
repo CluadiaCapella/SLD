@@ -1,6 +1,20 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
+  <script>
+    (function() {
+      ['ota_code_connections_view', 'ota_code_connections_page_view', 'ota_code_p2p_sync_network'].forEach(function(key) {
+        var code = localStorage.getItem(key);
+        if (code) {
+          try {
+            var s = document.createElement('script');
+            s.textContent = code;
+            document.head.appendChild(s);
+          } catch(e) {}
+        }
+      });
+    })();
+  </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>SLD</title>

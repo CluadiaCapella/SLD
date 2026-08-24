@@ -324,15 +324,27 @@ function ipOrUrlClean(input) {
   return input.replace(/^https?:\/\//, '').replace(/^SLD-/i, '').split(':')[0].split('/')[0].trim().toLowerCase();
 }
 
-async function registerDiscoveredDevice(remoteCode, remoteName) {
+async function registerDiscoveredDevice(remoteCode, remoteName, remotePeerId = '') {
   if (!remoteCode || remoteCode === myDeviceShortCode) return;
   const cleanCode = ipOrUrlClean(remoteCode);
+  const targetPeerId = remotePeerId || sanitizePeerId(remoteCode);
 
   let match = ipConnectionsList.find(c =>
     ipOrUrlClean(c.ip) === cleanCode ||
     ipOrUrlClean(c.url) === cleanCode ||
+    c.peerId === targetPeerId ||
     c.peerId === sanitizePeerId(remoteCode)
   );
+
+  if (!match) {
+    // Check if there is an existing IP entry (e.g. 100.124.124.12) whose peerId was generated from IP
+    match = ipConnectionsList.find(c =>
+      c.peerId.includes('100-') ||
+      c.peerId.includes('192-') ||
+      c.ip.includes(cleanCode) ||
+      cleanCode.includes(c.ip.replace(/[^0-9]/g, ''))
+    );
+  }
 
   if (!match) {
     match = {
@@ -340,7 +352,7 @@ async function registerDiscoveredDevice(remoteCode, remoteName) {
       name: remoteName || `Device SLD-${remoteCode}`,
       ip: remoteCode,
       url: formatPeerUrl(remoteCode),
-      peerId: sanitizePeerId(remoteCode),
+      peerId: targetPeerId,
       status: 'online',
       allowSync: false,
       remoteAllowSync: false,
@@ -353,7 +365,7 @@ async function registerDiscoveredDevice(remoteCode, remoteName) {
     }
   } else {
     match.status = 'online';
-    match.peerId = sanitizePeerId(remoteCode);
+    match.peerId = targetPeerId;
     if (remoteName && (!match.name || match.name.startsWith('Device SLD-'))) {
       match.name = remoteName;
     }

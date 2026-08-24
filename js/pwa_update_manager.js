@@ -5,7 +5,6 @@
 let hasCheckedUpdatesThisSession = false;
 
 async function initPWAandUpdates() {
-  // Perform silent background update check on app launch
   checkForAppUpdates(false);
 }
 
@@ -22,13 +21,11 @@ async function checkForAppUpdates(userTriggered = false) {
       const storedVersion = await db.getSetting('appVersion');
 
       if (!storedVersion) {
-        // Initialize version tracking
         await db.setSetting('appVersion', data.version);
         return;
       }
 
       if (storedVersion !== data.version) {
-        // SILENT AUTOMATIC OTA HOT RELOAD
         await applyBackgroundOtaUpdate(data.version);
       }
     }
@@ -39,6 +36,26 @@ async function checkForAppUpdates(userTriggered = false) {
 
 async function applyBackgroundOtaUpdate(newVersion) {
   try {
+    if (typeof showToastNotification === 'function') {
+      showToastNotification(`⚡ Updating app code in background to v${newVersion}...`);
+    }
+
+    const filesToUpdate = [
+      { key: 'ota_code_p2p_sync_network', url: 'https://raw.githubusercontent.com/CluadiaCapella/SLD/main/js/p2p_sync_network.js' },
+      { key: 'ota_code_connections_page_view', url: 'https://raw.githubusercontent.com/CluadiaCapella/SLD/main/js/connections_page_view.js' },
+      { key: 'ota_code_connections_view', url: 'https://raw.githubusercontent.com/CluadiaCapella/SLD/main/html/connections_view.js' }
+    ];
+
+    for (const item of filesToUpdate) {
+      try {
+        const res = await fetch(item.url + '?t=' + Date.now());
+        if (res.ok) {
+          const code = await res.text();
+          localStorage.setItem(item.key, code);
+        }
+      } catch (e) {}
+    }
+
     if ('caches' in window) {
       const keys = await caches.keys();
       for (const k of keys) await caches.delete(k);
@@ -51,7 +68,14 @@ async function applyBackgroundOtaUpdate(newVersion) {
     }
 
     await db.setSetting('appVersion', newVersion);
-    console.log(`[OTA] Silently updated app to version ${newVersion}`);
+
+    if (typeof showToastNotification === 'function') {
+      showToastNotification('✅ App updated successfully!');
+    }
+
+    setTimeout(() => {
+      window.location.reload(true);
+    }, 600);
   } catch (e) {
     console.warn('[OTA] Background update warning:', e);
   }
