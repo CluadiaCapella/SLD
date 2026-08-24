@@ -122,29 +122,29 @@
           <button class="btn btn-secondary btn-sm" id="regenerateThumbnailsBtn" style="margin-top:10px;">🔄 Regenerate All Thumbnails</button>
         </div>
 
-        <!-- 🌐 IP Relay Server Peer-to-Peer Device Sync Card -->
+        <!-- 📱 Device 2 Device Sync Card -->
         <div class="chart-card">
           <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
             <div>
-              <h3 style="margin:0;">🌐 IP Relay Server Peer-to-Peer Sync</h3>
-              <p class="text-muted" style="font-size:0.85rem; margin-top:4px;">Connect devices over IP addresses (LAN or Tailscale <code>100.xxx.xxx.xxx</code> addresses allowed). Sync profiles, settings, tags, events, and media directly via an embedded relay connection.</p>
+              <h3 style="margin:0;">📱 Device 2 Device Sync</h3>
+              <p class="text-muted" style="font-size:0.85rem; margin-top:4px;">Connect devices over IP addresses (LAN or Tailscale <code>100.xxx.xxx.xxx</code> addresses allowed). Sync profiles, settings, tags, events, and media directly between your devices.</p>
             </div>
-            <span id="p2pSyncStatusBadge" class="subject-stat-badge" style="background:rgba(56,189,248,0.15); color:#38bdf8; border:1px solid #38bdf8; font-weight:800;">🌐 0 Online</span>
+            <span id="p2pSyncStatusBadge" class="subject-stat-badge" style="background:rgba(56,189,248,0.15); color:#38bdf8; border:1px solid #38bdf8; font-weight:800;">📱 0 Connected</span>
           </div>
 
           <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:16px; margin-top:16px; background:var(--bg-secondary); padding:16px; border-radius:var(--radius-md); border:1px solid var(--border-color);">
             <div>
-              <label class="form-label" style="font-size:0.8rem; margin-bottom:4px;">Connection Name</label>
+              <label class="form-label" style="font-size:0.8rem; margin-bottom:4px;">Device Name</label>
               <input type="text" id="syncConnectionNameInput" class="input-text btn-sm" placeholder="e.g. Tailscale Laptop" style="width:100%;">
             </div>
 
             <div>
-              <label class="form-label" style="font-size:0.8rem; margin-bottom:4px;">Peer IP Address (Default Port 24913)</label>
+              <label class="form-label" style="font-size:0.8rem; margin-bottom:4px;">Device IP Address (Default Port 24913)</label>
               <input type="text" id="syncIpAddressInput" class="input-text btn-sm" placeholder="e.g. 100.115.92.40 or 192.168.1.50" style="width:100%;">
             </div>
 
             <div style="display:flex; align-items:flex-end;">
-              <button class="btn btn-primary btn-sm" id="addIpConnectionBtn" style="width:100%;">➕ Add IP Connection</button>
+              <button class="btn btn-primary btn-sm" id="addIpConnectionBtn" style="width:100%;">➕ Add Device Connection</button>
             </div>
           </div>
 

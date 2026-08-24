@@ -16,6 +16,15 @@ async function renderSettingsPage() {
 
   renderCollectionsManagerList();
   renderProfilesManagerList();
+  if (typeof renderIpConnectionsList === 'function') renderIpConnectionsList();
+
+  const addIpBtn = document.getElementById('addIpConnectionBtn');
+  if (addIpBtn && !addIpBtn.dataset.bound) {
+    addIpBtn.dataset.bound = 'true';
+    addIpBtn.onclick = () => {
+      if (typeof addIpConnection === 'function') addIpConnection();
+    };
+  }
 }
 
 async function renderCollectionsManagerList() {

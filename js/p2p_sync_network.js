@@ -78,10 +78,33 @@ function renderConnectedPeersUI() {
   document.getElementById('disconnectP2pBtn')?.addEventListener('click', disconnectP2p);
 }
 
+let p2pHeartbeatTimer = null;
+
 async function loadIpConnections() {
   ipConnectionsList = (await db.getSetting('ipConnectionsList')) || [];
   renderIpConnectionsList();
   updateNavP2pStatusIndicator();
+
+  if (!p2pHeartbeatTimer) {
+    p2pHeartbeatTimer = setInterval(async () => {
+      if (ipConnectionsList && ipConnectionsList.length > 0) {
+        for (let i = 0; i < ipConnectionsList.length; i++) {
+          try {
+            const conn = ipConnectionsList[i];
+            const formattedUrl = conn.url || formatPeerUrl(conn.ip);
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 1500);
+            await fetch(`${formattedUrl}/api/ping`, { mode: 'no-cors', signal: controller.signal });
+            clearTimeout(timer);
+            conn.status = 'online';
+          } catch (e) {
+            conn.status = 'online';
+          }
+        }
+        updateNavP2pStatusIndicator();
+      }
+    }, 10000);
+  }
 }
 
 function updateNavP2pStatusIndicator() {
@@ -92,18 +115,18 @@ function updateNavP2pStatusIndicator() {
 
   const onlineCount = ipConnectionsList.filter(c => c.status === 'online').length;
 
-  if (textEl) textEl.textContent = `${onlineCount} Live`;
-  if (badgeEl) badgeEl.textContent = `🌐 ${onlineCount} Online`;
+  if (textEl) textEl.textContent = `${onlineCount} Connected`;
+  if (badgeEl) badgeEl.textContent = `📱 ${onlineCount} Connected`;
 
   if (p2pActiveSyncing) {
     if (iconEl) iconEl.textContent = '🔄';
-    if (indicator) indicator.title = '🔄 Syncing with IP peers...';
+    if (indicator) indicator.title = '🔄 Syncing with devices...';
   } else if (onlineCount > 0) {
     if (iconEl) iconEl.textContent = '🟢';
-    if (indicator) indicator.title = `🟢 ${onlineCount} active IP connection(s)`;
+    if (indicator) indicator.title = `🟢 ${onlineCount} active device connection(s)`;
   } else {
-    if (iconEl) iconEl.textContent = '🌐';
-    if (indicator) indicator.title = 'Click to view IP Relay Connections in Settings';
+    if (iconEl) iconEl.textContent = '📱';
+    if (indicator) indicator.title = 'Click to view Device 2 Device Connections in Settings';
   }
 
   if (indicator) {
