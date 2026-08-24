@@ -217,6 +217,9 @@ function renderCurrentView() {
     case 'settingsView':
       renderSettingsPage();
       break;
+    case 'connectionsView':
+      renderConnectionsPage();
+      break;
     default:
       renderMediaBrowser();
       break;

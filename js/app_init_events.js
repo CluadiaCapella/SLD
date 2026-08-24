@@ -289,7 +289,9 @@ async function initApp() {
   initPWAandUpdates();
   initSystemErrorLoggerUI();
   initGlobalThumbSizeSlider();
-  
+  if (typeof loadNotifications === 'function') loadNotifications();
+  if (typeof setupNotificationsEvents === 'function') setupNotificationsEvents();
+
   restoreAppStateFromHashOrStorage();
   selectedMediaIds.clear();
   updateSelectionStateUI();

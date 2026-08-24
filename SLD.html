@@ -93,6 +93,7 @@
     <script src="html/event_details_view.js"></script>
     <script src="html/stats_view.js"></script>
     <script src="html/settings_view.js"></script>
+    <script src="html/connections_view.js"></script>
     <script src="html/tags_view.js"></script>
     <script src="html/archive_progress_modal.js"></script>
     <script src="html/upload_progress_modal.js"></script>
@@ -488,8 +489,28 @@
     </div>
   </div>
 
+  <!-- System Notifications Drawer / Modal -->
+  <div id="notificationsModal" class="modal-backdrop" style="display:none; z-index:100000;">
+    <div class="modal-card" style="max-width:500px;">
+      <div class="modal-header">
+        <h3 style="margin:0; font-size:1.15rem; color:var(--text-primary);">🔔 System Notifications</h3>
+        <button class="btn btn-secondary btn-sm" id="closeNotificationsModalBtn">✖</button>
+      </div>
+      <div class="modal-body" style="padding:16px 0;">
+        <div id="notificationsListContainer" style="display:flex; flex-direction:column; gap:8px; max-height:300px; overflow-y:auto; padding-right:4px;">
+          <p class="text-muted" style="font-size:0.85rem; text-align:center; padding:12px;">No notifications right now.</p>
+        </div>
+      </div>
+      <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center;">
+        <button class="btn btn-danger btn-sm" id="clearNotificationsBtn">🗑️ Clear All</button>
+        <button class="btn btn-secondary" id="doneNotificationsModalBtn">Close</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modular Application Scripts -->
   <script src="js/database.js"></script>
+  <script src="js/notifications_manager.js"></script>
   <script src="js/common_ui.js"></script>
   <script src="js/router_views.js"></script>
   <script src="js/scoring_stats.js"></script>
@@ -520,6 +541,7 @@
   <script src="js/stats_page_view.js"></script>
   <script src="js/collections_profiles_manager.js"></script>
   <script src="js/settings_page_view.js"></script>
+  <script src="js/connections_page_view.js"></script>
   <script src="js/autocompletes_ui.js"></script>
   <script src="js/media_crop_modal.js"></script>
   <script src="js/splash_screen_manager.js"></script>

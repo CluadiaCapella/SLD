@@ -97,7 +97,7 @@ function restoreAppStateFromHashOrStorage() {
   const validViews = [
     'mediaBrowserView', 'subjectsView', 'subjectDetailsView', 'combinationDetailsView',
     'sldView', 'sldDetailsView', 'eventsView', 'eventDetailsView', 'tagsView',
-    'tagDetailsView', 'statsView', 'settingsView'
+    'tagDetailsView', 'statsView', 'settingsView', 'connectionsView'
   ];
 
   if (validViews.includes(targetView)) {

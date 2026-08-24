@@ -122,50 +122,14 @@
           <button class="btn btn-secondary btn-sm" id="regenerateThumbnailsBtn" style="margin-top:10px;">🔄 Regenerate All Thumbnails</button>
         </div>
 
-        <!-- 📱 Device 2 Device Sync Card -->
+        <!-- 📱 Device 2 Device Connections Shortcut Card -->
         <div class="chart-card">
           <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
             <div>
-              <h3 style="margin:0;">📱 Device 2 Device Sync</h3>
-              <p class="text-muted" style="font-size:0.85rem; margin-top:4px;">Connect devices over IP addresses (LAN or Tailscale <code>100.xxx.xxx.xxx</code> addresses allowed). Sync profiles, settings, tags, events, and media directly between your devices.</p>
+              <h3 style="margin:0;">📱 Device 2 Device Connections</h3>
+              <p class="text-muted" style="font-size:0.85rem; margin-top:4px;">Manage auto-discovered devices on LAN & Tailscale, toggle data syncing per device, and configure connection blocklists.</p>
             </div>
-            <span id="p2pSyncStatusBadge" class="subject-stat-badge" style="background:rgba(56,189,248,0.15); color:#38bdf8; border:1px solid #38bdf8; font-weight:800;">📱 0 Connected</span>
-          </div>
-
-          <!-- Your Device Code Banner -->
-          <div style="margin-top:12px; background:rgba(56,189,248,0.08); border:1px solid rgba(56,189,248,0.25); padding:10px 14px; border-radius:var(--radius-md); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-            <div style="font-size:0.85rem; color:var(--text-primary);">
-              <span>📱 Your Device Code: </span>
-              <strong id="myDeviceCodeDisplay" style="font-family:monospace; font-size:1.1rem; color:#38bdf8; letter-spacing:1px; background:rgba(15,23,42,0.6); padding:2px 8px; border-radius:4px; border:1px solid #38bdf8;">Loading...</strong>
-            </div>
-            <span class="text-muted" style="font-size:0.78rem;">Enter this code or IP on your other device to connect instantly.</span>
-          </div>
-
-          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:16px; margin-top:14px; background:var(--bg-secondary); padding:16px; border-radius:var(--radius-md); border:1px solid var(--border-color);">
-            <div>
-              <label class="form-label" style="font-size:0.8rem; margin-bottom:4px;">Device Name</label>
-              <input type="text" id="syncConnectionNameInput" class="input-text btn-sm" placeholder="e.g. Tailscale Laptop" style="width:100%;">
-            </div>
-
-            <div>
-              <label class="form-label" style="font-size:0.8rem; margin-bottom:4px;">Device Code or IP Address</label>
-              <input type="text" id="syncIpAddressInput" class="input-text btn-sm" placeholder="e.g. SLD-8492 or 100.115.92.40" style="width:100%;">
-            </div>
-
-            <div style="display:flex; align-items:flex-end;">
-              <button class="btn btn-primary btn-sm" id="addIpConnectionBtn" style="width:100%;">➕ Add Device Connection</button>
-            </div>
-          </div>
-
-          <!-- IP Connections List -->
-          <div style="margin-top:16px;">
-            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
-              <h4 style="font-size:0.95rem; font-weight:800; margin:0;">📱 Connected Devices</h4>
-              <button class="btn btn-secondary btn-sm" id="openBlockedIpsModalBtn" style="font-size:0.8rem;">🚫 View / Edit Blocked IPs</button>
-            </div>
-            <div id="connectedPeersList" style="display:flex; flex-direction:column; gap:8px;">
-              <p class="text-muted" style="font-size:0.8rem; margin:0;">No devices paired currently.</p>
-            </div>
+            <button class="btn btn-primary" onclick="switchView('connectionsView')">📱 Manage Device Connections →</button>
           </div>
         </div>
 

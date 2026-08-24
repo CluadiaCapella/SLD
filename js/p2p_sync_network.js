@@ -544,11 +544,11 @@ function updateNavP2pStatusIndicator() {
     if (indicator) indicator.title = `🟢 ${onlineCount} active device connection(s)`;
   } else {
     if (iconEl) iconEl.textContent = '📱';
-    if (indicator) indicator.title = 'Click to view Device 2 Device Connections in Settings';
+    if (indicator) indicator.title = 'Click to view Device 2 Device Connections';
   }
 
   if (indicator) {
-    indicator.onclick = () => switchView('settingsView');
+    indicator.onclick = () => switchView('connectionsView');
   }
 }
 
@@ -579,25 +579,26 @@ function renderIpConnectionsList() {
   if (!container) return;
 
   if (ipConnectionsList.length === 0) {
-    container.innerHTML = `<p class="text-muted" style="font-size:0.85rem;">No device connections configured yet. Enter a Tailscale (100.x.y.z) or LAN IP above.</p>`;
+    container.innerHTML = `<p class="text-muted" style="font-size:0.85rem;">Searching for nearby devices on LAN & Tailscale network...</p>`;
     return;
   }
 
   container.innerHTML = `
-    <div style="display:flex; flex-direction:column; gap:8px; width:100%;">
+    <div style="display:flex; flex-direction:column; gap:10px; width:100%;">
       ${ipConnectionsList.map((conn, idx) => {
         const targetUrl = conn.url || formatPeerUrl(conn.ip);
-        let statusBadge = `<span class="badge" style="background:rgba(239,68,68,0.2); color:#ef4444; border:1px solid #ef4444; font-size:0.7rem;">🔴 Offline</span>`;
+        const canSync = conn.allowSync === true;
+        let statusBadge = `<span class="badge" style="background:rgba(239,68,68,0.2); color:#ef4444; border:1px solid #ef4444; font-size:0.7rem;">🔴 Disconnected</span>`;
         if (conn.status === 'online') {
           statusBadge = `<span class="badge" style="background:rgba(34,197,94,0.2); color:#22c55e; border:1px solid #22c55e; font-size:0.7rem;">🟢 Connected</span>`;
         } else if (conn.status === 'pending') {
-          statusBadge = `<span class="badge" style="background:rgba(234,179,8,0.2); color:#eab308; border:1px solid #eab308; font-size:0.7rem;">🟡 Pending Pair</span>`;
+          statusBadge = `<span class="badge" style="background:rgba(234,179,8,0.2); color:#eab308; border:1px solid #eab308; font-size:0.7rem;">🟡 Discovered</span>`;
         } else if (conn.status === 'blocked') {
           statusBadge = `<span class="badge" style="background:rgba(239,68,68,0.3); color:#ef4444; border:1px solid #ef4444; font-size:0.7rem;">🚫 Blocked</span>`;
         }
 
         return `
-        <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-secondary); border:1px solid var(--border-color); padding:10px 14px; border-radius:var(--radius-md);">
+        <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-secondary); border:1px solid var(--border-color); padding:12px 16px; border-radius:var(--radius-md); flex-wrap:wrap; gap:12px;">
           <div>
             <div style="font-weight:800; font-size:0.95rem; color:var(--text-primary); display:flex; align-items:center; gap:8px;">
               <span>📱 ${conn.name || 'Unnamed Device'}</span>
@@ -605,14 +606,29 @@ function renderIpConnectionsList() {
             </div>
             <div style="font-size:0.8rem; color:var(--text-muted); font-family:monospace; margin-top:2px;">🌐 Address: ${targetUrl}</div>
           </div>
-          <div style="display:flex; gap:6px; align-items:center;">
-            <button class="btn btn-secondary btn-sm test-conn-btn" data-idx="${idx}" title="Test Connection or send pair prompt">⚡ Test Connection</button>
-            <button class="btn btn-primary btn-sm sync-ip-btn" data-idx="${idx}">🔄 Sync</button>
+          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:0.8rem; font-weight:700; user-select:none; color:var(--text-primary);">
+              <span>Allow Syncing</span>
+              <input type="checkbox" class="sync-toggle-checkbox" data-idx="${idx}" ${canSync ? 'checked' : ''} style="width:16px; height:16px; cursor:pointer;">
+            </label>
+            <button class="btn btn-primary btn-sm sync-ip-btn" data-idx="${idx}" ${!canSync || conn.status !== 'online' ? 'disabled' : ''} title="${!canSync ? 'Toggle Allow Syncing ON to enable manual sync' : 'Sync data with device'}">🔄 Sync Now</button>
+            <button class="btn btn-secondary btn-sm test-conn-btn" data-idx="${idx}" title="Test Connection">⚡ Test</button>
             <button class="btn btn-danger btn-sm remove-ip-btn" data-idx="${idx}">🗑️</button>
           </div>
         </div>`;
       }).join('')}
     </div>`;
+
+  container.querySelectorAll('.sync-toggle-checkbox').forEach(chk => {
+    chk.onchange = async () => {
+      const idx = parseInt(chk.getAttribute('data-idx'), 10);
+      if (ipConnectionsList[idx]) {
+        ipConnectionsList[idx].allowSync = chk.checked;
+        await db.setSetting('ipConnectionsList', ipConnectionsList);
+        renderIpConnectionsList();
+      }
+    };
+  });
 
   container.querySelectorAll('.test-conn-btn').forEach(btn => {
     btn.onclick = () => testDeviceConnection(parseInt(btn.getAttribute('data-idx'), 10));
