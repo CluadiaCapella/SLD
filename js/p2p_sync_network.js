@@ -821,9 +821,78 @@ async function performAutoDatabaseSync(conn) {
   }
 }
 
+let deletedDevicesList = [];
+
+async function loadDeletedDevices() {
+  deletedDevicesList = (await db.getSetting('deletedDevicesList')) || [];
+  updateDeletedDevicesBadge();
+}
+
+function updateDeletedDevicesBadge() {
+  const badgeEl = document.getElementById('deletedDevicesCountBadge');
+  if (badgeEl) badgeEl.textContent = deletedDevicesList.length;
+}
+
+function openDeletedDevicesModal() {
+  const modal = document.getElementById('deletedDevicesModal');
+  if (modal) {
+    modal.style.display = 'flex';
+    renderDeletedDevicesList();
+  }
+}
+
+function closeDeletedDevicesModal() {
+  const modal = document.getElementById('deletedDevicesModal');
+  if (modal) modal.style.display = 'none';
+}
+
+function renderDeletedDevicesList() {
+  const container = document.getElementById('deletedDevicesListContainer');
+  if (!container) return;
+
+  updateDeletedDevicesBadge();
+
+  if (deletedDevicesList.length === 0) {
+    container.innerHTML = `<p class="text-muted" style="font-size:0.85rem;">No deleted devices recorded.</p>`;
+    return;
+  }
+
+  container.innerHTML = deletedDevicesList.map((item, idx) => `
+    <div style="display:flex; align-items:center; justify-content:space-between; background:var(--bg-tertiary); border:1px solid var(--border-color); padding:10px 14px; border-radius:var(--radius-md);">
+      <div>
+        <div style="font-weight:700; font-size:0.9rem; color:var(--text-primary);">📱 ${item.name || 'Unnamed Device'}</div>
+        <div style="font-size:0.78rem; color:var(--text-muted); font-family:monospace; margin-top:2px;">${item.ip || item.url || item.peerId || ''}</div>
+      </div>
+      <button class="btn btn-primary btn-sm restore-device-btn" data-idx="${idx}" style="font-size:0.8rem; font-weight:700;">↩️ Restore</button>
+    </div>
+  `).join('');
+
+  container.querySelectorAll('.restore-device-btn').forEach(btn => {
+    btn.onclick = async () => {
+      const delIdx = parseInt(btn.getAttribute('data-idx'), 10);
+      const restoredItem = deletedDevicesList.splice(delIdx, 1)[0];
+      if (restoredItem) {
+        restoredItem.status = 'online';
+        appendSyncHistoryLog(restoredItem, `Restored from Deleted Devices history.`);
+        ipConnectionsList.push(restoredItem);
+
+        await db.setSetting('ipConnectionsList', ipConnectionsList);
+        await db.setSetting('deletedDevicesList', deletedDevicesList);
+
+        renderIpConnectionsList();
+        renderDeletedDevicesList();
+        updateNavP2pStatusIndicator();
+        showToastNotification(`↩️ Restored device "${restoredItem.name}"`);
+      }
+    };
+  });
+}
+
 function renderIpConnectionsList() {
   const container = document.getElementById('connectedPeersList') || document.getElementById('ipConnectionsListContainer');
   if (!container) return;
+
+  updateDeletedDevicesBadge();
 
   if (ipConnectionsList.length === 0) {
     container.innerHTML = `<p class="text-muted" style="font-size:0.85rem;">Searching for nearby devices on LAN & Tailscale network...</p>`;
@@ -844,8 +913,6 @@ function renderIpConnectionsList() {
           statusBadge = `<span class="badge" style="background:rgba(34,197,94,0.2); color:#22c55e; border:1px solid #22c55e; font-size:0.7rem;">🟢 Connected</span>`;
         } else if (conn.status === 'pending') {
           statusBadge = `<span class="badge" style="background:rgba(234,179,8,0.2); color:#eab308; border:1px solid #eab308; font-size:0.7rem;">🟡 Discovered</span>`;
-        } else if (conn.status === 'blocked') {
-          statusBadge = `<span class="badge" style="background:rgba(239,68,68,0.3); color:#ef4444; border:1px solid #ef4444; font-size:0.7rem;">🚫 Blocked</span>`;
         }
 
         let syncPermissionBadge = `<span class="badge" style="background:rgba(255,255,255,0.08); color:var(--text-muted); border:1px solid var(--border-color); font-size:0.7rem;">⚪ Sync Off</span>`;
@@ -856,11 +923,12 @@ function renderIpConnectionsList() {
         }
 
         return `
-        <div style="background:var(--bg-secondary); border:1px solid var(--border-color); padding:14px 16px; border-radius:var(--radius-md);">
+        <div style="background:var(--bg-secondary); border:1px solid var(--border-color); padding:14px 16px; border-radius:var(--radius-md); position:relative;">
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
             <div>
-              <div style="font-weight:800; font-size:0.95rem; color:var(--text-primary); display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <div style="font-weight:800; font-size:0.95rem; color:var(--text-primary); display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
                 <span>📱 ${conn.name || 'Unnamed Device'}</span>
+                <button class="btn btn-link edit-device-name-btn" data-idx="${idx}" style="padding:0; border:none; background:none; color:var(--text-muted); cursor:pointer; font-size:0.85rem;" title="Rename Device">✏️</button>
                 ${statusBadge}
                 ${syncPermissionBadge}
               </div>
@@ -870,7 +938,13 @@ function renderIpConnectionsList() {
               <button class="btn btn-sm sync-toggle-btn" data-idx="${idx}" style="${localSync ? 'background:#22c55e; color:#fff; border:none; font-weight:800;' : 'background:var(--bg-tertiary); color:var(--text-muted); font-weight:800;'}">
                 ${localSync ? '⚡ Sync: ON' : '🔒 Sync: OFF'}
               </button>
-              <button class="btn btn-danger btn-sm remove-ip-btn" data-idx="${idx}">🗑️</button>
+              <div style="position:relative;">
+                <button class="btn btn-secondary btn-sm device-menu-btn" data-idx="${idx}" style="font-weight:bold; font-size:0.9rem; padding:4px 10px;">•••</button>
+                <div class="device-menu-dropdown" id="deviceMenu-${idx}" style="display:none; position:absolute; right:0; top:36px; background:var(--bg-primary); border:1px solid var(--border-color); border-radius:var(--radius-md); box-shadow:0 8px 24px rgba(0,0,0,0.5); z-index:100; min-width:130px; overflow:hidden;">
+                  <button class="rename-device-menu-btn" data-idx="${idx}" style="width:100%; text-align:left; padding:8px 12px; background:none; border:none; color:var(--text-primary); cursor:pointer; font-size:0.82rem; display:flex; align-items:center; gap:8px;">✏️ Rename</button>
+                  <button class="remove-device-menu-btn" data-idx="${idx}" style="width:100%; text-align:left; padding:8px 12px; background:none; border:none; color:#ef4444; cursor:pointer; font-size:0.82rem; display:flex; align-items:center; gap:8px;">🗑️ Remove</button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -889,6 +963,72 @@ function renderIpConnectionsList() {
         </div>`;
       }).join('')}
     </div>`;
+
+  const handleRename = async (idx) => {
+    const connItem = ipConnectionsList[idx];
+    if (connItem) {
+      const newName = prompt('Enter a new name for this device:', connItem.name || '');
+      if (newName && newName.trim()) {
+        connItem.name = newName.trim();
+        appendSyncHistoryLog(connItem, `Renamed device to "${connItem.name}".`);
+        await db.setSetting('ipConnectionsList', ipConnectionsList);
+        renderIpConnectionsList();
+        showToastNotification(`✏️ Renamed device to "${connItem.name}"`);
+      }
+    }
+  };
+
+  const handleRemove = async (idx) => {
+    const removedItem = ipConnectionsList.splice(idx, 1)[0];
+    if (removedItem) {
+      deletedDevicesList.push(removedItem);
+      await db.setSetting('ipConnectionsList', ipConnectionsList);
+      await db.setSetting('deletedDevicesList', deletedDevicesList);
+      renderIpConnectionsList();
+      updateDeletedDevicesBadge();
+      updateNavP2pStatusIndicator();
+      showToastNotification(`🗑️ Device moved to Deleted Devices.`);
+    }
+  };
+
+  container.querySelectorAll('.edit-device-name-btn').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      handleRename(parseInt(btn.getAttribute('data-idx'), 10));
+    };
+  });
+
+  container.querySelectorAll('.device-menu-btn').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      const idx = btn.getAttribute('data-idx');
+      const dropdown = document.getElementById(`deviceMenu-${idx}`);
+      document.querySelectorAll('.device-menu-dropdown').forEach(d => {
+        if (d !== dropdown) d.style.display = 'none';
+      });
+      if (dropdown) {
+        dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+      }
+    };
+  });
+
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.device-menu-dropdown').forEach(d => d.style.display = 'none');
+  });
+
+  container.querySelectorAll('.rename-device-menu-btn').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      handleRename(parseInt(btn.getAttribute('data-idx'), 10));
+    };
+  });
+
+  container.querySelectorAll('.remove-device-menu-btn').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      handleRemove(parseInt(btn.getAttribute('data-idx'), 10));
+    };
+  });
 
   container.querySelectorAll('.sync-toggle-btn').forEach(btn => {
     btn.onclick = async () => {
@@ -925,16 +1065,6 @@ function renderIpConnectionsList() {
         histEl.style.display = isHidden ? 'block' : 'none';
         btn.textContent = `📜 View Sync History (${ipConnectionsList[idx]?.history ? ipConnectionsList[idx].history.length : 0}) ${isHidden ? '▲' : '▼'}`;
       }
-    };
-  });
-
-  container.querySelectorAll('.remove-ip-btn').forEach(btn => {
-    btn.onclick = async () => {
-      const idx = parseInt(btn.getAttribute('data-idx'), 10);
-      ipConnectionsList.splice(idx, 1);
-      await db.setSetting('ipConnectionsList', ipConnectionsList);
-      renderIpConnectionsList();
-      updateNavP2pStatusIndicator();
     };
   });
 }

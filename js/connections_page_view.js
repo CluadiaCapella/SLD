@@ -26,11 +26,19 @@ async function renderConnectionsPage() {
     }
   }
 
-  const openBlockBtn = document.getElementById('openBlockedIpsModalBtn');
-  if (openBlockBtn && !openBlockBtn.dataset.bound) {
-    openBlockBtn.dataset.bound = 'true';
-    openBlockBtn.onclick = () => {
-      if (typeof openBlockedIpsModal === 'function') openBlockedIpsModal();
+  const openDelBtn = document.getElementById('openDeletedDevicesModalBtn');
+  if (openDelBtn && !openDelBtn.dataset.bound) {
+    openDelBtn.dataset.bound = 'true';
+    openDelBtn.onclick = () => {
+      if (typeof openDeletedDevicesModal === 'function') openDeletedDevicesModal();
+    };
+  }
+
+  const closeDelBtn = document.getElementById('closeDeletedDevicesModalBtn');
+  if (closeDelBtn && !closeDelBtn.dataset.bound) {
+    closeDelBtn.dataset.bound = 'true';
+    closeDelBtn.onclick = () => {
+      if (typeof closeDeletedDevicesModal === 'function') closeDeletedDevicesModal();
     };
   }
 }

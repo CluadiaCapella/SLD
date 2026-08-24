@@ -23,10 +23,23 @@
       <div style="margin-bottom:20px;">
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
           <h3 style="font-size:1.05rem; font-weight:800; margin:0; color:var(--text-primary);">📱 Discovered Devices</h3>
-          <button class="btn btn-secondary btn-sm" id="openBlockedIpsModalBtn" style="font-size:0.8rem;">🚫 View / Edit Blocked IPs</button>
+          <button class="btn btn-secondary btn-sm" id="openDeletedDevicesModalBtn" style="font-size:0.8rem; font-weight:700;">🗑️ Deleted Devices (<span id="deletedDevicesCountBadge">0</span>)</button>
         </div>
         <div id="connectedPeersList" style="display:flex; flex-direction:column; gap:10px;">
           <p class="text-muted" style="font-size:0.85rem;">Searching for nearby devices on LAN & Tailscale network...</p>
+        </div>
+      </div>
+
+      <!-- Deleted Devices Modal -->
+      <div id="deletedDevicesModal" class="modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:10000; align-items:center; justify-content:center;">
+        <div class="modal-content" style="background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:var(--radius-lg); width:90%; max-width:480px; padding:20px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+            <h3 style="margin:0; font-size:1.15rem; color:var(--text-primary);">🗑️ Deleted Devices History</h3>
+            <button class="btn btn-secondary btn-sm" id="closeDeletedDevicesModalBtn" style="padding:2px 8px;">✖</button>
+          </div>
+          <div id="deletedDevicesListContainer" style="display:flex; flex-direction:column; gap:10px; max-height:300px; overflow-y:auto;">
+            <p class="text-muted" style="font-size:0.85rem;">No deleted devices recorded.</p>
+          </div>
         </div>
       </div>
     </section>
