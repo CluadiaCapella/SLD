@@ -18,8 +18,25 @@ UNALIGNED_APK = os.path.join(PROJECT_DIR, "SLD_unaligned.apk")
 ALIGNED_APK = os.path.join(PROJECT_DIR, "SLD_aligned.apk")
 BACKUP_APK = os.path.join(PROJECT_DIR, ".SLD.apk.template")
 
+import datetime
+import json
+
+def update_version_json():
+    version_file = os.path.join(PROJECT_DIR, "version.json")
+    now_str = datetime.datetime.now(datetime.timezone.utc).strftime("%y%m%d.%H%M")
+    iso_time = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    data = {
+        "version": now_str,
+        "buildTime": iso_time,
+        "apkUrl": "https://raw.githubusercontent.com/CluadiaCapella/SLD/main/SLD.apk"
+    }
+    with open(version_file, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+    print(f"Updated version.json to build version {now_str}")
+
 def build_apk():
     print("=== SLD Android APK Automated Build Pipeline ===")
+    update_version_json()
     
     if not os.path.exists(TARGET_APK) and not os.path.exists(BACKUP_APK):
         print(f"Error: Target APK {TARGET_APK} not found.")
