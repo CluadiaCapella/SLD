@@ -164,7 +164,7 @@ function showDevicePairingModal(pairReq) {
   const ipEl = document.getElementById('devicePairingIpSubtext');
 
   if (msgEl) {
-    msgEl.textContent = `Device "${pairReq.fromName || 'Unnamed Device'}" would like to connect and sync with this app.`;
+    msgEl.textContent = `Device "${pairReq.fromName || 'Unnamed Device'}" wants to connect and sync with this app.`;
   }
   if (ipEl) {
     ipEl.textContent = `Device Address: ${pairReq.fromUrl || pairReq.fromIp}`;
@@ -173,6 +173,8 @@ function showDevicePairingModal(pairReq) {
   if (modal) {
     modal.classList.add('active');
     modal.style.display = 'flex';
+    modal.style.opacity = '1';
+    modal.style.pointerEvents = 'auto';
   }
 }
 
@@ -184,6 +186,8 @@ function hideDevicePairingModal() {
   if (modal) {
     modal.classList.remove('active');
     modal.style.display = 'none';
+    modal.style.opacity = '0';
+    modal.style.pointerEvents = 'none';
   }
 }
 
@@ -244,7 +248,6 @@ function setupPeerConnectionHandlers(conn) {
   activePeerConnections.set(conn.peer, conn);
 
   conn.on('open', () => {
-    // Send discovery info
     conn.send({
       type: 'DISCOVERY_HELLO',
       fromPeerId: myDevicePeerId,
@@ -255,13 +258,47 @@ function setupPeerConnectionHandlers(conn) {
   conn.on('data', async (data) => {
     if (!data || typeof data !== 'object') return;
 
-    if (data.type === 'PAIR_REQUEST') {
-      if (isBlockedIp(data.fromIp) || isBlockedIp(data.fromPeerId)) {
+    if (data.type === 'PAIR_REQUEST' || data.type === 'DISCOVERY_HELLO') {
+      const remoteIp = ipOrUrlClean(data.fromIp || data.fromPeerId || '');
+
+      if (isBlockedIp(remoteIp)) {
         conn.send({ type: 'PAIR_RESPONSE', status: 'blocked' });
         return;
       }
-      data._conn = conn;
-      showDevicePairingModal(data);
+
+      // Check if both devices entered each other's IP
+      const reciprocalConn = ipConnectionsList.find(c =>
+        ipOrUrlClean(c.ip) === remoteIp ||
+        ipOrUrlClean(c.url) === remoteIp ||
+        c.peerId === conn.peer
+      );
+
+      if (reciprocalConn) {
+        // BOTH DEVICES HAVE EACH OTHER'S IP! AUTO-CONNECT IMMEDIATELY! NO MODAL NEEDED!
+        reciprocalConn.status = 'online';
+        reciprocalConn.peerId = conn.peer;
+        if (data.fromName) reciprocalConn.name = data.fromName;
+
+        await db.setSetting('ipConnectionsList', ipConnectionsList);
+        renderIpConnectionsList();
+        updateNavP2pStatusIndicator();
+
+        if (data.type === 'PAIR_REQUEST') {
+          conn.send({
+            type: 'PAIR_RESPONSE',
+            status: 'accepted',
+            fromName: p2pDeviceName || 'This Device',
+            autoAccepted: true
+          });
+        }
+        showToastNotification(`🟢 Connected with ${reciprocalConn.name}!`);
+        return;
+      }
+
+      if (data.type === 'PAIR_REQUEST') {
+        data._conn = conn;
+        showDevicePairingModal(data);
+      }
     } else if (data.type === 'PAIR_RESPONSE') {
       const match = ipConnectionsList.find(c => c.ip.includes(data.fromIp || '') || c.peerId === conn.peer);
       if (match) {
