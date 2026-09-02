@@ -552,7 +552,7 @@ function showToastNotification(msg) {
   if (!toast) {
     toast = document.createElement('div');
     toast.id = 'sldToastNotification';
-    toast.style.cssText = 'position:fixed; top:20px; right:20px; z-index:999999; background:rgba(15,23,42,0.95); color:#fff; border:1px solid var(--accent-pink); padding:10px 16px; border-radius:8px; font-weight:700; font-size:0.85rem; box-shadow:0 4px 20px rgba(0,0,0,0.5); opacity:0; transition:opacity 0.3s ease; pointer-events:none;';
+    toast.style.cssText = 'position:fixed; bottom:70px; left:50%; transform:translateX(-50%); z-index:999999; background:rgba(15,23,42,0.96); color:#fff; border:1px solid var(--accent-pink); padding:10px 18px; border-radius:20px; font-weight:700; font-size:0.88rem; box-shadow:0 6px 24px rgba(0,0,0,0.6); opacity:0; transition:opacity 0.3s ease; pointer-events:none; max-width:90vw; text-align:center; backdrop-filter:blur(8px);';
     document.body.appendChild(toast);
   }
   toast.textContent = msg;

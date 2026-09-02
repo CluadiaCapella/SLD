@@ -559,17 +559,33 @@ async function initLocalPeerServer() {
       });
 
       localPeer.on('disconnected', () => {
-        logP2pDiagnostic('PeerJS signaling socket disconnected. Reconnecting automatically...', 'warn');
+        logP2pDiagnostic('PeerJS signaling socket disconnected. Attempting reconnect...', 'warn');
         updateDiagnosticsDashboardUI();
-        if (localPeer && !localPeer.destroyed) {
+        if (localPeer && !localPeer.destroyed && !localPeer.disconnected_by_error) {
           try { localPeer.reconnect(); } catch(e) {}
         }
       });
 
-      localPeer.on('error', (err) => {
-        logP2pDiagnostic(`PeerJS socket error (${err.type || err})`, 'warn');
+      localPeer.on('error', async (err) => {
+        const errType = err?.type || err;
+        logP2pDiagnostic(`PeerJS socket notice: ${errType}`, 'warn');
         updateDiagnosticsDashboardUI();
-        createHubFallbackPeer();
+
+        if (errType === 'unavailable-id') {
+          if (localPeer) {
+            localPeer.disconnected_by_error = true;
+            try { localPeer.destroy(); } catch(e) {}
+            localPeer = null;
+          }
+          const freshCode = Math.floor(1000 + Math.random() * 9000).toString();
+          myDeviceShortCode = freshCode;
+          myDevicePeerId = sanitizePeerId(freshCode);
+          await db.setSetting('myDeviceShortCode', freshCode);
+          logP2pDiagnostic(`Re-registering peer with fresh ID: ${myDevicePeerId}`, 'info');
+          setTimeout(() => { initLocalPeerServer(); }, 1200);
+        } else {
+          createHubFallbackPeer();
+        }
       });
     } catch (e) {
       console.warn('Failed to initialize Peer server:', e);
