@@ -425,14 +425,28 @@
 
   <!-- Event Cover Thumbnail Picker Modal -->
   <div id="eventThumbPickerModal" class="modal-backdrop">
-    <div class="modal-card" style="max-width:650px;">
+    <div class="modal-card" style="max-width:680px; width:92%;">
       <div class="modal-header">
-        <h3>🖼️ Select Custom Event Thumbnail</h3>
+        <h3>🖼️ Custom Event Cover Background</h3>
         <button class="btn btn-secondary btn-sm" id="closeEventThumbPickerBtn">✖</button>
       </div>
-      <div class="modal-body">
-        <p class="text-muted" style="font-size:0.85rem; margin-bottom:12px;">Choose a cover thumbnail from the media files attached to this event:</p>
-        <div id="eventThumbPickerGrid" class="media-grid" style="max-height:400px; overflow-y:auto;"></div>
+      <div class="modal-body" style="max-height:75vh; overflow-y:auto;">
+        <p class="text-muted" style="font-size:0.85rem; margin-bottom:14px;">Select a cover thumbnail for this event frame (Zodiac Emoji, Subject Avatar, or Media Thumbnail):</p>
+        
+        <div id="eventCoverActionSection" style="margin-bottom:16px; background:var(--bg-secondary); padding:12px; border-radius:var(--radius-md); border:1px solid var(--border-color);">
+          <h4 style="margin:0 0 8px 0; font-size:0.9rem; color:var(--text-primary);">🔮 Zodiac Action Emoji Cover (Default)</h4>
+          <div id="eventCoverActionOption"></div>
+        </div>
+
+        <div id="eventCoverSubjectSection" style="margin-bottom:16px; background:var(--bg-secondary); padding:12px; border-radius:var(--radius-md); border:1px solid var(--border-color);">
+          <h4 style="margin:0 0 8px 0; font-size:0.9rem; color:var(--text-primary);">👤 Subject Avatar Covers</h4>
+          <div id="eventCoverSubjectGrid" style="display:flex; flex-wrap:wrap; gap:10px;"></div>
+        </div>
+
+        <div id="eventCoverMediaSection" style="background:var(--bg-secondary); padding:12px; border-radius:var(--radius-md); border:1px solid var(--border-color);">
+          <h4 style="margin:0 0 8px 0; font-size:0.9rem; color:var(--text-primary);">🖼️ Attached Media Covers</h4>
+          <div id="eventThumbPickerGrid" class="media-grid" style="display:flex; flex-wrap:wrap; gap:10px;"></div>
+        </div>
       </div>
     </div>
   </div>

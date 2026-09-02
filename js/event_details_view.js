@@ -6,30 +6,93 @@ function openEventCoverPickerModal(evtId) {
   const evt = currentEventsList.find(item => item.id === evtId);
   if (!evt) return;
   const assignedMedia = currentMediaList.filter(m => (m.eventIds || []).includes(evt.id));
-  const grid = document.getElementById('eventThumbPickerGrid');
+  const countsMap = new Map(Object.entries(evt.subjectCounts || {}));
+  const participantSubIds = Array.from(countsMap.keys());
   const modal = document.getElementById('eventThumbPickerModal');
-  if (!grid || !modal) return;
+  if (!modal) return;
 
-  if (assignedMedia.length === 0) {
-    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">No media files attached to this event yet.</div>`;
-  } else {
-    grid.innerHTML = assignedMedia.map(m => `
-      <div class="media-card evt-cover-choice-card" data-mid="${m.id}" style="width:120px; height:120px; cursor:pointer;">
-        ${renderMediaThumbnailHTML(m, '', 'width:100%; height:100%; object-fit:cover;')}
-      </div>
-    `).join('');
+  // 1. Zodiac Action Emoji Cover (Default Auto-Generated Cover)
+  const actionName = getActionDisplayName(evt.eventCode || 1);
+  const actionEmoji = actionName.split(' ')[0] || '♏';
+  const actionOptEl = document.getElementById('eventCoverActionOption');
+  if (actionOptEl) {
+    const isSel = !evt.coverType || evt.coverType === 'action';
+    actionOptEl.innerHTML = `
+      <button class="btn btn-secondary btn-sm" id="setCoverActionBtn" style="font-size:0.85rem; font-weight:800; display:flex; align-items:center; gap:8px; width:100%; justify-content:center; ${isSel ? 'border:2px solid var(--accent-pink); background:rgba(236,72,153,0.15);' : ''}">
+        <span style="font-size:1.4rem;">${actionEmoji}</span> Reset to ${actionName} Emoji (Default Auto-Generated)
+      </button>`;
+    document.getElementById('setCoverActionBtn').onclick = async () => {
+      evt.coverType = 'action';
+      delete evt.coverSubjectId;
+      delete evt.customCoverMediaId;
+      await db.put('events', evt);
+      modal.classList.remove('active');
+      modal.style.display = 'none';
+      await loadAppState();
+      renderCurrentView();
+    };
+  }
 
-    grid.querySelectorAll('.evt-cover-choice-card').forEach(card => {
-      card.onclick = async () => {
-        const mId = card.getAttribute('data-mid');
-        evt.customCoverMediaId = mId;
-        await db.put('events', evt);
-        modal.classList.remove('active');
-        modal.style.display = 'none';
-        await loadAppState();
-        renderCurrentView();
-      };
-    });
+  // 2. Subject Avatar Cover Options
+  const subGrid = document.getElementById('eventCoverSubjectGrid');
+  if (subGrid) {
+    const subjectsToShow = participantSubIds.map(sId => currentSubjectsList.find(s => s.id === sId)).filter(Boolean);
+    if (subjectsToShow.length === 0) {
+      subGrid.innerHTML = `<span class="text-muted" style="font-size:0.8rem;">No subjects assigned to this event.</span>`;
+    } else {
+      subGrid.innerHTML = subjectsToShow.map(sub => {
+        const isSel = evt.coverType === 'subject' && evt.coverSubjectId === sub.id;
+        return `
+          <div class="evt-cover-sub-card" data-subid="${sub.id}" style="display:flex; flex-direction:column; align-items:center; padding:8px 12px; background:var(--bg-card); border:2px solid ${isSel ? 'var(--accent-pink)' : 'var(--border-color)'}; border-radius:var(--radius-md); cursor:pointer; width:100px;">
+            ${sub.avatarUrl ? `<img src="${sub.avatarUrl}" style="width:48px; height:48px; border-radius:50%; object-fit:cover; margin-bottom:4px;">` : `<div style="width:48px; height:48px; border-radius:50%; background:var(--bg-secondary); display:flex; align-items:center; justify-content:center; font-size:20px; margin-bottom:4px;">👤</div>`}
+            <span style="font-size:0.75rem; font-weight:700; text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; width:100%;">${sub.name}</span>
+          </div>`;
+      }).join('');
+
+      subGrid.querySelectorAll('.evt-cover-sub-card').forEach(card => {
+        card.onclick = async () => {
+          const subId = card.getAttribute('data-subid');
+          evt.coverType = 'subject';
+          evt.coverSubjectId = subId;
+          delete evt.customCoverMediaId;
+          await db.put('events', evt);
+          modal.classList.remove('active');
+          modal.style.display = 'none';
+          await loadAppState();
+          renderCurrentView();
+        };
+      });
+    }
+  }
+
+  // 3. Media Thumbnail Cover Options
+  const grid = document.getElementById('eventThumbPickerGrid');
+  if (grid) {
+    if (assignedMedia.length === 0) {
+      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">No media files attached to this event yet.</div>`;
+    } else {
+      grid.innerHTML = assignedMedia.map(m => {
+        const isSel = (evt.coverType === 'media' && evt.coverTargetId === m.id) || evt.customCoverMediaId === m.id;
+        return `
+          <div class="media-card evt-cover-choice-card" data-mid="${m.id}" style="width:110px; height:110px; cursor:pointer; border-radius:var(--radius-md); overflow:hidden; border:2px solid ${isSel ? 'var(--accent-pink)' : 'var(--border-color)'};">
+            ${renderMediaThumbnailHTML(m, '', 'width:100%; height:100%; object-fit:cover;')}
+          </div>`;
+      }).join('');
+
+      grid.querySelectorAll('.evt-cover-choice-card').forEach(card => {
+        card.onclick = async () => {
+          const mId = card.getAttribute('data-mid');
+          evt.coverType = 'media';
+          evt.customCoverMediaId = mId;
+          delete evt.coverSubjectId;
+          await db.put('events', evt);
+          modal.classList.remove('active');
+          modal.style.display = 'none';
+          await loadAppState();
+          renderCurrentView();
+        };
+      });
+    }
   }
 
   document.getElementById('closeEventThumbPickerBtn').onclick = () => {
@@ -60,6 +123,7 @@ function renderEventDetailsPage(stats) {
     const borderClass = getSubjectGroup(sub?.groupId)?.cssClass || '';
     const actionPts = currentActionPointsMap[actionCode] || 0.1;
     const genderSymbol = sub?.gender === 'Male' ? '♂️' : sub?.gender === 'NB' ? '⚧️' : '♀️';
+    const isPrimary = (evt.primarySubjectId === subId) || (!evt.primarySubjectId && participantSubIds[0] === subId);
 
     const avatarContainerStyle = "width:75%; height:75%; aspect-ratio:1/1; overflow:hidden; display:flex; align-items:center; justify-content:center; margin-bottom:8px;";
 
@@ -89,6 +153,7 @@ function renderEventDetailsPage(stats) {
             <strong>${count}💦 </strong>
             <button class="btn btn-secondary btn-sm evt-sub-dec" data-subid="${subId}" title="Decrease 💦 Count">➖</button>
           </div>
+          <button class="btn btn-sm make-primary-sub-btn" data-subid="${subId}" style="margin-top:4px; font-size:0.7rem; padding:2px 8px; font-weight:700; background:${isPrimary ? 'rgba(234,179,8,0.25)' : 'var(--bg-tertiary)'}; color:${isPrimary ? '#eab308' : 'var(--text-muted)'}; border:1px solid ${isPrimary ? '#eab308' : 'var(--border-color)'}; border-radius:10px;">${isPrimary ? '⭐ Primary Subject' : '☆ Make Primary'}</button>
           <div style="position:absolute; top:8px; left:8px; z-index:10; font-weight:700; color:#38bdf8; font-size:0.75rem; background:rgba(0,0,0,0.75); border:1px solid #38bdf8; padding:2px 6px; border-radius:8px; backdrop-filter:blur(4px);">
           ⚡ ${(count * actionPts).toFixed(1)}
           </div>
@@ -364,9 +429,21 @@ function renderEventDetailsPage(stats) {
     renderEventDetailsPage(stats);
   });
 
+  container.querySelectorAll('.make-primary-sub-btn').forEach(btn => {
+    btn.onclick = async (e) => {
+      e.stopPropagation();
+      const subId = btn.getAttribute('data-subid');
+      evt.primarySubjectId = subId;
+      await db.put('events', evt);
+      await loadAppState();
+      renderEventDetailsPage(stats);
+      showToastNotification(`⭐ Primary subject set for this event.`);
+    };
+  });
+
   container.querySelectorAll('.evt-participant-card').forEach(card => {
     card.onclick = (e) => {
-      if (e.target.closest('.evt-sub-dec') || e.target.closest('.evt-sub-inc') || e.target.closest('.remove-evt-sub') || e.target.closest('.edit-sld-count-badge')) return;
+      if (e.target.closest('.evt-sub-dec') || e.target.closest('.evt-sub-inc') || e.target.closest('.remove-evt-sub') || e.target.closest('.edit-sld-count-badge') || e.target.closest('.make-primary-sub-btn')) return;
       const subId = card.getAttribute('data-subid');
       if (subId) {
         activeDetailSubjectId = subId;

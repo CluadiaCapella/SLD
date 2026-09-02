@@ -138,20 +138,48 @@ function renderEventsPage(stats) {
     const totalWater = Object.values(evt.subjectCounts || {}).reduce((s, v) => s + (v || 0), 0);
 
     const assignedMedia = currentMediaList.filter(m => (m.eventIds || []).includes(evt.id));
-    const customCoverMedia = evt.customCoverMediaId ? currentMediaList.find(m => m.id === evt.customCoverMediaId) : null;
-    const coverMedia = customCoverMedia || assignedMedia[0];
+    const actionName = getActionDisplayName(actionCode);
+    const actionEmoji = actionName.split(' ')[0] || '♏';
 
-    const bgHeaderStyle = coverMedia ? `<img src="${coverMedia.thumbnailUrl || coverMedia.dataUrl}" class="event-card-bg-img" alt="Event Cover">` : `<div class="event-card-bg-img" style="background: linear-gradient(135deg, rgba(236,72,153,0.3), rgba(56,189,248,0.3));"></div>`;
+    let bgHeaderStyle = '';
+    if (evt.coverType === 'subject' && evt.coverSubjectId) {
+      const coverSub = currentSubjectsList.find(s => s.id === evt.coverSubjectId);
+      if (coverSub?.avatarUrl) {
+        bgHeaderStyle = `<img src="${coverSub.avatarUrl}" class="event-card-bg-img" style="width:100%; height:100%; object-fit:cover;" alt="Subject Cover">`;
+      }
+    } else if (evt.coverType === 'media' || evt.customCoverMediaId) {
+      const coverMediaId = evt.coverTargetId || evt.customCoverMediaId;
+      const coverMedia = currentMediaList.find(m => m.id === coverMediaId) || assignedMedia[0];
+      if (coverMedia) {
+        bgHeaderStyle = `<img src="${coverMedia.thumbnailUrl || coverMedia.dataUrl}" class="event-card-bg-img" style="width:100%; height:100%; object-fit:cover;" alt="Media Cover">`;
+      }
+    }
 
-    const subjectAvatarsHTML = Object.keys(evt.subjectCounts || {}).map(subId => {
+    if (!bgHeaderStyle) {
+      // Default Auto-Generated Cover Background: Zodiac Action Emoji on Stylized Radial Gradient
+      bgHeaderStyle = `
+        <div class="event-card-bg-img" style="width:100%; height:100%; background: linear-gradient(135deg, rgba(15,23,42,0.92), rgba(30,41,59,0.96)), radial-gradient(circle at center, rgba(236,72,153,0.4), transparent 70%); display:flex; align-items:center; justify-content:center; overflow:hidden;">
+          <div style="font-size:72px; opacity:0.35; filter:drop-shadow(0 0 14px rgba(236,72,153,0.7)); transform:scale(1.25); user-select:none;">${actionEmoji}</div>
+        </div>`;
+    }
+
+    const subjectIds = Object.keys(evt.subjectCounts || {});
+    const subjectCount = subjectIds.length;
+    let avatarSize = 64;
+    if (subjectCount === 2) avatarSize = 50;
+    else if (subjectCount === 3) avatarSize = 40;
+    else if (subjectCount >= 4) avatarSize = Math.max(26, Math.floor(130 / subjectCount));
+
+    const subjectAvatarsHTML = subjectIds.map(subId => {
       const sub = currentSubjectsList.find(s => s.id === subId);
-      const c = evt.subjectCounts[subId] || 0;
       const avatarSrc = sub?.avatarUrl;
       const genderSymbol = getSubjectGenderSymbol(sub?.gender);
+      const isPrimary = (evt.primarySubjectId === subId) || (!evt.primarySubjectId && subjectIds[0] === subId);
+
       return `
-        <div style="position:relative; display:inline-flex; align-items:center; cursor:pointer;" title="${genderSymbol} ${getSubjectDisplayName(sub)} - 💦${c}" data-subid="${subId}" class="evt-card-sub-bubble">
-          ${avatarSrc ? `<img src="${avatarSrc}" style="width:34px; height:34px; border-radius:50%; object-fit:cover; border:2px solid var(--border-color);" alt="${sub?.name}">` : `<div style="width:34px; height:34px; border-radius:50%; background:var(--bg-secondary); border:2px solid var(--border-color); display:flex; align-items:center; justify-content:center; font-size:14px;">👤</div>`}
-          <span style="position:absolute; bottom:-4px; right:-4px; background:rgba(0,0,0,0.85); color:#ff69b4; font-size:0.6rem; font-weight:800; padding:1px 4px; border-radius:8px; border:1px solid #ff69b4;">💦${c}</span>
+        <div style="position:relative; display:inline-flex; align-items:center; cursor:pointer;" title="${genderSymbol} ${getSubjectDisplayName(sub)}${isPrimary ? ' ⭐ Primary' : ''}" data-subid="${subId}" class="evt-card-sub-bubble">
+          ${avatarSrc ? `<img src="${avatarSrc}" style="width:${avatarSize}px; height:${avatarSize}px; border-radius:50%; object-fit:cover; border:2px solid ${isPrimary ? '#eab308' : 'var(--border-color)'}; box-shadow:0 2px 6px rgba(0,0,0,0.5);" alt="${sub?.name}">` : `<div style="width:${avatarSize}px; height:${avatarSize}px; border-radius:50%; background:var(--bg-secondary); border:2px solid ${isPrimary ? '#eab308' : 'var(--border-color)'}; display:flex; align-items:center; justify-content:center; font-size:${Math.max(12, Math.floor(avatarSize * 0.45))}px; box-shadow:0 2px 6px rgba(0,0,0,0.5);">👤</div>`}
+          ${isPrimary && subjectCount > 1 ? `<span style="position:absolute; top:-2px; right:-2px; font-size:0.6rem; background:rgba(0,0,0,0.85); border:1px solid #eab308; border-radius:50%; width:14px; height:14px; display:flex; align-items:center; justify-content:center;">⭐</span>` : ''}
         </div>`;
     }).join('');
 
