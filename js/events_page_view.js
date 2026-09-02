@@ -5,6 +5,101 @@
 let activeEventSortKey = 'date';
 let selectedEventCardIds = new Set();
 
+function renderSubjectBubbleHTML(subId, avatarSize, evt, subjectIds) {
+  const sub = currentSubjectsList.find(s => s.id === subId);
+  const avatarSrc = sub?.avatarUrl;
+  const genderSymbol = getSubjectGenderSymbol(sub?.gender);
+  const isPrimary = (evt.primarySubjectId === subId) || (!evt.primarySubjectId && subjectIds[0] === subId);
+
+  return `
+    <div style="position:relative; display:inline-flex; align-items:center; cursor:pointer;" title="${genderSymbol} ${getSubjectDisplayName(sub)}${isPrimary ? ' ⭐ Primary' : ''}" data-subid="${subId}" class="evt-card-sub-bubble">
+      ${avatarSrc ? `<img src="${avatarSrc}" style="width:${avatarSize}px; height:${avatarSize}px; border-radius:50%; object-fit:cover; border:2px solid ${isPrimary ? '#eab308' : 'var(--border-color)'}; box-shadow:0 2px 8px rgba(0,0,0,0.6);" alt="${sub?.name}">` : `<div style="width:${avatarSize}px; height:${avatarSize}px; border-radius:50%; background:var(--bg-secondary); border:2px solid ${isPrimary ? '#eab308' : 'var(--border-color)'}; display:flex; align-items:center; justify-content:center; font-size:${Math.max(12, Math.floor(avatarSize * 0.45))}px; box-shadow:0 2px 8px rgba(0,0,0,0.6);">👤</div>`}
+      ${isPrimary && subjectIds.length > 1 ? `<span style="position:absolute; top:-2px; right:-2px; font-size:0.6rem; background:rgba(0,0,0,0.85); border:1px solid #eab308; border-radius:50%; width:14px; height:14px; display:flex; align-items:center; justify-content:center;">⭐</span>` : ''}
+    </div>`;
+}
+
+function renderGeometricSubjectLayoutHTML(evt, subjectIds) {
+  const count = subjectIds.length;
+  if (count === 0) return '';
+
+  if (count === 1) {
+    return `<div style="display:flex; justify-content:center; align-items:center; width:100%; margin:auto 0;">
+      ${renderSubjectBubbleHTML(subjectIds[0], 76, evt, subjectIds)}
+    </div>`;
+  }
+
+  if (count === 2) {
+    return `<div style="display:flex; justify-content:center; align-items:center; gap:12px; width:100%; margin:auto 0;">
+      ${renderSubjectBubbleHTML(subjectIds[0], 64, evt, subjectIds)}
+      ${renderSubjectBubbleHTML(subjectIds[1], 64, evt, subjectIds)}
+    </div>`;
+  }
+
+  if (count === 3) {
+    // Triangle layout (1 top, 2 bottom)
+    return `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; width:100%; margin:auto 0;">
+      <div style="display:flex; justify-content:center;">
+        ${renderSubjectBubbleHTML(subjectIds[0], 54, evt, subjectIds)}
+      </div>
+      <div style="display:flex; justify-content:center; gap:10px;">
+        ${renderSubjectBubbleHTML(subjectIds[1], 54, evt, subjectIds)}
+        ${renderSubjectBubbleHTML(subjectIds[2], 54, evt, subjectIds)}
+      </div>
+    </div>`;
+  }
+
+  if (count === 4) {
+    // Square 2x2 layout
+    return `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; width:100%; margin:auto 0;">
+      <div style="display:flex; justify-content:center; gap:8px;">
+        ${renderSubjectBubbleHTML(subjectIds[0], 48, evt, subjectIds)}
+        ${renderSubjectBubbleHTML(subjectIds[1], 48, evt, subjectIds)}
+      </div>
+      <div style="display:flex; justify-content:center; gap:8px;">
+        ${renderSubjectBubbleHTML(subjectIds[2], 48, evt, subjectIds)}
+        ${renderSubjectBubbleHTML(subjectIds[3], 48, evt, subjectIds)}
+      </div>
+    </div>`;
+  }
+
+  if (count === 5) {
+    // 3 top, 2 bottom layout
+    return `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; width:100%; margin:auto 0;">
+      <div style="display:flex; justify-content:center; gap:6px;">
+        ${renderSubjectBubbleHTML(subjectIds[0], 42, evt, subjectIds)}
+        ${renderSubjectBubbleHTML(subjectIds[1], 42, evt, subjectIds)}
+        ${renderSubjectBubbleHTML(subjectIds[2], 42, evt, subjectIds)}
+      </div>
+      <div style="display:flex; justify-content:center; gap:6px;">
+        ${renderSubjectBubbleHTML(subjectIds[3], 42, evt, subjectIds)}
+        ${renderSubjectBubbleHTML(subjectIds[4], 42, evt, subjectIds)}
+      </div>
+    </div>`;
+  }
+
+  if (count === 6) {
+    // 3 top, 3 bottom layout
+    return `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; width:100%; margin:auto 0;">
+      <div style="display:flex; justify-content:center; gap:6px;">
+        ${renderSubjectBubbleHTML(subjectIds[0], 40, evt, subjectIds)}
+        ${renderSubjectBubbleHTML(subjectIds[1], 40, evt, subjectIds)}
+        ${renderSubjectBubbleHTML(subjectIds[2], 40, evt, subjectIds)}
+      </div>
+      <div style="display:flex; justify-content:center; gap:6px;">
+        ${renderSubjectBubbleHTML(subjectIds[3], 40, evt, subjectIds)}
+        ${renderSubjectBubbleHTML(subjectIds[4], 40, evt, subjectIds)}
+        ${renderSubjectBubbleHTML(subjectIds[5], 40, evt, subjectIds)}
+      </div>
+    </div>`;
+  }
+
+  // 7+ subjects flex wrap grid
+  const size = Math.max(28, Math.floor(130 / Math.ceil(count / 2)));
+  return `<div style="display:flex; flex-wrap:wrap; gap:4px; align-items:center; justify-content:center; width:100%; margin:auto 0;">
+    ${subjectIds.map(sId => renderSubjectBubbleHTML(sId, size, evt, subjectIds)).join('')}
+  </div>`;
+}
+
 function formatColoredDateTag(dateTag) {
   if (!dateTag) return '';
   const str = String(dateTag).trim();
@@ -164,24 +259,7 @@ function renderEventsPage(stats) {
     }
 
     const subjectIds = Object.keys(evt.subjectCounts || {});
-    const subjectCount = subjectIds.length;
-    let avatarSize = 64;
-    if (subjectCount === 2) avatarSize = 50;
-    else if (subjectCount === 3) avatarSize = 40;
-    else if (subjectCount >= 4) avatarSize = Math.max(26, Math.floor(130 / subjectCount));
-
-    const subjectAvatarsHTML = subjectIds.map(subId => {
-      const sub = currentSubjectsList.find(s => s.id === subId);
-      const avatarSrc = sub?.avatarUrl;
-      const genderSymbol = getSubjectGenderSymbol(sub?.gender);
-      const isPrimary = (evt.primarySubjectId === subId) || (!evt.primarySubjectId && subjectIds[0] === subId);
-
-      return `
-        <div style="position:relative; display:inline-flex; align-items:center; cursor:pointer;" title="${genderSymbol} ${getSubjectDisplayName(sub)}${isPrimary ? ' ⭐ Primary' : ''}" data-subid="${subId}" class="evt-card-sub-bubble">
-          ${avatarSrc ? `<img src="${avatarSrc}" style="width:${avatarSize}px; height:${avatarSize}px; border-radius:50%; object-fit:cover; border:2px solid ${isPrimary ? '#eab308' : 'var(--border-color)'}; box-shadow:0 2px 6px rgba(0,0,0,0.5);" alt="${sub?.name}">` : `<div style="width:${avatarSize}px; height:${avatarSize}px; border-radius:50%; background:var(--bg-secondary); border:2px solid ${isPrimary ? '#eab308' : 'var(--border-color)'}; display:flex; align-items:center; justify-content:center; font-size:${Math.max(12, Math.floor(avatarSize * 0.45))}px; box-shadow:0 2px 6px rgba(0,0,0,0.5);">👤</div>`}
-          ${isPrimary && subjectCount > 1 ? `<span style="position:absolute; top:-2px; right:-2px; font-size:0.6rem; background:rgba(0,0,0,0.85); border:1px solid #eab308; border-radius:50%; width:14px; height:14px; display:flex; align-items:center; justify-content:center;">⭐</span>` : ''}
-        </div>`;
-    }).join('');
+    const subjectAvatarsHTML = renderGeometricSubjectLayoutHTML(evt, subjectIds);
 
     const locationTooltipHTML = evt.where ? `
 <div class="event-where-tooltip-wrap" 
