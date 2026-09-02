@@ -2,18 +2,23 @@
  * Progressive Web App & Seamless Background OTA Engine
  */
 
+const CURRENT_BUILD_VERSION = '260902.0252';
 let isCheckingOtaUpdate = false;
 
 async function updateNavVersionTag() {
   const tag = document.getElementById('navVersionTag');
   if (tag) {
-    const ver = (await db.getSetting('appVersion')) || '260902.0248';
+    let ver = await db.getSetting('appVersion');
+    if (!ver || ver < CURRENT_BUILD_VERSION) {
+      ver = CURRENT_BUILD_VERSION;
+      await db.setSetting('appVersion', CURRENT_BUILD_VERSION);
+    }
     tag.textContent = `v${ver}`;
   }
 }
 
 async function initPWAandUpdates() {
-  updateNavVersionTag();
+  await updateNavVersionTag();
   checkForAppUpdates(false);
 }
 
@@ -31,6 +36,7 @@ async function checkForAppUpdates(userTriggered = false) {
       if (userTriggered && typeof showToastNotification === 'function') {
         showToastNotification('⚠️ Could not connect to GitHub version server.');
       }
+      await updateNavVersionTag();
       isCheckingOtaUpdate = false;
       return;
     }
@@ -38,22 +44,20 @@ async function checkForAppUpdates(userTriggered = false) {
     const data = await remoteRes.json();
 
     if (data && data.version) {
-      const storedVersion = await db.getSetting('appVersion');
-
-      if (!storedVersion) {
-        await db.setSetting('appVersion', data.version);
-        updateNavVersionTag();
-        isCheckingOtaUpdate = false;
-        return;
-      }
+      const storedVersion = (await db.getSetting('appVersion')) || CURRENT_BUILD_VERSION;
 
       if (storedVersion !== data.version) {
         await applyBackgroundOtaUpdate(data.version);
-      } else if (userTriggered && typeof showToastNotification === 'function') {
-        showToastNotification(`✅ App is up to date (v${storedVersion}).`);
+      } else {
+        await db.setSetting('appVersion', data.version);
+        await updateNavVersionTag();
+        if (userTriggered && typeof showToastNotification === 'function') {
+          showToastNotification(`✅ App is up to date (v${data.version}).`);
+        }
       }
     }
   } catch (err) {
+    await updateNavVersionTag();
     if (userTriggered && typeof showToastNotification === 'function') {
       showToastNotification('⚠️ OTA update check failed: Network offline.');
     }
@@ -108,7 +112,7 @@ async function applyBackgroundOtaUpdate(newVersion) {
     }
 
     await db.setSetting('appVersion', newVersion);
-    updateNavVersionTag();
+    await updateNavVersionTag();
 
     if (typeof showToastNotification === 'function') {
       showToastNotification('✅ App updated successfully! Reloading...');
