@@ -403,8 +403,18 @@ function initPresenceRoomHub() {
 
   try {
     const hubConn = localPeer.connect(roomPeerId, { reliable: true });
+
+    let hubOpenTimer = setTimeout(() => {
+      if (!presenceHubConn || !presenceHubConn.open) {
+        logP2pDiagnostic('Room Hub host connection pending. Initializing local Room Hub host...', 'info');
+        createHubFallbackPeer();
+      }
+    }, 2500);
+
     hubConn.on('open', () => {
+      clearTimeout(hubOpenTimer);
       presenceHubConn = hubConn;
+      logP2pDiagnostic('Connected to Global Room Hub presence host!', 'success');
       hubConn.send({
         type: 'PRESENCE_ANNOUNCE',
         code: myDeviceShortCode,
@@ -417,17 +427,20 @@ function initPresenceRoomHub() {
       if (data && data.type === 'PRESENCE_LIST' && Array.isArray(data.devices)) {
         for (const dev of data.devices) {
           if (dev.code && dev.code !== myDeviceShortCode) {
-            await registerDiscoveredDevice(dev.code, dev.name);
+            logP2pDiagnostic(`Discovered device via Room Hub: SLD-${dev.code} (${dev.name})`, 'success');
+            await registerDiscoveredDevice(dev.code, dev.name, dev.peerId);
           }
         }
       } else if (data && data.type === 'PRESENCE_ANNOUNCE') {
         if (data.code && data.code !== myDeviceShortCode) {
-          await registerDiscoveredDevice(data.code, data.name);
+          logP2pDiagnostic(`Received Room Hub presence announcement: SLD-${data.code} (${data.name})`, 'success');
+          await registerDiscoveredDevice(data.code, data.name, data.peerId);
         }
       }
     });
 
     hubConn.on('error', () => {
+      clearTimeout(hubOpenTimer);
       createHubFallbackPeer();
     });
   } catch (e) {
