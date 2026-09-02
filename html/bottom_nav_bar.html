@@ -36,5 +36,5 @@
     <span class="nav-icon" id="navNotificationsIcon">🔔</span>
     <span id="navNotificationsText" style="font-size:0.68rem; font-weight:800; color:var(--accent-pink);">0 Alert</span>
   </div>
-  <span id="navVersionTag" style="font-size:0.58rem; opacity:0.55; font-family:monospace; margin-left:auto; padding-right:8px; color:var(--text-muted); font-weight:700;">v...</span>
+  <span id="navVersionTag" onclick="if(typeof checkForAppUpdates==='function')checkForAppUpdates(true);" title="Click to check for OTA update" style="position:absolute; top:-18px; right:14px; background:var(--bg-secondary); border:1px solid var(--border-color); border-bottom:none; border-radius:6px 6px 0 0; padding:1px 8px; font-size:0.58rem; font-family:monospace; color:var(--text-muted); font-weight:800; z-index:1000; cursor:pointer; box-shadow:0 -2px 6px rgba(0,0,0,0.3);">v...</span>
 </nav>

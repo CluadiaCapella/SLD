@@ -2,12 +2,12 @@
  * Progressive Web App & Seamless Background OTA Engine
  */
 
-let hasCheckedUpdatesThisSession = false;
+let isCheckingOtaUpdate = false;
 
 async function updateNavVersionTag() {
   const tag = document.getElementById('navVersionTag');
   if (tag) {
-    const ver = (await db.getSetting('appVersion')) || '260824.0259';
+    const ver = (await db.getSetting('appVersion')) || '260902.0248';
     tag.textContent = `v${ver}`;
   }
 }
@@ -18,12 +18,23 @@ async function initPWAandUpdates() {
 }
 
 async function checkForAppUpdates(userTriggered = false) {
-  if (!userTriggered && hasCheckedUpdatesThisSession) return;
-  hasCheckedUpdatesThisSession = true;
+  if (isCheckingOtaUpdate) return;
+  isCheckingOtaUpdate = true;
+
+  if (userTriggered && typeof showToastNotification === 'function') {
+    showToastNotification('⚡ Checking GitHub for OTA updates...');
+  }
 
   try {
     const remoteRes = await fetch('https://raw.githubusercontent.com/CluadiaCapella/SLD/main/version.json?t=' + Date.now());
-    if (!remoteRes.ok) return;
+    if (!remoteRes.ok) {
+      if (userTriggered && typeof showToastNotification === 'function') {
+        showToastNotification('⚠️ Could not connect to GitHub version server.');
+      }
+      isCheckingOtaUpdate = false;
+      return;
+    }
+
     const data = await remoteRes.json();
 
     if (data && data.version) {
@@ -32,28 +43,47 @@ async function checkForAppUpdates(userTriggered = false) {
       if (!storedVersion) {
         await db.setSetting('appVersion', data.version);
         updateNavVersionTag();
+        isCheckingOtaUpdate = false;
         return;
       }
 
       if (storedVersion !== data.version) {
         await applyBackgroundOtaUpdate(data.version);
+      } else if (userTriggered && typeof showToastNotification === 'function') {
+        showToastNotification(`✅ App is up to date (v${storedVersion}).`);
       }
     }
   } catch (err) {
-    // Network offline or fetch unavailable - silent fallback
+    if (userTriggered && typeof showToastNotification === 'function') {
+      showToastNotification('⚠️ OTA update check failed: Network offline.');
+    }
   }
+
+  isCheckingOtaUpdate = false;
 }
 
 async function applyBackgroundOtaUpdate(newVersion) {
   try {
     if (typeof showToastNotification === 'function') {
-      showToastNotification(`⚡ Updating app code in background to v${newVersion}...`);
+      showToastNotification(`⚡ Applying OTA update to v${newVersion}...`);
     }
 
     const filesToUpdate = [
       { key: 'ota_code_p2p_sync_network', url: 'https://raw.githubusercontent.com/CluadiaCapella/SLD/main/js/p2p_sync_network.js' },
       { key: 'ota_code_connections_page_view', url: 'https://raw.githubusercontent.com/CluadiaCapella/SLD/main/js/connections_page_view.js' },
-      { key: 'ota_code_connections_view', url: 'https://raw.githubusercontent.com/CluadiaCapella/SLD/main/html/connections_view.js' }
+      { key: 'ota_code_connections_view', url: 'https://raw.githubusercontent.com/CluadiaCapella/SLD/main/html/connections_view.js' },
+      { key: 'ota_code_events_page_view', url: 'https://raw.githubusercontent.com/CluadiaCapella/SLD/main/js/events_page_view.js' },
+      { key: 'ota_code_event_details_view', url: 'https://raw.githubusercontent.com/CluadiaCapella/SLD/main/js/event_details_view.js' },
+      { key: 'ota_code_sld_list_view', url: 'https://raw.githubusercontent.com/CluadiaCapella/SLD/main/js/sld_list_view.js' },
+      { key: 'ota_code_sld_details_view', url: 'https://raw.githubusercontent.com/CluadiaCapella/SLD/main/js/sld_details_view.js' },
+      { key: 'ota_code_subjects_page_view', url: 'https://raw.githubusercontent.com/CluadiaCapella/SLD/main/js/subjects_page_view.js' },
+      { key: 'ota_code_subject_details_view', url: 'https://raw.githubusercontent.com/CluadiaCapella/SLD/main/js/subject_details_view.js' },
+      { key: 'ota_code_tags_page_view', url: 'https://raw.githubusercontent.com/CluadiaCapella/SLD/main/js/tags_page_view.js' },
+      { key: 'ota_code_tag_details_view', url: 'https://raw.githubusercontent.com/CluadiaCapella/SLD/main/js/tag_details_view.js' },
+      { key: 'ota_code_settings_page_view', url: 'https://raw.githubusercontent.com/CluadiaCapella/SLD/main/js/settings_page_view.js' },
+      { key: 'ota_code_settings_view', url: 'https://raw.githubusercontent.com/CluadiaCapella/SLD/main/html/settings_view.js' },
+      { key: 'ota_code_database', url: 'https://raw.githubusercontent.com/CluadiaCapella/SLD/main/js/database.js' },
+      { key: 'ota_code_router_views', url: 'https://raw.githubusercontent.com/CluadiaCapella/SLD/main/js/router_views.js' }
     ];
 
     for (const item of filesToUpdate) {
@@ -81,7 +111,7 @@ async function applyBackgroundOtaUpdate(newVersion) {
     updateNavVersionTag();
 
     if (typeof showToastNotification === 'function') {
-      showToastNotification('✅ App updated successfully!');
+      showToastNotification('✅ App updated successfully! Reloading...');
     }
 
     setTimeout(() => {
