@@ -91,16 +91,45 @@
   </div>
 
   <!-- App Header -->
-  <header class="app-header">
+  <header class="app-header" style="position:relative;">
     <div class="brand-container" id="headerBrandLogo" style="cursor:pointer;" title="SLD Home & Splash Screen">
       <img src="media/title-icon.png" class="brand-logo-img" alt="SLD" style="width:28px; height:28px; object-fit:contain; filter:drop-shadow(0 0 6px rgba(255,105,180,0.5));" onerror="this.onerror=null; this.replaceWith(document.createTextNode('💦'));">
       <div class="brand-title">SLD</div>
     </div>
-    <div style="display:flex; align-items:center; gap:12px;">
-      <button class="btn btn-secondary btn-sm" id="globalUndoBtn" title="Undo Last Action">⏮️ Undo</button>
-      <div id="headerGroupFiltersContainer" style="display:flex; gap:4px; align-items:center;"></div>
+    
+    <div id="headerGroupFiltersContainer" style="display:flex; gap:4px; align-items:center;"></div>
+
+    <div style="display:flex; align-items:center; gap:8px; margin-left:auto;">
+      <button class="btn btn-secondary btn-sm" id="globalUndoBtn" title="Undo Last Action" style="font-weight:700; padding:4px 10px;">⏮️ Undo</button>
+
+      <div id="headerNotificationsBtn" style="position:relative; cursor:pointer; padding:4px 8px; border-radius:16px; background:var(--bg-tertiary); border:1px solid var(--border-color); display:flex; align-items:center; gap:4px;" title="View Notifications & Alerts">
+        <span style="font-size:0.95rem;">🔔</span>
+        <span id="headerNotificationsBadge" class="badge" style="background:var(--accent-pink); color:#fff; font-size:0.65rem; padding:1px 5px; border-radius:10px;">0</span>
+      </div>
+
+      <div id="headerProfileAvatarBtn" style="position:relative; cursor:pointer; display:flex; align-items:center; gap:6px; padding:4px 12px; border-radius:20px; background:linear-gradient(135deg, rgba(236,72,153,0.2), rgba(56,189,248,0.2)); border:1px solid var(--accent-pink); box-shadow:0 2px 8px rgba(0,0,0,0.3);" title="Signed in Profile Menu">
+        <span id="headerProfileIcon" style="font-size:1rem;">👤</span>
+        <span id="headerProfileName" style="font-weight:800; font-size:0.8rem; color:#fff; max-width:100px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Profile</span>
+        <span style="font-size:0.6rem; opacity:0.7;">▼</span>
+      </div>
     </div>
   </header>
+
+  <!-- Profile Popover Dropdown Menu -->
+  <div id="profileHeaderPopover" class="header-profile-popover" style="display:none; position:fixed; top:60px; right:16px; width:280px; background:rgba(15,23,42,0.98); border:1px solid var(--accent-pink); border-radius:12px; padding:12px; box-shadow:0 8px 32px rgba(0,0,0,0.8); z-index:9999; backdrop-filter:blur(12px);">
+    <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border-color); padding-bottom:8px; margin-bottom:8px;">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="font-size:1.4rem;">👤</span>
+        <div>
+          <div id="popoverCurrentProfileName" style="font-weight:800; font-size:0.9rem; color:#fff;">Active Profile</div>
+          <div style="font-size:0.7rem; color:var(--accent-pink);">Currently Active</div>
+        </div>
+      </div>
+      <button class="btn btn-sm btn-secondary" onclick="switchView('settingsView'); document.getElementById('profileHeaderPopover').style.display='none';">⚙️ Settings</button>
+    </div>
+    <div style="font-size:0.75rem; color:var(--text-muted); font-weight:700; margin-bottom:6px;">Switch Active Profile:</div>
+    <div id="popoverProfilesList" style="max-height:160px; overflow-y:auto; display:flex; flex-direction:column; gap:4px;"></div>
+  </div>
 
   <!-- Main Content Body -->
   <main class="main-content">
@@ -115,7 +144,6 @@
     <script src="html/event_details_view.js"></script>
     <script src="html/stats_view.js"></script>
     <script src="html/settings_view.js"></script>
-    <script src="html/connections_view.js"></script>
     <script src="html/tags_view.js"></script>
     <script src="html/archive_progress_modal.js"></script>
     <script src="html/upload_progress_modal.js"></script>
@@ -146,18 +174,6 @@
     <div class="nav-item" data-view="statsView">
       <span class="nav-icon">📊</span>
       <span>Stats</span>
-    </div>
-    <div class="nav-item" data-view="settingsView">
-      <span class="nav-icon">⚙️</span>
-      <span>Settings</span>
-    </div>
-    <div id="navP2pStatusIndicator" class="nav-item" data-view="connectionsView" style="cursor:pointer; opacity:0.85;" title="Click to view Device 2 Device Connections">
-      <span class="nav-icon" id="navP2pStatusIcon">📱</span>
-      <span id="navP2pStatusText" style="font-size:0.68rem; font-weight:800; color:#38bdf8;">0 Devices</span>
-    </div>
-    <div id="navNotificationsIndicator" class="nav-item" style="cursor:pointer; opacity:0.85;" title="Click to view Notifications">
-      <span class="nav-icon" id="navNotificationsIcon">🔔</span>
-      <span id="navNotificationsText" style="font-size:0.68rem; font-weight:800; color:var(--accent-pink);">0 Alert</span>
     </div>
     <span id="navVersionTag" onclick="if(typeof checkForAppUpdates==='function')checkForAppUpdates(true);" title="Click to check for OTA update" style="position:absolute; top:-18px; right:14px; background:var(--bg-secondary); border:1px solid var(--border-color); border-bottom:none; border-radius:6px 6px 0 0; padding:1px 8px; font-size:0.58rem; font-family:monospace; color:var(--text-muted); font-weight:800; z-index:1000; cursor:pointer; box-shadow:0 -2px 6px rgba(0,0,0,0.3);">v...</span>
   </nav>

@@ -1,5 +1,7 @@
 /* Collections & Profiles Backup / Export Manager Module */
 
+let activeSelectedExportProfileId = null;
+
 function showArchiveProgressModal(title) {
   const modal = document.getElementById('archiveProgressModal');
   const titleEl = document.getElementById('archiveProgressTitle');
@@ -18,7 +20,7 @@ function updateArchiveProgress(percent, currentFile = '') {
   const rounded = Math.min(100, Math.max(0, Math.floor(percent)));
   if (barEl) barEl.style.width = `${rounded}%`;
   if (pctEl) pctEl.textContent = `${rounded}%`;
-  if (msgEl && currentFile) msgEl.textContent = `Packaging: ${currentFile}`;
+  if (msgEl && currentFile) msgEl.textContent = `Processing: ${currentFile}`;
 }
 
 function hideArchiveProgressModal() {
@@ -29,159 +31,223 @@ function hideArchiveProgressModal() {
   }
 }
 
-async function exportMediaCollectionZip() {
-  if (!window.JSZip) { alert('JSZip library loading failed.'); return; }
-  const mediaFiles = await db.getActiveMedia();
+/**
+ * Top Header Profile Account Button & Popover Setup
+ */
+async function updateProfileHeaderUI() {
+  const activeProfile = await db.getActiveProfile();
+  const iconEl = document.getElementById('headerProfileIcon');
+  const nameEl = document.getElementById('headerProfileName');
+  const popoverNameEl = document.getElementById('popoverCurrentProfileName');
 
-  if (mediaFiles.length === 0) {
-    alert('No media files found in active collection to export.');
-    return;
+  const pName = activeProfile?.name || 'Default Profile';
+  if (nameEl) nameEl.textContent = pName;
+  if (popoverNameEl) popoverNameEl.textContent = pName;
+
+  const btn = document.getElementById('headerProfileAvatarBtn');
+  const popover = document.getElementById('profileHeaderPopover');
+
+  if (btn && !btn.dataset.bound) {
+    btn.dataset.bound = 'true';
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      renderProfilePopoverList();
+      if (popover) {
+        popover.style.display = popover.style.display === 'block' ? 'none' : 'block';
+      }
+    };
   }
 
-  showArchiveProgressModal('💾 Packaging Collection Archive...');
-  const zip = new window.JSZip();
-  const manifestMedia = [];
-
-  try {
-    for (let i = 0; i < mediaFiles.length; i++) {
-      const m = mediaFiles[i];
-      updateArchiveProgress((i / mediaFiles.length) * 50, m.filename);
-      if (m.dataUrl) {
-        const parts = m.dataUrl.split(',');
-        if (parts.length > 1) {
-          const safeFilename = m.filename.replace(/[/\\?%*:|"<>]/g, '_');
-          zip.file(safeFilename, parts[1], { base64: true });
-
-          manifestMedia.push({
-            id: m.id,
-            filename: safeFilename,
-            originalFilename: m.filename,
-            type: m.type,
-            hash: m.hash,
-            blueBookEvents: m.blueBookEvents || [],
-            subjectTags: m.subjectTags || [],
-            normalTags: m.normalTags || [],
-            customThumbnail: m.customThumbnail || null
-          });
-        }
-      }
+  document.addEventListener('click', (e) => {
+    if (popover && !popover.contains(e.target) && btn && !btn.contains(e.target)) {
+      popover.style.display = 'none';
     }
+  });
+}
 
-    zip.file('collection_manifest.json', JSON.stringify({ version: DB_VERSION, exportDate: new Date().toISOString(), media: manifestMedia }, null, 2));
+async function renderProfilePopoverList() {
+  const container = document.getElementById('popoverProfilesList');
+  if (!container) return;
 
-    const todayStr = new Date().toISOString().split('T')[0];
-    const blob = await zip.generateAsync({ type: 'blob', compression: 'STORE' }, (metadata) => {
-      updateArchiveProgress(50 + (metadata.percent / 2), metadata.currentFile || 'Generating ZIP archive...');
-    });
+  const profiles = await db.getAll('profiles');
+  const activeProfileId = await db.getActiveProfileId();
 
-    updateArchiveProgress(100, 'Complete! Opening download window...');
-    setTimeout(() => {
-      downloadBlob(blob, `SLD Collection ${todayStr}.zip`);
-      hideArchiveProgressModal();
-    }, 400);
-  } catch (err) {
-    hideArchiveProgressModal();
-    console.error('Export collection archive error:', err);
-    alert(`Error packaging collection archive: ${err.message || err}`);
+  container.innerHTML = profiles.map(p => {
+    const isActive = p.id === activeProfileId;
+    return `
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:6px 10px; border-radius:6px; background:${isActive ? 'rgba(236,72,153,0.15)' : 'var(--bg-secondary)'}; border:1px solid ${isActive ? 'var(--accent-pink)' : 'var(--border-color)'}; font-size:0.8rem;">
+        <span style="font-weight:${isActive ? '800' : '600'}; color:${isActive ? '#fff' : 'var(--text-muted)'}; cursor:pointer;" onclick="switchActiveProfile('${p.id}')">
+          👤 ${p.name} ${isActive ? ' <small style="color:var(--accent-pink);">(Active)</small>' : ''}
+        </span>
+        ${!isActive ? `<button class="btn btn-sm btn-secondary" onclick="switchActiveProfile('${p.id}')">Switch</button>` : ''}
+      </div>`;
+  }).join('') || '<p class="text-muted" style="font-size:0.75rem;">No profiles found.</p>';
+}
+
+async function switchActiveProfile(profileId) {
+  await db.setActiveProfileId(profileId);
+  await loadAppState();
+  const popover = document.getElementById('profileHeaderPopover');
+  if (popover) popover.style.display = 'none';
+  await updateProfileHeaderUI();
+  renderCurrentView();
+  if (typeof showToastNotification === 'function') {
+    const p = await db.get('profiles', profileId);
+    showToastNotification(`👤 Switched active profile to "${p?.name || 'Profile'}"`);
   }
 }
 
-async function importMediaCollectionZip(file) {
-  if (!window.JSZip) { alert('JSZip library loading failed.'); return; }
+/**
+ * Profile Operations: Clone, Rename, Delete Strict
+ */
+async function cloneProfile(profileId) {
+  const profiles = await db.getAll('profiles');
+  const source = profiles.find(p => p.id === profileId);
+  if (!source) return;
+
+  showArchiveProgressModal(`📋 Cloning Profile "${source.name}"...`);
+
   try {
-    const zip = new window.JSZip();
-    const contents = await zip.loadAsync(file);
-    const activeProfileId = await db.getActiveProfileId();
-    const activeCollectionId = await db.getActiveCollectionId();
-    const existingMedia = await db.getActiveMedia();
-    const existingHashes = new Set(existingMedia.map(m => m.hash).filter(Boolean));
+    const newProfileId = 'profile-' + Date.now();
+    const newProfile = {
+      id: newProfileId,
+      name: `${source.name} (Copy)`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    await db.put('profiles', newProfile);
 
-    let manifestData = null;
-    const manifestFile = contents.file('collection_manifest.json');
-    if (manifestFile) {
-      try {
-        const jsonText = await manifestFile.async('text');
-        manifestData = JSON.parse(jsonText);
-      } catch (e) {
-        console.warn('Could not parse collection_manifest.json:', e);
-      }
+    // Clone Subjects
+    const subjects = await db.getAll('subjects');
+    for (const s of subjects.filter(item => item.profileId === profileId)) {
+      await db.put('subjects', { ...s, id: 'sub-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4), profileId: newProfileId });
     }
 
-    const manifestMap = new Map();
-    if (manifestData && Array.isArray(manifestData.media)) {
-      manifestData.media.forEach(item => {
-        manifestMap.set(item.filename, item);
-        if (item.originalFilename) manifestMap.set(item.originalFilename, item);
-      });
+    // Clone Events
+    const events = await db.getAll('events');
+    for (const e of events.filter(item => item.profileId === profileId)) {
+      await db.put('events', { ...e, id: 'evt-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4), profileId: newProfileId });
     }
 
-    let addedCount = 0;
-    let duplicateCount = 0;
-
-    const fileEntries = [];
-    contents.forEach((relativePath, zipEntry) => {
-      if (zipEntry.dir) return;
-      const cleanName = relativePath.split('/').pop().toLowerCase();
-      if (relativePath.includes('__MACOSX') || cleanName.startsWith('.') || cleanName === 'thumbs.db' || relativePath === 'collection_manifest.json') {
-        return;
-      }
-      fileEntries.push({ relativePath, zipEntry });
-    });
-
-    for (const { relativePath, zipEntry } of fileEntries) {
-      try {
-        const base64 = await zipEntry.async('base64');
-        const ext = relativePath.split('.').pop().toLowerCase();
-        let mime = 'image/jpeg';
-        if (ext === 'png') mime = 'image/png';
-        else if (ext === 'gif') mime = 'image/gif';
-        else if (ext === 'webp') mime = 'image/webp';
-        else if (ext === 'svg') mime = 'image/svg+xml';
-        else if (ext === 'mp4') mime = 'video/mp4';
-        else if (ext === 'webm') mime = 'video/webm';
-        else if (ext === 'mov') mime = 'video/quicktime';
-
-        const dataUrl = `data:${mime};base64,${base64}`;
-        const fileHash = await calculateContentHash(dataUrl);
-
-        if (existingHashes.has(fileHash)) {
-          duplicateCount++;
-          continue;
-        }
-        existingHashes.add(fileHash);
-        addedCount++;
-
-        const compressedThumb = await createCompressedThumbnail(mime, dataUrl);
-        const meta = manifestMap.get(relativePath) || manifestMap.get(relativePath.split('/').pop()) || {};
-
-        const mediaItem = {
-          id: meta.id || ('media-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5)),
-          profileId: activeProfileId,
-          collectionId: activeCollectionId,
-          filename: relativePath.split('/').pop(),
-          type: mime,
-          dataUrl: dataUrl,
-          thumbnailUrl: meta.customThumbnail || compressedThumb,
-          customThumbnail: meta.customThumbnail || null,
-          hash: fileHash,
-          blueBookEvents: meta.blueBookEvents || [],
-          subjectTags: meta.subjectTags || [],
-          normalTags: meta.normalTags || []
-        };
-        await db.put('media', mediaItem);
-      } catch (itemErr) {
-        console.warn('Skipped unreadable item in ZIP:', relativePath, itemErr);
-      }
+    // Clone SLD Entries
+    const sldEntries = await db.getAll('sld_entries');
+    for (const entry of sldEntries.filter(item => item.profileId === profileId)) {
+      await db.put('sld_entries', { ...entry, id: 'sld-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4), profileId: newProfileId });
     }
 
-    await loadAppState();
-    renderCurrentView();
-    let msg = `Successfully imported ${addedCount} media file(s).`;
-    if (duplicateCount > 0) msg += ` Skipped ${duplicateCount} duplicate file(s).`;
-    alert(msg);
+    hideArchiveProgressModal();
+    if (typeof renderProfilesManagerList === 'function') renderProfilesManagerList();
+    if (typeof showToastNotification === 'function') {
+      showToastNotification(`📋 Cloned profile "${source.name}" to "${newProfile.name}"`);
+    }
   } catch (err) {
-    console.error('Import error:', err);
-    alert(`Error importing collection file: ${err.message || err}`);
+    hideArchiveProgressModal();
+    alert(`Error cloning profile: ${err.message || err}`);
+  }
+}
+
+async function renameProfile(profileId) {
+  const p = await db.get('profiles', profileId);
+  if (!p) return;
+
+  const newName = prompt(`Rename Profile "${p.name}":`, p.name);
+  if (newName !== null && newName.trim() && newName.trim() !== p.name) {
+    p.name = newName.trim();
+    p.updatedAt = new Date().toISOString();
+    await db.put('profiles', p);
+    await updateProfileHeaderUI();
+    if (typeof renderProfilesManagerList === 'function') renderProfilesManagerList();
+    if (typeof showToastNotification === 'function') {
+      showToastNotification(`✏️ Renamed profile to "${p.name}"`);
+    }
+  }
+}
+
+async function deleteProfileStrict(profileId) {
+  const activeId = await db.getActiveProfileId();
+  const profiles = await db.getAll('profiles');
+  const p = profiles.find(item => item.id === profileId);
+  if (!p) return;
+
+  if (profiles.length <= 1) {
+    alert('Cannot delete the only profile. Create another profile first.');
+    return;
+  }
+
+  const promptMsg = `⚠️ WARNING: Deleting profile "${p.name}" will delete ALL data and settings for this profile, and UNLINK all media (media files will not be deleted, but you will need to re-assign them if used again).\n\nType "${p.name}" below to confirm deletion:`;
+  const inputVal = prompt(promptMsg);
+
+  if (inputVal !== null) {
+    if (inputVal.trim() === p.name.trim()) {
+      showArchiveProgressModal(`🗑️ Deleting Profile "${p.name}"...`);
+
+      // Delete associated subjects, events, sld_entries
+      const subjects = await db.getAll('subjects');
+      for (const s of subjects.filter(item => item.profileId === profileId)) {
+        await db.delete('subjects', s.id);
+      }
+      const events = await db.getAll('events');
+      for (const e of events.filter(item => item.profileId === profileId)) {
+        await db.delete('events', e.id);
+      }
+      const sldEntries = await db.getAll('sld_entries');
+      for (const entry of sldEntries.filter(item => item.profileId === profileId)) {
+        await db.delete('sld_entries', entry.id);
+      }
+
+      await db.delete('profiles', profileId);
+
+      // If active profile was deleted, switch to first remaining profile
+      if (profileId === activeId) {
+        const remaining = await db.getAll('profiles');
+        if (remaining.length > 0) {
+          await db.setActiveProfileId(remaining[0].id);
+        }
+      }
+
+      await loadAppState();
+      hideArchiveProgressModal();
+      await updateProfileHeaderUI();
+      renderCurrentView();
+      if (typeof showToastNotification === 'function') {
+        showToastNotification(`🗑️ Deleted profile "${p.name}"`);
+      }
+    } else {
+      alert('Profile name did not match. Deletion cancelled.');
+    }
+  }
+}
+
+/**
+ * Calculate Estimated Export Duration Time
+ */
+async function updateEstimatedExportTimeUI() {
+  const estEl = document.getElementById('exportTimeEstText');
+  if (!estEl) return;
+
+  const targetProfileId = activeSelectedExportProfileId || (await db.getActiveProfileId());
+  const includeMedia = document.getElementById('includeMediaCheckbox')?.checked ?? true;
+
+  if (!includeMedia) {
+    estEl.textContent = '⚡ Est. Time: ~2 seconds (Data Only)';
+    return;
+  }
+
+  const allMedia = await db.getAll('media');
+  const targetMedia = allMedia.filter(m => !targetProfileId || m.profileId === targetProfileId);
+
+  let totalBytes = 0;
+  for (const m of targetMedia) {
+    if (m.dataUrl) totalBytes += m.dataUrl.length;
+  }
+
+  const totalMb = Math.round(totalBytes * 0.75 / (1024 * 1024));
+  let estSecs = Math.max(3, Math.ceil(totalMb / 4)); // ~4 MB per second estimated compression speed
+
+  if (totalMb < 5) {
+    estEl.textContent = `⚡ Est. Time: ~${estSecs} seconds (${targetMedia.length} files)`;
+  } else {
+    estEl.textContent = `⚡ Est. Time: ~${estSecs} seconds (~${totalMb} MB Media Included)`;
   }
 }
 
@@ -193,27 +259,36 @@ async function exportPortableSldPackage() {
     alert('JSZip library is unavailable.');
     return;
   }
+
+  const targetProfileId = activeSelectedExportProfileId || (await db.getActiveProfileId());
+  const includeMedia = document.getElementById('includeMediaCheckbox')?.checked ?? true;
+
   showArchiveProgressModal('📦 Exporting Portable SLD Package...');
 
   try {
     const zip = new window.JSZip();
     updateArchiveProgress(10, 'Gathering database records...');
 
-    const activeProfileId = await db.getActiveProfileId();
-    const activeMedia = await db.getActiveMedia();
-    const activeSubjects = await db.getActiveSubjects();
-    const activeEvents = await db.getActiveEvents();
+    const allMedia = await db.getAll('media');
+    const allSubjects = await db.getAll('subjects');
+    const allEvents = await db.getAll('events');
     const allSldEntries = await db.getAll('sld_entries');
     const allTags = await db.getAll('tags');
+
+    const targetMedia = allMedia.filter(m => !targetProfileId || m.profileId === targetProfileId);
+    const targetSubjects = allSubjects.filter(s => !targetProfileId || s.profileId === targetProfileId);
+    const targetEvents = allEvents.filter(e => !targetProfileId || e.profileId === targetProfileId);
+    const targetSldEntries = allSldEntries.filter(entry => !targetProfileId || entry.profileId === targetProfileId);
 
     updateArchiveProgress(25, 'Stripping device-specific crops & formatting metadata...');
 
     // Exclude device-specific media crop coordinates (viewTransform, crop, cropRect)
-    const cleanMediaMetadata = activeMedia.map(m => {
+    const cleanMediaMetadata = targetMedia.map(m => {
       const copy = { ...m };
       delete copy.viewTransform;
       delete copy.crop;
       delete copy.cropRect;
+      if (!includeMedia) delete copy.dataUrl; // Omit binary data if media un-checked
       return copy;
     });
 
@@ -227,22 +302,24 @@ async function exportPortableSldPackage() {
       exportDate: isoDate,
       exportTimestamp: exportTimestamp,
       deviceId: deviceId,
+      includeMedia: includeMedia,
+      targetProfileId: targetProfileId,
       counts: {
         media: cleanMediaMetadata.length,
-        subjects: activeSubjects.length,
-        events: activeEvents.length,
-        sldEntries: allSldEntries.length,
+        subjects: targetSubjects.length,
+        events: targetEvents.length,
+        sldEntries: targetSldEntries.length,
         tags: allTags.length
       }
     };
 
     const sldDatabase = {
       manifest,
-      activeProfileId,
-      profiles: await db.getAll('profiles'),
-      subjects: activeSubjects,
-      events: activeEvents,
-      sldEntries: allSldEntries,
+      activeProfileId: targetProfileId,
+      profiles: (await db.getAll('profiles')).filter(p => p.id === targetProfileId),
+      subjects: targetSubjects,
+      events: targetEvents,
+      sldEntries: targetSldEntries,
       tags: allTags,
       mediaMetadata: cleanMediaMetadata,
       settings: {
@@ -258,18 +335,20 @@ async function exportPortableSldPackage() {
     zip.file('sld_manifest.json', JSON.stringify(manifest, null, 2));
     zip.file('sld_database.json', JSON.stringify(sldDatabase, null, 2));
 
-    const mediaFolder = zip.folder('media');
-    const totalMedia = activeMedia.length;
+    if (includeMedia) {
+      const mediaFolder = zip.folder('media');
+      const totalMedia = targetMedia.length;
 
-    for (let i = 0; i < totalMedia; i++) {
-      const m = activeMedia[i];
-      updateArchiveProgress(30 + (i / Math.max(1, totalMedia)) * 50, m.filename || `Media ${i + 1}`);
+      for (let i = 0; i < totalMedia; i++) {
+        const m = targetMedia[i];
+        updateArchiveProgress(30 + (i / Math.max(1, totalMedia)) * 50, m.filename || `Media ${i + 1}`);
 
-      if (m.dataUrl && m.dataUrl.includes(',')) {
-        const parts = m.dataUrl.split(',');
-        if (parts.length > 1) {
-          const safeName = (m.filename || `${m.id}.bin`).replace(/[/\\?%*:|"<>]/g, '_');
-          mediaFolder.file(safeName, parts[1], { base64: true });
+        if (m.dataUrl && m.dataUrl.includes(',')) {
+          const parts = m.dataUrl.split(',');
+          if (parts.length > 1) {
+            const safeName = (m.filename || `${m.id}.bin`).replace(/[/\\?%*:|"<>]/g, '_');
+            mediaFolder.file(safeName, parts[1], { base64: true });
+          }
         }
       }
     }
@@ -298,10 +377,8 @@ async function exportPortableSldPackage() {
 
 /**
  * Import & Smart Delta Merge Portable SLD Package
- * @param {File} file - .sldpack / .zip / .json file
- * @param {string} importMode - 'merge' (default) or 'new'
  */
-async function importAndMergeSldPackage(file, importMode = 'merge') {
+async function importAndMergeSldPackage(file) {
   if (!file) return;
   showArchiveProgressModal('📥 Reading SLD Package...');
 
@@ -329,19 +406,7 @@ async function importAndMergeSldPackage(file, importMode = 'merge') {
 
     updateArchiveProgress(20, 'Analyzing package contents...');
 
-    let targetProfileId = await db.getActiveProfileId();
-    if (importMode === 'new') {
-      const todayTag = getTodaySmartDateTag();
-      targetProfileId = 'profile-' + Date.now();
-      const newProfile = {
-        id: targetProfileId,
-        name: `Imported Package (${todayTag})`,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-      await db.put('profiles', newProfile);
-      await db.setActiveProfileId(targetProfileId);
-    }
+    const targetProfileId = activeSelectedExportProfileId || (await db.getActiveProfileId());
 
     const report = {
       addedMedia: 0,
@@ -359,16 +424,18 @@ async function importAndMergeSldPackage(file, importMode = 'merge') {
 
     // 1. Merge Subjects
     updateArchiveProgress(30, 'Merging subjects...');
-    const localSubjects = await db.getActiveSubjects();
+    const localSubjects = await db.getAll('subjects');
+    const targetLocalSubjects = localSubjects.filter(s => s.profileId === targetProfileId);
+
     for (const incSub of (packageData.subjects || [])) {
-      const existing = localSubjects.find(s => s.id === incSub.id || (s.name && incSub.name && s.name.toLowerCase() === incSub.name.toLowerCase()));
+      const existing = targetLocalSubjects.find(s => s.id === incSub.id || (s.name && incSub.name && s.name.toLowerCase() === incSub.name.toLowerCase()));
       if (!existing) {
         await db.put('subjects', { ...incSub, profileId: targetProfileId, updatedAt: incSub.updatedAt || new Date().toISOString() });
         report.addedSubjects++;
       } else {
         const incTime = new Date(incSub.updatedAt || 0).getTime();
         const locTime = new Date(existing.updatedAt || 0).getTime();
-        if (incTime >= locTime || importMode === 'new') {
+        if (incTime >= locTime) {
           const merged = {
             ...existing,
             ...incSub,
@@ -385,9 +452,11 @@ async function importAndMergeSldPackage(file, importMode = 'merge') {
 
     // 2. Merge Events
     updateArchiveProgress(45, 'Merging events...');
-    const localEvents = await db.getActiveEvents();
+    const localEvents = await db.getAll('events');
+    const targetLocalEvents = localEvents.filter(e => e.profileId === targetProfileId);
+
     for (const incEvt of (packageData.events || [])) {
-      const existing = localEvents.find(e => e.id === incEvt.id || (e.eventCode === incEvt.eventCode && e.dateTag === incEvt.dateTag));
+      const existing = targetLocalEvents.find(e => e.id === incEvt.id || (e.eventCode === incEvt.eventCode && e.dateTag === incEvt.dateTag));
       if (!existing) {
         await db.put('events', { ...incEvt, profileId: targetProfileId, updatedAt: incEvt.updatedAt || new Date().toISOString() });
         report.addedEvents++;
@@ -419,8 +488,10 @@ async function importAndMergeSldPackage(file, importMode = 'merge') {
     // 3. Merge SLD Log Entries
     updateArchiveProgress(55, 'Merging SLD log entries...');
     const localSldEntries = await db.getAll('sld_entries');
+    const targetLocalSld = localSldEntries.filter(entry => entry.profileId === targetProfileId);
+
     for (const incEntry of (packageData.sldEntries || [])) {
-      const existing = localSldEntries.find(e => e.id === incEntry.id || (e.dateTag === incEntry.dateTag && e.actionCode === incEntry.actionCode));
+      const existing = targetLocalSld.find(e => e.id === incEntry.id || (e.dateTag === incEntry.dateTag && e.actionCode === incEntry.actionCode));
       if (!existing) {
         await db.put('sld_entries', { ...incEntry, profileId: targetProfileId });
         report.addedSldEntries++;
@@ -450,7 +521,8 @@ async function importAndMergeSldPackage(file, importMode = 'merge') {
 
     // 5. Merge Media & Binary Assets
     updateArchiveProgress(75, 'Merging media files & deduplicating content...');
-    const localMedia = await db.getActiveMedia();
+    const localMedia = await db.getAll('media');
+    const targetLocalMedia = localMedia.filter(m => m.profileId === targetProfileId);
     const mediaFolder = zipContents ? zipContents.folder('media') : null;
 
     const mediaListToProcess = packageData.mediaMetadata || packageData.media || [];
@@ -474,8 +546,7 @@ async function importAndMergeSldPackage(file, importMode = 'merge') {
 
       const fileHash = incMeta.hash || (dataUrl ? await calculateContentHash(dataUrl) : null);
 
-      // Match existing media by content hash, ID, or filename
-      const existing = localMedia.find(m => (fileHash && m.hash === fileHash) || m.id === incMeta.id || (m.filename && incMeta.filename && m.filename === incMeta.filename));
+      const existing = targetLocalMedia.find(m => (fileHash && m.hash === fileHash) || m.id === incMeta.id || (m.filename && incMeta.filename && m.filename === incMeta.filename));
 
       if (!existing) {
         if (dataUrl) {
@@ -498,16 +569,10 @@ async function importAndMergeSldPackage(file, importMode = 'merge') {
           report.addedMedia++;
         }
       } else {
-        // MERGE existing media: PRESERVE LOCAL DEVICE-SPECIFIC CROPS!
-        const incSubjectTags = incMeta.subjectTags || [];
-        const incNormalTags = incMeta.normalTags || [];
-        const incHeartTags = incMeta.heartTags || [];
-        const incEvents = incMeta.blueBookEvents || [];
-
-        const unionSubjectTags = Array.from(new Set([...(existing.subjectTags || []), ...incSubjectTags]));
-        const unionNormalTags = Array.from(new Set([...(existing.normalTags || []), ...incNormalTags]));
-        const unionHeartTags = Array.from(new Set([...(existing.heartTags || []), ...incHeartTags]));
-        const unionEvents = Array.from(new Set([...(existing.blueBookEvents || []), ...incEvents]));
+        const unionSubjectTags = Array.from(new Set([...(existing.subjectTags || []), ...(incMeta.subjectTags || [])]));
+        const unionNormalTags = Array.from(new Set([...(existing.normalTags || []), ...(incMeta.normalTags || [])]));
+        const unionHeartTags = Array.from(new Set([...(existing.heartTags || []), ...(incMeta.heartTags || [])]));
+        const unionEvents = Array.from(new Set([...(existing.blueBookEvents || []), ...(incMeta.blueBookEvents || [])]));
 
         const mergedMediaItem = {
           ...existing,
@@ -521,7 +586,6 @@ async function importAndMergeSldPackage(file, importMode = 'merge') {
           updatedAt: new Date().toISOString()
         };
 
-        // Retain local device-specific crop preferences (`viewTransform`)
         if (existing.viewTransform) {
           mergedMediaItem.viewTransform = existing.viewTransform;
         }
@@ -547,9 +611,10 @@ async function importAndMergeSldPackage(file, importMode = 'merge') {
 
     setTimeout(() => {
       hideArchiveProgressModal();
+      const targetPName = packageData.profiles?.find(p => p.id === targetProfileId)?.name || 'Selected Profile';
       const summaryMsg = `
-✅ Smart Delta Merge Complete!
-• Media: ${report.addedMedia} added, ${report.mergedMedia} merged (Device crops preserved)
+✅ Smart Delta Merge Complete into "${targetPName}"!
+• Media: ${report.addedMedia} added, ${report.mergedMedia} merged
 • Subjects: ${report.addedSubjects} added, ${report.updatedSubjects} updated
 • Events: ${report.addedEvents} added, ${report.updatedEvents} updated
 • SLD Logs: ${report.addedSldEntries} added, ${report.updatedSldEntries} updated
@@ -565,20 +630,27 @@ async function importAndMergeSldPackage(file, importMode = 'merge') {
   }
 }
 
-async function exportDataAndSettingsZip() {
-  return exportPortableSldPackage();
-}
-
-async function importDataAndSettingsZip(file) {
-  return importAndMergeSldPackage(file, 'merge');
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
 window.showArchiveProgressModal = showArchiveProgressModal;
 window.updateArchiveProgress = updateArchiveProgress;
 window.hideArchiveProgressModal = hideArchiveProgressModal;
-window.exportMediaCollectionZip = exportMediaCollectionZip;
-window.importMediaCollectionZip = importMediaCollectionZip;
-window.exportDataAndSettingsZip = exportDataAndSettingsZip;
-window.importDataAndSettingsZip = importDataAndSettingsZip;
+window.updateProfileHeaderUI = updateProfileHeaderUI;
+window.renderProfilePopoverList = renderProfilePopoverList;
+window.switchActiveProfile = switchActiveProfile;
+window.cloneProfile = cloneProfile;
+window.renameProfile = renameProfile;
+window.deleteProfileStrict = deleteProfileStrict;
+window.updateEstimatedExportTimeUI = updateEstimatedExportTimeUI;
 window.exportPortableSldPackage = exportPortableSldPackage;
 window.importAndMergeSldPackage = importAndMergeSldPackage;

@@ -1,23 +1,25 @@
 /**
- * Settings Page View, Profiles & Collections Manager Subsystem
+ * Settings Page View & Profile Manager Subsystem
  */
 
 async function renderSettingsPage() {
   const currentTheme = (await db.getSetting('theme')) || 'dark';
-  document.getElementById('themeSelect').value = currentTheme;
+  const themeSelect = document.getElementById('themeSelect');
+  if (themeSelect) themeSelect.value = currentTheme;
 
-  document.getElementById('goldPointValueInput').value = currentMedalSettings.goldPts ?? 1.0;
-  document.getElementById('silverPointValueInput').value = currentMedalSettings.silverPts ?? 0.3;
-  document.getElementById('bronzePointValueInput').value = currentMedalSettings.bronzePts ?? 0.1;
+  const goldInput = document.getElementById('goldPointValueInput');
+  if (goldInput) goldInput.value = currentMedalSettings.goldPts ?? 1.0;
+  const silverInput = document.getElementById('silverPointValueInput');
+  if (silverInput) silverInput.value = currentMedalSettings.silverPts ?? 0.3;
+  const bronzeInput = document.getElementById('bronzePointValueInput');
+  if (bronzeInput) bronzeInput.value = currentMedalSettings.bronzePts ?? 0.1;
 
-  document.getElementById('maxGoldPerHeartInput').value = currentMedalSettings.maxGold ?? 1;
-  document.getElementById('maxSilverPerHeartInput').value = currentMedalSettings.maxSilver ?? 2;
-  document.getElementById('maxBronzePerHeartInput').value = currentMedalSettings.maxBronze ?? 5;
+  await updateProfileHeaderUI();
+  await renderImportExportProfileChips();
+  await renderProfilesManagerList();
+  await updateEstimatedExportTimeUI();
 
-  renderCollectionsManagerList();
-  renderProfilesManagerList();
-  if (typeof renderIpConnectionsList === 'function') renderIpConnectionsList();
-
+  // Export button
   const exportPkgBtn = document.getElementById('exportPortableSldPackageBtn');
   if (exportPkgBtn && !exportPkgBtn.dataset.bound) {
     exportPkgBtn.dataset.bound = 'true';
@@ -28,111 +30,97 @@ async function renderSettingsPage() {
     };
   }
 
+  // Import button
   const importPkgInput = document.getElementById('importPortableSldPackageFileInput');
   if (importPkgInput && !importPkgInput.dataset.bound) {
     importPkgInput.dataset.bound = 'true';
     importPkgInput.onchange = async (e) => {
       const file = e.target.files ? e.target.files[0] : null;
       if (file) {
-        const modeSelect = document.getElementById('importModeSelect');
-        const mode = modeSelect ? modeSelect.value : 'merge';
         if (typeof importAndMergeSldPackage === 'function') {
-          await importAndMergeSldPackage(file, mode);
+          await importAndMergeSldPackage(file);
         }
         e.target.value = '';
       }
     };
   }
 
-  const addIpBtn = document.getElementById('addIpConnectionBtn');
-  if (addIpBtn && !addIpBtn.dataset.bound) {
-    addIpBtn.dataset.bound = 'true';
-    addIpBtn.onclick = () => {
-      if (typeof addIpConnection === 'function') addIpConnection();
+  // Include Media Checkbox Listener
+  const includeMediaCb = document.getElementById('includeMediaCheckbox');
+  if (includeMediaCb && !includeMediaCb.dataset.bound) {
+    includeMediaCb.dataset.bound = 'true';
+    includeMediaCb.onchange = () => {
+      updateEstimatedExportTimeUI();
+    };
+  }
+
+  // Manage Profiles Link
+  const manageLink = document.getElementById('manageProfilesLink');
+  if (manageLink && !manageLink.dataset.bound) {
+    manageLink.dataset.bound = 'true';
+    manageLink.onclick = () => {
+      const card = document.getElementById('profileManagerCard');
+      if (card) card.scrollIntoView({ behavior: 'smooth' });
+    };
+  }
+
+  // Create New Profile Button
+  const newProfBtn = document.getElementById('createNewProfileBtn');
+  if (newProfBtn && !newProfBtn.dataset.bound) {
+    newProfBtn.dataset.bound = 'true';
+    newProfBtn.onclick = async () => {
+      const name = prompt('Enter name for new profile:');
+      if (name && name.trim()) {
+        const newId = 'profile-' + Date.now();
+        const newP = { id: newId, name: name.trim(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+        await db.put('profiles', newP);
+        await db.setActiveProfileId(newId);
+        await loadAppState();
+        renderSettingsPage();
+        renderCurrentView();
+        if (typeof showToastNotification === 'function') {
+          showToastNotification(`✨ Created & activated new profile "${newP.name}"`);
+        }
+      }
     };
   }
 }
 
-async function renderCollectionsManagerList() {
-  const container = document.getElementById('collectionsListContainer');
+/**
+ * Render Import/Export Selectable Target Profile Chips
+ */
+async function renderImportExportProfileChips() {
+  const container = document.getElementById('importExportProfileChips');
   if (!container) return;
 
-  const collections = await db.getAll('collections');
-  const activeCollectionId = await db.getActiveCollectionId();
+  const profiles = await db.getAll('profiles');
+  const activeProfileId = await db.getActiveProfileId();
+  if (!activeSelectedExportProfileId) {
+    activeSelectedExportProfileId = activeProfileId;
+  }
 
-  container.innerHTML = collections.map((c, idx) => `
-    <div class="leader-item collection-row-item" data-id="${c.id}" data-name="${c.name}" draggable="true" style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
-      <div style="display:flex; align-items:center; gap:8px; min-width:0;">
-        <span style="cursor:grab; font-size:1.1rem; flex-shrink:0;">≡</span>
-        <strong class="collection-row-name" title="${c.name}">🖼️ ${c.name}</strong>
-        ${c.id === activeCollectionId ? '<span class="badge" style="background:var(--accent-blue); color:#fff; flex-shrink:0;">Active</span>' : ''}
-      </div>
-      <div style="display:flex; gap:6px; flex-shrink:0;">
-        ${c.id !== activeCollectionId ? `<button class="btn btn-secondary btn-sm switch-collection-btn" data-id="${c.id}">Switch</button>` : ''}
-        <button class="btn btn-secondary btn-sm dup-collection-btn" data-id="${c.id}">📋 Duplicate</button>
-        <button class="btn btn-danger btn-sm delete-collection-btn" data-id="${c.id}" data-name="${c.name}">🗑️</button>
-      </div>
-    </div>`).join('') || '<p class="text-muted">No collections found.</p>';
+  container.innerHTML = profiles.map(p => {
+    const isSelected = p.id === activeSelectedExportProfileId;
+    const isActiveProfile = p.id === activeProfileId;
 
-  container.querySelectorAll('.switch-collection-btn').forEach(btn => {
-    btn.onclick = async () => {
-      await db.setActiveCollectionId(btn.getAttribute('data-id'));
-      await loadAppState();
-      renderCurrentView();
+    return `
+      <button type="button" class="btn btn-sm ${isSelected ? 'btn-primary' : 'btn-secondary'} profile-target-chip" data-id="${p.id}" style="border-radius:16px; font-weight:700;">
+        👤 ${p.name} ${isActiveProfile ? ' <small style="opacity:0.85;">(Active Profile)</small>' : ''}
+      </button>`;
+  }).join('');
+
+  container.querySelectorAll('.profile-target-chip').forEach(btn => {
+    btn.onclick = () => {
+      activeSelectedExportProfileId = btn.getAttribute('data-id');
+      renderImportExportProfileChips();
+      updateEstimatedExportTimeUI();
     };
-  });
-
-  container.querySelectorAll('.dup-collection-btn').forEach(btn => {
-    btn.onclick = async () => {
-      const cId = btn.getAttribute('data-id');
-      const source = collections.find(c => c.id === cId);
-      if (!source) return;
-      const newId = 'col-' + Date.now();
-      const newCol = { id: newId, name: `${source.name} (Copy)`, createdAt: new Date().toISOString() };
-      await db.put('collections', newCol);
-
-      const allMedia = await db.getAll('media');
-      for (const m of allMedia.filter(m => m.collectionId === cId)) {
-        const cloned = { ...m, id: 'media-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4), collectionId: newId };
-        await db.put('media', cloned);
-      }
-
-      renderCollectionsManagerList();
-    };
-  });
-
-  container.querySelectorAll('.delete-collection-btn').forEach(btn => {
-    btn.onclick = async () => {
-      const cId = btn.getAttribute('data-id');
-      const cName = btn.getAttribute('data-name');
-      if (cId === activeCollectionId) {
-        alert('Cannot delete the currently active collection.');
-        return;
-      }
-      if (promptStringentDeleteConfirmation('Collection', cName)) {
-        const allMedia = await db.getAll('media');
-        for (const m of allMedia.filter(item => item.collectionId === cId)) {
-          await db.delete('media', m.id);
-        }
-        await db.delete('collections', cId);
-        await loadAppState();
-        renderSettingsPage();
-      }
-    };
-  });
-
-  setupDragToMergeRows(container, 'Collection', async (sourceId, targetId, sourceName, targetName) => {
-    const allMedia = await db.getAll('media');
-    for (const m of allMedia.filter(item => item.collectionId === sourceId)) {
-      m.collectionId = targetId;
-      await db.put('media', m);
-    }
-    await db.delete('collections', sourceId);
-    await loadAppState();
-    renderSettingsPage();
   });
 }
 
+/**
+ * Render Profile Manager Card List with '...' Action Menus
+ */
 async function renderProfilesManagerList() {
   const container = document.getElementById('profilesListContainer');
   if (!container) return;
@@ -140,152 +128,55 @@ async function renderProfilesManagerList() {
   const profiles = await db.getAll('profiles');
   const activeProfileId = await db.getActiveProfileId();
 
-  container.innerHTML = profiles.map(p => `
-    <div class="leader-item profile-row-item" data-id="${p.id}" data-name="${p.name}" draggable="true" style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
-      <div style="display:flex; align-items:center; gap:8px; min-width:0;">
-        <span style="cursor:grab; font-size:1.1rem; flex-shrink:0;">≡</span>
-        <strong class="profile-row-name" title="${p.name}">📁 ${p.name}</strong>
-        ${p.id === activeProfileId ? '<span class="badge" style="background:var(--accent-pink); color:#fff; flex-shrink:0;">Active</span>' : ''}
-      </div>
-      <div style="display:flex; gap:6px; flex-shrink:0;">
-        ${p.id !== activeProfileId ? `<button class="btn btn-secondary btn-sm switch-profile-btn" data-id="${p.id}">Switch</button>` : ''}
-        <button class="btn btn-secondary btn-sm dup-profile-btn" data-id="${p.id}">📋 Duplicate</button>
-        <button class="btn btn-danger btn-sm delete-profile-btn" data-id="${p.id}" data-name="${p.name}">🗑️</button>
-      </div>
-    </div>`).join('') || '<p class="text-muted">No profiles found.</p>';
+  container.innerHTML = profiles.map(p => {
+    const isActive = p.id === activeProfileId;
+    return `
+      <div class="leader-item profile-row-item" data-id="${p.id}" style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 14px; background:var(--bg-secondary); border:1px solid ${isActive ? 'var(--accent-pink)' : 'var(--border-color)'}; border-radius:var(--radius-md);">
+        <div style="display:flex; align-items:center; gap:10px; min-width:0; cursor:pointer;" onclick="switchActiveProfile('${p.id}')">
+          <span style="font-size:1.2rem;">👤</span>
+          <div>
+            <strong style="color:${isActive ? '#fff' : 'var(--text-muted)'}; font-size:0.95rem;">${p.name}</strong>
+            ${isActive ? '<span class="badge" style="background:var(--accent-pink); color:#fff; font-size:0.68rem; margin-left:8px;">Active Profile</span>' : ''}
+          </div>
+        </div>
 
-  container.querySelectorAll('.switch-profile-btn').forEach(btn => {
-    btn.onclick = async () => {
-      await db.setActiveProfileId(btn.getAttribute('data-id'));
-      await loadAppState();
-      renderCurrentView();
-    };
-  });
+        <div style="display:flex; align-items:center; gap:8px; flex-shrink:0; position:relative;">
+          ${!isActive ? `<button class="btn btn-secondary btn-sm" onclick="switchActiveProfile('${p.id}')">Switch</button>` : ''}
+          
+          <div class="profile-menu-wrap" style="position:relative;">
+            <button class="btn btn-secondary btn-sm profile-menu-trigger" data-id="${p.id}" style="font-weight:800; padding:4px 10px;">•••</button>
+            <div class="profile-dropdown-menu" id="profileDropdown-${p.id}" style="display:none; position:absolute; right:0; top:32px; background:rgba(15,23,42,0.98); border:1px solid var(--border-color); border-radius:8px; padding:6px; box-shadow:0 6px 20px rgba(0,0,0,0.6); z-index:100; min-width:140px;">
+              <button class="btn btn-secondary btn-sm" onclick="cloneProfile('${p.id}'); document.getElementById('profileDropdown-${p.id}').style.display='none';" style="width:100%; text-align:left; margin-bottom:4px;">📋 Clone</button>
+              <button class="btn btn-secondary btn-sm" onclick="renameProfile('${p.id}'); document.getElementById('profileDropdown-${p.id}').style.display='none';" style="width:100%; text-align:left; margin-bottom:4px;">✏️ Rename</button>
+              <button class="btn btn-danger btn-sm" onclick="deleteProfileStrict('${p.id}'); document.getElementById('profileDropdown-${p.id}').style.display='none';" style="width:100%; text-align:left;">🗑️ Delete</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }).join('') || '<p class="text-muted">No profiles found.</p>';
 
-  container.querySelectorAll('.dup-profile-btn').forEach(btn => {
-    btn.onclick = async () => {
+  // Dropdown menu triggers
+  container.querySelectorAll('.profile-menu-trigger').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
       const pId = btn.getAttribute('data-id');
-      const source = profiles.find(p => p.id === pId);
-      if (!source) return;
-      const newId = 'profile-' + Date.now();
-      const newProf = { id: newId, name: `${source.name} (Copy)`, createdAt: new Date().toISOString() };
-      await db.put('profiles', newProf);
-
-      const allMedia = await db.getAll('media');
-      for (const m of allMedia.filter(m => m.profileId === pId)) {
-        await db.put('media', { ...m, id: 'media-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4), profileId: newId });
-      }
-      const allSubs = await db.getAll('subjects');
-      for (const s of allSubs.filter(s => s.profileId === pId)) {
-        await db.put('subjects', { ...s, id: 'sub-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4), profileId: newId });
-      }
-      const allEvts = await db.getAll('events');
-      for (const e of allEvts.filter(e => e.profileId === pId)) {
-        await db.put('events', { ...e, id: 'evt-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4), profileId: newId });
-      }
-
-      renderProfilesManagerList();
-    };
-  });
-
-  container.querySelectorAll('.delete-profile-btn').forEach(btn => {
-    btn.onclick = async () => {
-      const pId = btn.getAttribute('data-id');
-      const pName = btn.getAttribute('data-name');
-      if (pId === activeProfileId) {
-        alert('Cannot delete currently active profile.');
-        return;
-      }
-      if (promptStringentDeleteConfirmation('Profile', pName)) {
-        await db.delete('profiles', pId);
-        await loadAppState();
-        renderSettingsPage();
+      container.querySelectorAll('.profile-dropdown-menu').forEach(menu => {
+        if (menu.id !== `profileDropdown-${pId}`) menu.style.display = 'none';
+      });
+      const menu = document.getElementById(`profileDropdown-${pId}`);
+      if (menu) {
+        menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
       }
     };
   });
 
-  setupDragToMergeRows(container, 'Profile', async (sourceId, targetId, sourceName, targetName) => {
-    const allMedia = await db.getAll('media');
-    for (const m of allMedia.filter(item => item.profileId === sourceId)) {
-      m.profileId = targetId;
-      await db.put('media', m);
-    }
-    const allSubs = await db.getAll('subjects');
-    for (const s of allSubs.filter(item => item.profileId === sourceId)) {
-      s.profileId = targetId;
-      await db.put('subjects', s);
-    }
-    const allEvts = await db.getAll('events');
-    for (const e of allEvts.filter(item => item.profileId === sourceId)) {
-      e.profileId = targetId;
-      await db.put('events', e);
-    }
-    await db.delete('profiles', sourceId);
-    await loadAppState();
-    renderSettingsPage();
-  });
-}
-
-function setupDragToMergeRows(container, itemType, onMerge) {
-  let draggedId = null;
-  let draggedName = null;
-
-  container.querySelectorAll('.leader-item').forEach(row => {
-    row.addEventListener('dragstart', (e) => {
-      draggedId = row.getAttribute('data-id');
-      draggedName = row.getAttribute('data-name');
-      e.dataTransfer.effectAllowed = 'move';
-    });
-
-    row.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
-    });
-
-    row.addEventListener('drop', async (e) => {
-      e.preventDefault();
-      const targetId = row.getAttribute('data-id');
-      const targetName = row.getAttribute('data-name');
-
-      if (draggedId && targetId && draggedId !== targetId) {
-        if (confirm(`Merge ${itemType} "${draggedName}" into "${targetName}"?\n\nAll items will be reassigned to "${targetName}".`)) {
-          await onMerge(draggedId, targetId, draggedName, targetName);
-        }
-      }
+  document.addEventListener('click', () => {
+    container.querySelectorAll('.profile-dropdown-menu').forEach(menu => {
+      menu.style.display = 'none';
     });
   });
-}
-
-function downloadBlob(blob, filename) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.style.display = 'none';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 2000);
-}
-
-function showArchiveProgressModal(title = 'Packaging Archive...') {
-  const modal = document.getElementById('archiveProgressModal');
-  const titleEl = document.getElementById('archiveProgressTitle');
-  const msgEl = document.getElementById('archiveProgressMessage');
-  const barEl = document.getElementById('archiveProgressBar');
-  const pctEl = document.getElementById('archiveProgressPercent');
-
-  if (titleEl) titleEl.textContent = title;
-  if (msgEl) msgEl.textContent = 'Preparing files for packaging. Please wait...';
-  if (barEl) barEl.style.width = '0%';
-  if (pctEl) pctEl.textContent = '0%';
-
-  if (modal) {
-    modal.classList.add('active');
-    modal.style.display = 'flex';
-  }
 }
 
 window.renderSettingsPage = renderSettingsPage;
-window.renderCollectionsManagerList = renderCollectionsManagerList;
+window.renderImportExportProfileChips = renderImportExportProfileChips;
 window.renderProfilesManagerList = renderProfilesManagerList;
