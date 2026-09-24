@@ -9,7 +9,8 @@
           <h1>🖼️ Media Browser</h1>
           <p></p>
         </div>
-        <div class="page-actions" style="display:flex; gap:8px; flex-wrap:wrap;">
+        <div class="page-actions" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <span style="font-weight:700; font-size:0.85rem; color:var(--text-muted);">Upload:</span>
           <label class="btn btn-accent-blue" style="cursor:pointer;" title="📷 Add Files / Photos">
             📷
             <input type="file" id="mediaFileInput" multiple accept="image/*,video/*" style="display:none;">

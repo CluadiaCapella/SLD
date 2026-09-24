@@ -130,10 +130,11 @@ async function renderProfilesManagerList() {
 
   container.innerHTML = profiles.map(p => {
     const isActive = p.id === activeProfileId;
+    const avatar = p.avatarIcon || '👤';
     return `
       <div class="leader-item profile-row-item" data-id="${p.id}" style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 14px; background:var(--bg-secondary); border:1px solid ${isActive ? 'var(--accent-pink)' : 'var(--border-color)'}; border-radius:var(--radius-md);">
         <div style="display:flex; align-items:center; gap:10px; min-width:0; cursor:pointer;" onclick="switchActiveProfile('${p.id}')">
-          <span style="font-size:1.2rem;">👤</span>
+          <span style="font-size:1.4rem;">${avatar}</span>
           <div>
             <strong style="color:${isActive ? '#fff' : 'var(--text-muted)'}; font-size:0.95rem;">${p.name}</strong>
             ${isActive ? '<span class="badge" style="background:var(--accent-pink); color:#fff; font-size:0.68rem; margin-left:8px;">Active Profile</span>' : ''}
@@ -146,6 +147,7 @@ async function renderProfilesManagerList() {
           <div class="profile-menu-wrap" style="position:relative;">
             <button class="btn btn-secondary btn-sm profile-menu-trigger" data-id="${p.id}" style="font-weight:800; padding:4px 10px;">•••</button>
             <div class="profile-dropdown-menu" id="profileDropdown-${p.id}" style="display:none; position:absolute; right:0; top:32px; background:rgba(15,23,42,0.98); border:1px solid var(--border-color); border-radius:8px; padding:6px; box-shadow:0 6px 20px rgba(0,0,0,0.6); z-index:100; min-width:140px;">
+              <button class="btn btn-secondary btn-sm" onclick="changeProfileAvatar('${p.id}'); document.getElementById('profileDropdown-${p.id}').style.display='none';" style="width:100%; text-align:left; margin-bottom:4px;">🖼️ Avatar</button>
               <button class="btn btn-secondary btn-sm" onclick="cloneProfile('${p.id}'); document.getElementById('profileDropdown-${p.id}').style.display='none';" style="width:100%; text-align:left; margin-bottom:4px;">📋 Clone</button>
               <button class="btn btn-secondary btn-sm" onclick="renameProfile('${p.id}'); document.getElementById('profileDropdown-${p.id}').style.display='none';" style="width:100%; text-align:left; margin-bottom:4px;">✏️ Rename</button>
               <button class="btn btn-danger btn-sm" onclick="deleteProfileStrict('${p.id}'); document.getElementById('profileDropdown-${p.id}').style.display='none';" style="width:100%; text-align:left;">🗑️ Delete</button>

@@ -39,10 +39,15 @@ async function updateProfileHeaderUI() {
   const iconEl = document.getElementById('headerProfileIcon');
   const nameEl = document.getElementById('headerProfileName');
   const popoverNameEl = document.getElementById('popoverCurrentProfileName');
+  const popoverIconEl = document.getElementById('popoverProfileAvatarIcon');
 
-  const pName = activeProfile?.name || 'Default Profile';
+  const pName = activeProfile?.name || 'User Name';
+  const pAvatar = activeProfile?.avatarIcon || '👤';
+
   if (nameEl) nameEl.textContent = pName;
   if (popoverNameEl) popoverNameEl.textContent = pName;
+  if (iconEl) iconEl.textContent = pAvatar;
+  if (popoverIconEl) popoverIconEl.textContent = pAvatar;
 
   const btn = document.getElementById('headerProfileAvatarBtn');
   const popover = document.getElementById('profileHeaderPopover');
@@ -58,11 +63,36 @@ async function updateProfileHeaderUI() {
     };
   }
 
+  const avatarWrap = document.getElementById('popoverAvatarWrap');
+  if (avatarWrap && !avatarWrap.dataset.bound) {
+    avatarWrap.dataset.bound = 'true';
+    avatarWrap.onclick = async () => {
+      const activePId = await db.getActiveProfileId();
+      await changeProfileAvatar(activePId);
+    };
+  }
+
   document.addEventListener('click', (e) => {
     if (popover && !popover.contains(e.target) && btn && !btn.contains(e.target)) {
       popover.style.display = 'none';
     }
   });
+}
+
+async function changeProfileAvatar(profileId) {
+  const p = await db.get('profiles', profileId);
+  if (!p) return;
+  const newAvatar = prompt(`Choose Avatar Icon or Emoji for "${p.name}":`, p.avatarIcon || '👤');
+  if (newAvatar !== null && newAvatar.trim()) {
+    p.avatarIcon = newAvatar.trim();
+    p.updatedAt = new Date().toISOString();
+    await db.put('profiles', p);
+    await updateProfileHeaderUI();
+    if (typeof renderProfilesManagerList === 'function') renderProfilesManagerList();
+    if (typeof showToastNotification === 'function') {
+      showToastNotification(`👤 Avatar updated for "${p.name}"`);
+    }
+  }
 }
 
 async function renderProfilePopoverList() {
@@ -650,6 +680,7 @@ window.renderProfilePopoverList = renderProfilePopoverList;
 window.switchActiveProfile = switchActiveProfile;
 window.cloneProfile = cloneProfile;
 window.renameProfile = renameProfile;
+window.changeProfileAvatar = changeProfileAvatar;
 window.deleteProfileStrict = deleteProfileStrict;
 window.updateEstimatedExportTimeUI = updateEstimatedExportTimeUI;
 window.exportPortableSldPackage = exportPortableSldPackage;
