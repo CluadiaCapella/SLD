@@ -35,7 +35,9 @@ function hideArchiveProgressModal() {
  * Top Header Profile Account Button & Popover Setup
  */
 async function updateProfileHeaderUI() {
-  const activeProfile = await db.getActiveProfile();
+  const activeProfileId = await db.getActiveProfileId();
+  const activeProfile = await db.get('profiles', activeProfileId);
+
   const iconEl = document.getElementById('headerProfileIcon');
   const nameEl = document.getElementById('headerProfileName');
   const popoverNameEl = document.getElementById('popoverCurrentProfileName');
@@ -52,31 +54,32 @@ async function updateProfileHeaderUI() {
   const btn = document.getElementById('headerProfileAvatarBtn');
   const popover = document.getElementById('profileHeaderPopover');
 
-  if (btn && !btn.dataset.bound) {
-    btn.dataset.bound = 'true';
-    btn.onclick = (e) => {
-      e.stopPropagation();
-      renderProfilePopoverList();
-      if (popover) {
-        popover.style.display = popover.style.display === 'block' ? 'none' : 'block';
+  if (!document.datasetHeaderBound) {
+    document.datasetHeaderBound = true;
+    document.addEventListener('click', (e) => {
+      if (popover && !popover.contains(e.target) && btn && !btn.contains(e.target)) {
+        popover.style.display = 'none';
       }
-    };
+    });
   }
+}
 
-  const avatarWrap = document.getElementById('popoverAvatarWrap');
-  if (avatarWrap && !avatarWrap.dataset.bound) {
-    avatarWrap.dataset.bound = 'true';
-    avatarWrap.onclick = async () => {
-      const activePId = await db.getActiveProfileId();
-      await changeProfileAvatar(activePId);
-    };
+async function toggleProfilePopover(e) {
+  if (e) e.stopPropagation();
+  const popover = document.getElementById('profileHeaderPopover');
+  if (!popover) return;
+  if (popover.style.display === 'block') {
+    popover.style.display = 'none';
+  } else {
+    await updateProfileHeaderUI();
+    await renderProfilePopoverList();
+    popover.style.display = 'block';
   }
+}
 
-  document.addEventListener('click', (e) => {
-    if (popover && !popover.contains(e.target) && btn && !btn.contains(e.target)) {
-      popover.style.display = 'none';
-    }
-  });
+async function changeProfileAvatarActive() {
+  const activePId = await db.getActiveProfileId();
+  await changeProfileAvatar(activePId);
 }
 
 async function changeProfileAvatar(profileId) {
@@ -104,10 +107,11 @@ async function renderProfilePopoverList() {
 
   container.innerHTML = profiles.map(p => {
     const isActive = p.id === activeProfileId;
+    const avatar = p.avatarIcon || '👤';
     return `
-      <div style="display:flex; align-items:center; justify-content:space-between; padding:6px 10px; border-radius:6px; background:${isActive ? 'rgba(236,72,153,0.15)' : 'var(--bg-secondary)'}; border:1px solid ${isActive ? 'var(--accent-pink)' : 'var(--border-color)'}; font-size:0.8rem;">
-        <span style="font-weight:${isActive ? '800' : '600'}; color:${isActive ? '#fff' : 'var(--text-muted)'}; cursor:pointer;" onclick="switchActiveProfile('${p.id}')">
-          👤 ${p.name} ${isActive ? ' <small style="color:var(--accent-pink);">(Active)</small>' : ''}
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 12px; border-radius:8px; background:${isActive ? 'rgba(236,72,153,0.15)' : 'var(--bg-secondary)'}; border:1px solid ${isActive ? 'var(--accent-pink)' : 'var(--border-color)'}; font-size:0.85rem;">
+        <span style="font-weight:${isActive ? '800' : '600'}; color:${isActive ? '#fff' : 'var(--text-muted)'}; cursor:pointer; display:flex; align-items:center; gap:8px;" onclick="switchActiveProfile('${p.id}')">
+          <span style="font-size:1.1rem;">${avatar}</span> ${p.name} ${isActive ? ' <small style="color:var(--accent-pink); font-weight:800;">(Active)</small>' : ''}
         </span>
         ${!isActive ? `<button class="btn btn-sm btn-secondary" onclick="switchActiveProfile('${p.id}')">Switch</button>` : ''}
       </div>`;
@@ -676,6 +680,8 @@ window.showArchiveProgressModal = showArchiveProgressModal;
 window.updateArchiveProgress = updateArchiveProgress;
 window.hideArchiveProgressModal = hideArchiveProgressModal;
 window.updateProfileHeaderUI = updateProfileHeaderUI;
+window.toggleProfilePopover = toggleProfilePopover;
+window.changeProfileAvatarActive = changeProfileAvatarActive;
 window.renderProfilePopoverList = renderProfilePopoverList;
 window.switchActiveProfile = switchActiveProfile;
 window.cloneProfile = cloneProfile;

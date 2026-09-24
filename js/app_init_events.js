@@ -293,6 +293,7 @@ async function initApp() {
   if (typeof loadNotifications === 'function') loadNotifications();
   if (typeof setupNotificationsEvents === 'function') setupNotificationsEvents();
 
+  if (typeof updateProfileHeaderUI === 'function') await updateProfileHeaderUI();
   restoreAppStateFromHashOrStorage();
   selectedMediaIds.clear();
   updateSelectionStateUI();
