@@ -18,6 +18,32 @@ async function renderSettingsPage() {
   renderProfilesManagerList();
   if (typeof renderIpConnectionsList === 'function') renderIpConnectionsList();
 
+  const exportPkgBtn = document.getElementById('exportPortableSldPackageBtn');
+  if (exportPkgBtn && !exportPkgBtn.dataset.bound) {
+    exportPkgBtn.dataset.bound = 'true';
+    exportPkgBtn.onclick = () => {
+      if (typeof exportPortableSldPackage === 'function') {
+        exportPortableSldPackage();
+      }
+    };
+  }
+
+  const importPkgInput = document.getElementById('importPortableSldPackageFileInput');
+  if (importPkgInput && !importPkgInput.dataset.bound) {
+    importPkgInput.dataset.bound = 'true';
+    importPkgInput.onchange = async (e) => {
+      const file = e.target.files ? e.target.files[0] : null;
+      if (file) {
+        const modeSelect = document.getElementById('importModeSelect');
+        const mode = modeSelect ? modeSelect.value : 'merge';
+        if (typeof importAndMergeSldPackage === 'function') {
+          await importAndMergeSldPackage(file, mode);
+        }
+        e.target.value = '';
+      }
+    };
+  }
+
   const addIpBtn = document.getElementById('addIpConnectionBtn');
   if (addIpBtn && !addIpBtn.dataset.bound) {
     addIpBtn.dataset.bound = 'true';

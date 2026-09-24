@@ -23,6 +23,37 @@
           </div>
         </div>
 
+        <!-- 📦 Portable SLD Package Backup & Smart Delta Merge Engine Card -->
+        <div class="chart-card" style="border: 2px solid var(--accent-pink); background: linear-gradient(135deg, rgba(15,23,42,0.95), rgba(30,41,59,0.95)); box-shadow: 0 4px 20px rgba(236,72,153,0.15);">
+          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+            <h3 style="margin:0; color:#fff; font-size:1.15rem;">📦 Portable SLD Package Backup & Smart Delta Merge</h3>
+            <span class="badge" style="background:rgba(236,72,153,0.2); color:#f43f5e; border:1px solid #f43f5e; font-size:0.75rem; font-weight:800;">⚡ Recommended Cross-Device Transfer</span>
+          </div>
+          <p class="text-muted" style="font-size:0.88rem; margin-top:6px; color:#e2e8f0;">
+            Export all application data (Media, Events, Subjects, SLD Logs, Tags, and Rules) into a single portable package. On import, a smart delta engine merges new edits, preserves local device-specific crops, and prevents duplicate media.
+          </p>
+
+          <div style="display:flex; gap:12px; margin-top:16px; flex-wrap:wrap; align-items:center;">
+            <button class="btn btn-primary" id="exportPortableSldPackageBtn" style="padding:10px 18px; font-weight:800; font-size:0.9rem;">
+              📦 Export Portable SLD Package (.sldpack)
+            </button>
+            <label class="btn btn-secondary" style="cursor:pointer; padding:10px 18px; font-weight:800; font-size:0.9rem; background:rgba(56,189,248,0.15); color:#38bdf8; border:1px solid #38bdf8;">
+              📥 Import & Smart Merge Package
+              <input type="file" id="importPortableSldPackageFileInput" accept=".sldpack,.zip,.7z,.json" style="display:none;">
+            </label>
+            <div style="display:flex; align-items:center; gap:6px; margin-left:auto;">
+              <label class="form-label" style="font-size:0.8rem; margin:0; color:var(--text-muted);">Import Mode:</label>
+              <select id="importModeSelect" class="select-input btn-sm" style="font-size:0.8rem;">
+                <option value="merge" selected>⚡ Smart Delta Merge (Active Profile)</option>
+                <option value="new">🆕 Import as New Profile</option>
+              </select>
+            </div>
+          </div>
+          <p class="text-muted" style="font-size:0.75rem; margin-top:8px; opacity:0.8;">
+            💡 <em>Device-specific display crop preferences for media files are left device-centric and preserved during import.</em>
+          </p>
+        </div>
+
         <div class="chart-card">
           <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
             <h3 style="margin:0;">🏆 Trophy Matrix Values / Limits</h3>
@@ -122,17 +153,6 @@
           <button class="btn btn-secondary btn-sm" id="regenerateThumbnailsBtn" style="margin-top:10px;">🔄 Regenerate All Thumbnails</button>
         </div>
 
-        <!-- 📱 Device 2 Device Connections Shortcut Card -->
-        <div class="chart-card">
-          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
-            <div>
-              <h3 style="margin:0;">📱 Device 2 Device Connections</h3>
-              <p class="text-muted" style="font-size:0.85rem; margin-top:4px;">Manage auto-discovered devices on LAN & Tailscale, toggle data syncing per device, and configure connection blocklists.</p>
-            </div>
-            <button class="btn btn-primary" onclick="switchView('connectionsView')">📱 Manage Device Connections →</button>
-          </div>
-        </div>
-
         <!-- 💾 Storage Allowance & Limits Card -->
         <div class="chart-card">
           <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
@@ -163,8 +183,6 @@
             </div>
           </div>
         </div>
-
-
 
         <!-- 📜 System Error Logs & Diagnostics Card -->
         <div class="chart-card">
